@@ -1,26 +1,109 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #000000;
+  --bg-elevated: #0c0c0c;
+  --bg-card: #141414;
+  --border: #232323;
+  --text: #ffffff;
+  --text-muted: #a3a3a3;
+  --text-dim: #6b6b6b;
+  --accent: #facc15;
+  --accent-dim: #ca8a04;
+  --success: #a3e635;
+  --danger: #ef4444;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-bg: var(--bg);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-bg-card: var(--bg-card);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-dim: var(--text-dim);
+  --color-accent: var(--accent);
+  --color-accent-dim: var(--accent-dim);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+@supports (padding: max(0px)) {
+  .safe-bottom {
+    padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+  }
+  .safe-top {
+    padding-top: max(env(safe-area-inset-top), 0.5rem);
+  }
+}
+
+/* ----- PRINT: clean exportable workout card ----- */
+@media print {
+  nav,
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .bg-bg,
+  .bg-bg-elevated,
+  .bg-bg-card {
+    background: white !important;
+  }
+  .text-text,
+  .text-text-muted,
+  .text-text-dim {
+    color: black !important;
+  }
+  .border-border,
+  .border-accent\/40,
+  .border-accent\/30 {
+    border-color: #999 !important;
+  }
+  .text-accent {
+    color: black !important;
+    font-weight: 700 !important;
+  }
+  details {
+    page-break-inside: avoid;
+  }
+  .print-block {
+    page-break-inside: avoid;
+    border: 1px solid #ccc !important;
+    margin-bottom: 1rem !important;
+  }
 }
