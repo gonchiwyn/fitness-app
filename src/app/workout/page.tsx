@@ -1,7 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { CATEGORIES, CATEGORY_BLURBS, CATEGORY_DURATION, CATEGORY_LABELS } from "@/lib/types";
+import { CATEGORY_BLURBS, CATEGORY_DURATION, CATEGORY_LABELS, type Category } from "@/lib/types";
+
+// Personalized order: performance / functional first.
+// Beach is hidden ("less beach vibes, more strong-guy").
+const VISIBLE_CATEGORIES: Category[] = [
+  "split",        // PPL — his comfortable default
+  "hypertrophy",  // building muscle
+  "strength",     // his other staple
+  "hyrox",        // wants to explore
+  "athlete",      // power / multi-plane
+  "core",         // lumbar protection priority
+  "cardio",       // 10k Sundays + Z2 base
+  "crossfit",     // try when curious
+  "surf",         // occasional surf prep
+  "burn",         // HIIT days
+  "stretching",   // mobility
+  "recovery",     // active rest
+  // "beach" — hidden by personalization
+];
 
 // Mono palette — every card is the same surface. Cleaner, less rainbow.
 const CATEGORY_ACCENTS: Record<string, string> = {
@@ -29,7 +47,7 @@ export default function WorkoutIndex() {
       </header>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {CATEGORIES.map((cat) => (
+        {VISIBLE_CATEGORIES.map((cat) => (
           <Link
             key={cat}
             href={`/workout/${cat}`}

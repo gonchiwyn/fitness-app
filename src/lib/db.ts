@@ -1,6 +1,7 @@
 import Dexie, { type Table } from "dexie";
 import type { PlannedDay, Profile, Session, WeeklyPlan } from "./types";
 import { dateToPlanIndex, normalizePlannedDay } from "./types";
+import { PERSONAL_PROFILE, PERSONAL_WEEKLY_PLAN } from "./data/personalProfile";
 
 export class FitnessDB extends Dexie {
   sessions!: Table<Session, number>;
@@ -26,14 +27,9 @@ export const db = new FitnessDB();
 export async function getProfile(): Promise<Profile> {
   const existing = await db.profile.get("me");
   if (existing) return existing;
-  const defaults: Profile = {
-    id: "me",
-    name: "Athlete",
-    units: "kg",
-    focusAreas: ["lower_back", "hip", "shoulder"],
-  };
-  await db.profile.put(defaults);
-  return defaults;
+  // Personalized default — see lib/data/personalProfile.ts
+  await db.profile.put(PERSONAL_PROFILE);
+  return PERSONAL_PROFILE;
 }
 
 export async function saveProfile(p: Partial<Profile>): Promise<void> {
@@ -51,9 +47,9 @@ export async function getWeeklyPlan(): Promise<WeeklyPlan> {
     // Backward-compat: old data may have bare Category strings
     return { ...existing, days: existing.days.map(normalizePlannedDay) };
   }
-  const empty: WeeklyPlan = { id: "me", days: [null, null, null, null, null, null, null] };
-  await db.weeklyPlan.put(empty);
-  return empty;
+  // Personalized default — see lib/data/personalProfile.ts
+  await db.weeklyPlan.put(PERSONAL_WEEKLY_PLAN);
+  return PERSONAL_WEEKLY_PLAN;
 }
 
 export async function saveWeeklyPlan(plan: WeeklyPlan): Promise<void> {

@@ -63,6 +63,23 @@ export function getEstimatedOneRm(profile: Profile, lift: LiftId): number | null
   return estimateOneRm(m.weight, m.reps);
 }
 
+// Personalized: lifts the user must be careful with (lower-back history).
+// Targets get capped + a caution note attaches.
+const LUMBAR_SENSITIVE_LIFTS = new Set<string>([
+  "deadlift",
+  "romanian_deadlift",
+  "rdl_deficit_band",
+  "back_squat",
+  "overhead_press",
+  "power_clean",
+  "hang_clean",
+  "hang_clean_below_knee",
+  "clean_and_jerk",
+  "snatch",
+  "barbell_row",
+  "thruster",
+]);
+
 function targetPercentForCategory(
   category: Category,
   prescribedReps: string,
@@ -84,8 +101,8 @@ function targetPercentForCategory(
     else base = 60;
   } else if (category === "athlete" || category === "crossfit") {
     base = repsNum <= 5 ? 75 : 65;
-  } else if (category === "hyrox") {
-    base = 60;
+  } else if (category === "hyrox" || category === "split") {
+    base = 65;
   } else if (rpe && rpe >= 8) {
     base = 70;
   }
@@ -263,12 +280,25 @@ function buildCoreBlock(
 
   const prescriptions: Prescription[] = [];
 
-  // Rotate protection function across days to hit all three weekly
-  // Day-of-month seed makes it deterministic and predictable
-  const protectionRotation: CoreFunction[] = ["anti_extension", "anti_rotation", "anti_lateral_flexion"];
-  const dayIdx = date.getDate() % 3;
+  // Personalized: bias rotation toward anti-extension (his weak spot + lumbar protection)
+  // Anti-extension hits on day idx 0, 1, 3, 4, 6 (5 of 7 days/week)
+  // Anti-rotation on 2, anti-lateral on 5
+  const protectionRotation: CoreFunction[] = [
+    "anti_extension",
+    "anti_extension",
+    "anti_rotation",
+    "anti_extension",
+    "anti_extension",
+    "anti_lateral_flexion",
+    "anti_extension",
+  ];
+  const dayIdx = date.getDate() % 7;
   const primary = protectionRotation[dayIdx];
-  const secondary = protectionRotation[(dayIdx + 1) % 3];
+  // Secondary always covers a different function so each session hits 2 different patterns
+  const secondaryPool: CoreFunction[] = primary === "anti_extension"
+    ? ["anti_rotation", "anti_lateral_flexion"]
+    : ["anti_extension", primary === "anti_rotation" ? "anti_lateral_flexion" : "anti_rotation"];
+  const secondary = secondaryPool[date.getDate() % secondaryPool.length];
 
   if (coreFocus === "protection" || coreFocus === "both") {
     for (const fn of [primary, secondary]) {
@@ -381,10 +411,38 @@ function buildWarmup(
     }
   }
 
+  // Personalized: ALWAYS include scapular activation + glute activation
+  // (psoas dominance + L-scap weakness — daily priming non-negotiable)
+  if (time >= 30) {
+    const scapPool = ["band_pull_apart", "ws_trx", "prone_ytw", "face_pull"]
+      .map((id) => EXERCISES.find((e) => e.id === id))
+      .filter((e): e is NonNullable<typeof e> => !!e && e.equipment.some((eq) => available.has(eq)));
+    if (scapPool.length > 0 && !prescriptions.some((p) => scapPool.find((e) => e.id === p.exerciseId))) {
+      prescriptions.push({
+        exerciseId: pick(scapPool, rng).id,
+        sets: 2,
+        reps: "12",
+        notes: "Scap activation — daily priming for left side",
+      });
+    }
+
+    const glutePool = ["glute_bridge", "glute_clam_side_plank", "unilateral_standing_hip_abduction"]
+      .map((id) => EXERCISES.find((e) => e.id === id))
+      .filter((e): e is NonNullable<typeof e> => !!e && e.equipment.some((eq) => available.has(eq)));
+    if (glutePool.length > 0 && !prescriptions.some((p) => glutePool.find((e) => e.id === p.exerciseId))) {
+      prescriptions.push({
+        exerciseId: pick(glutePool, rng).id,
+        sets: 2,
+        reps: "10/side",
+        notes: "Glute activation — wake them up before they have to work",
+      });
+    }
+  }
+
   return {
     id: `warmup-${Date.now()}`,
     title: "Warmup",
-    scheme: time < 30 ? "~5 min — focused" : "~8-10 min — lower back, hips, shoulders",
+    scheme: time < 30 ? "~5 min — focused" : "~10-12 min — lumbar, hips, shoulders, scap, glutes",
     note: "Move slow. Breathe. This is the work that keeps you in the game.",
     prescriptions,
   };
@@ -407,10 +465,20 @@ async function buildLoadHint(
   if (LIFT_ID_SET.has(exId) && profile.maxes) {
     const oneRm = getEstimatedOneRm(profile, exId as LiftId);
     if (oneRm) {
-      const pct = targetPercentForCategory(category, prescription.reps, prescription.rpe, intensity);
+      let pct = targetPercentForCategory(category, prescription.reps, prescription.rpe, intensity);
       if (pct) {
+        // Personalized: cap intensity on lumbar-sensitive lifts at ~78%
+        let cautionTag = "";
+        if (LUMBAR_SENSITIVE_LIFTS.has(exId)) {
+          if (pct > 78) {
+            pct = Math.min(pct, 78);
+            cautionTag = " · brace 360, no grinders";
+          } else {
+            cautionTag = " · brace, neutral spine";
+          }
+        }
         const target = roundToIncrement((oneRm * pct) / 100, units);
-        return `Target ${target}${units} (~${pct}% of est. 1RM ${oneRm}${units})`;
+        return `Target ${target}${units} (~${pct}% of est. 1RM ${oneRm}${units})${cautionTag}`;
       }
     }
   }

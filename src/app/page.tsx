@@ -5,10 +5,9 @@ import { useEffect, useState } from "react";
 import { format, startOfWeek, addDays } from "date-fns";
 import { useLiveQuery } from "dexie-react-hooks";
 import clsx from "clsx";
-import { db, getProfile } from "@/lib/db";
+import { db, getProfile, getWeeklyPlan } from "@/lib/db";
 import { templatesFor } from "@/lib/data/templates";
 import {
-  CATEGORIES,
   CATEGORY_BLURBS,
   CATEGORY_LABELS,
   DAY_LABELS_SHORT,
@@ -26,6 +25,8 @@ export default function HomePage() {
 
   useEffect(() => {
     getProfile().then(setProfile);
+    // Seed personal weekly plan on first load (idempotent — only creates if missing)
+    getWeeklyPlan();
   }, []);
 
   const todaysSession = useLiveQuery(
@@ -125,7 +126,7 @@ export default function HomePage() {
           Quick start
         </h2>
         <div className="grid grid-cols-2 gap-3">
-          {CATEGORIES.slice(0, 6).map((cat) => (
+          {(["split", "hypertrophy", "strength", "hyrox", "athlete", "cardio"] as const).map((cat) => (
             <Link
               key={cat}
               href={`/workout/${cat}`}
