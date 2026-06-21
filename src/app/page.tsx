@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { format, startOfWeek, addDays } from "date-fns";
 import { useLiveQuery } from "dexie-react-hooks";
 import clsx from "clsx";
-import { db, getProfile, getWeeklyPlan } from "@/lib/db";
+import { cleanupStaleDrafts, db, getProfile, getWeeklyPlan } from "@/lib/db";
 import { templatesFor } from "@/lib/data/templates";
 import {
   CATEGORY_BLURBS,
@@ -27,15 +27,25 @@ export default function HomePage() {
     getProfile().then(setProfile);
     // Seed personal weekly plan on first load (idempotent — only creates if missing)
     getWeeklyPlan();
+    // Clean up old draft previews that the user never started
+    cleanupStaleDrafts();
   }, []);
 
   const todaysSession = useLiveQuery(
-    async () => db.sessions.where("date").equals(today).first(),
+    // Only show today's session if it's been actually started (not a draft preview)
+    async () => {
+      const all = await db.sessions.where("date").equals(today).toArray();
+      return all.find((s) => s.startedAt || s.finishedAt);
+    },
     [today]
   );
 
   const recent = useLiveQuery(
-    async () => db.sessions.orderBy("date").reverse().limit(30).toArray(),
+    // Exclude drafts entirely from history-style listings
+    async () => {
+      const all = await db.sessions.orderBy("date").reverse().limit(60).toArray();
+      return all.filter((s) => s.startedAt || s.finishedAt).slice(0, 30);
+    },
     []
   );
 

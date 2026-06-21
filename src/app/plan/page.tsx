@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import clsx from "clsx";
-import { getWeeklyPlan, saveWeeklyPlan } from "@/lib/db";
+import { db, getWeeklyPlan, saveWeeklyPlan } from "@/lib/db";
 import { templatesFor } from "@/lib/data/templates";
 import {
   CATEGORIES,
@@ -41,10 +41,11 @@ export default function PlanPage() {
   };
 
   const reset = async () => {
-    if (!confirm("Clear the entire weekly plan?")) return;
-    const next: WeeklyPlan = { id: "me", days: [null, null, null, null, null, null, null] };
-    setPlan(next);
-    await saveWeeklyPlan(next);
+    if (!confirm("Reset the weekly plan to defaults?")) return;
+    // Delete the record so getWeeklyPlan() re-seeds from the personal default
+    await db.weeklyPlan.clear();
+    const fresh = await getWeeklyPlan();
+    setPlan(fresh);
   };
 
   const presets: { label: string; days: PlannedDay[] }[] = [
@@ -197,7 +198,7 @@ export default function PlanPage() {
         onClick={reset}
         className="w-full h-12 rounded-xl border border-border text-text-muted font-medium"
       >
-        Clear plan
+        Reset to default plan
       </button>
 
       <p className="text-xs text-text-dim text-center pt-2">

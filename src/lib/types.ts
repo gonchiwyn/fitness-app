@@ -189,7 +189,8 @@ export type Session = {
   category: Category;
   name: string;
   date: string;
-  startedAt: number;
+  createdAt: number;          // when the workout was generated (preview)
+  startedAt?: number;          // null = draft (preview only). Set when user taps "Start" or logs a set.
   finishedAt?: number;
   philosophy?: string;
   influences?: CoachInfluence[];

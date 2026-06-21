@@ -125,12 +125,34 @@ export default function WorkoutForCategory({
   const update = async (mutator: (s: Session) => Session) => {
     setSession((prev) => {
       if (!prev) return prev;
-      const next = mutator(prev);
+      let next = mutator(prev);
+      // Logging a set auto-promotes draft → started
+      const anySetLogged = next.blocks.some((b) =>
+        b.prescriptions.some((p) => p.sets.some((s) => s.completed))
+      );
+      if (anySetLogged && !next.startedAt) {
+        next = { ...next, startedAt: Date.now() };
+      }
       if (next.id !== undefined) {
         db.sessions.put(next);
       }
       return next;
     });
+  };
+
+  const startWorkout = async () => {
+    if (!session.id || session.startedAt) return;
+    const startedAt = Date.now();
+    const next = { ...session, startedAt };
+    setSession(next);
+    await db.sessions.put(next);
+  };
+
+  const discard = async () => {
+    if (!session.id) return;
+    if (!confirm("Discard this preview? It won't show in your history.")) return;
+    await db.sessions.delete(session.id);
+    router.push("/");
   };
 
   const completedCount = session.blocks
@@ -218,8 +240,18 @@ export default function WorkoutForCategory({
         </div>
 
         <div>
-          <div className="text-[11px] uppercase tracking-[0.2em] text-accent font-semibold">
-            {CATEGORY_LABELS[cat]}
+          <div className="text-[11px] uppercase tracking-[0.2em] text-accent font-semibold flex items-center gap-2">
+            <span>{CATEGORY_LABELS[cat]}</span>
+            {!session.startedAt && !session.finishedAt && (
+              <span className="text-text-dim font-normal normal-case tracking-normal text-xs">
+                · Preview
+              </span>
+            )}
+            {session.startedAt && !session.finishedAt && (
+              <span className="text-text-dim font-normal normal-case tracking-normal text-xs">
+                · In progress
+              </span>
+            )}
           </div>
           <h1 className="text-3xl font-bold mt-1.5 leading-tight">
             {session.name.split(" — ")[1] ?? session.name}
@@ -317,17 +349,39 @@ export default function WorkoutForCategory({
         ))}
       </div>
 
-      {/* FINISH */}
-      <div className="pt-4 no-print">
-        <button
-          onClick={finish}
-          className="w-full bg-accent text-black font-bold py-4 rounded-2xl text-lg transition-colors hover:bg-accent-dim"
-        >
-          {session.finishedAt ? "✓ Workout Complete" : "Mark Workout Done"}
-        </button>
-        <p className="text-center text-xs text-text-dim mt-2">
-          Logging is optional. Walk away phone-free if you want.
-        </p>
+      {/* PRIMARY CTA — depends on draft / in-progress / finished */}
+      <div className="pt-4 no-print space-y-2">
+        {!session.startedAt && !session.finishedAt ? (
+          <>
+            <button
+              onClick={startWorkout}
+              className="w-full bg-accent text-black font-bold py-4 rounded-2xl text-lg"
+            >
+              Start Workout
+            </button>
+            <button
+              onClick={discard}
+              className="w-full text-text-dim text-sm py-2"
+            >
+              Discard preview
+            </button>
+            <p className="text-center text-xs text-text-dim mt-1">
+              Just looking? This won&apos;t appear in your history until you Start.
+            </p>
+          </>
+        ) : (
+          <>
+            <button
+              onClick={finish}
+              className="w-full bg-accent text-black font-bold py-4 rounded-2xl text-lg transition-colors hover:bg-accent-dim"
+            >
+              {session.finishedAt ? "✓ Workout Complete" : "Mark Workout Done"}
+            </button>
+            <p className="text-center text-xs text-text-dim mt-1">
+              Logging is optional. Walk away phone-free if you want.
+            </p>
+          </>
+        )}
       </div>
     </div>
   );
@@ -695,7 +749,8 @@ function workoutToSession(w: Workout): Session {
     category: w.category,
     name: w.name,
     date: w.date,
-    startedAt: Date.now(),
+    createdAt: Date.now(),
+    // startedAt left undefined — this is a DRAFT until user explicitly starts
     philosophy: w.philosophy,
     influences: w.influences,
     modifiers: w.modifiers,

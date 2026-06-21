@@ -41,6 +41,29 @@ export async function recentSessions(limit = 30): Promise<Session[]> {
   return db.sessions.orderBy("date").reverse().limit(limit).toArray();
 }
 
+/**
+ * Delete draft sessions older than 24h. Drafts = generated previews
+ * the user never actually started (no startedAt, no logged sets).
+ */
+export async function cleanupStaleDrafts(): Promise<number> {
+  const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+  const all = await db.sessions.toArray();
+  const stale = all.filter(
+    (s) =>
+      !s.startedAt &&
+      !s.finishedAt &&
+      (s.createdAt ?? 0) < cutoff
+  );
+  for (const s of stale) {
+    if (s.id !== undefined) await db.sessions.delete(s.id);
+  }
+  return stale.length;
+}
+
+export async function deleteSession(id: number): Promise<void> {
+  await db.sessions.delete(id);
+}
+
 export async function getWeeklyPlan(): Promise<WeeklyPlan> {
   const existing = await db.weeklyPlan.get("me");
   if (existing) {

@@ -3,15 +3,25 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { format, parseISO } from "date-fns";
 import Link from "next/link";
-import { db } from "@/lib/db";
+import { db, deleteSession } from "@/lib/db";
 import { getExercise } from "@/lib/data/exercises";
 import { CATEGORY_LABELS } from "@/lib/types";
 
 export default function HistoryPage() {
+  // Filter out drafts (previews that were never started)
   const sessions = useLiveQuery(
-    async () => db.sessions.orderBy("date").reverse().toArray(),
+    async () => {
+      const all = await db.sessions.orderBy("date").reverse().toArray();
+      return all.filter((s) => s.startedAt || s.finishedAt);
+    },
     []
   );
+
+  const onDelete = async (id: number | undefined) => {
+    if (id === undefined) return;
+    if (!confirm("Delete this session?")) return;
+    await deleteSession(id);
+  };
 
   if (!sessions) {
     return (
@@ -163,14 +173,27 @@ export default function HistoryPage() {
                       </div>
                     </div>
                   ))}
-                  {!s.finishedAt && (
-                    <Link
-                      href={`/workout/${s.category}`}
-                      className="inline-block text-accent text-sm font-medium"
+                  <div className="flex items-center justify-between pt-2">
+                    {!s.finishedAt ? (
+                      <Link
+                        href={`/workout/${s.category}`}
+                        className="text-accent text-sm font-medium"
+                      >
+                        Resume →
+                      </Link>
+                    ) : (
+                      <span />
+                    )}
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        onDelete(s.id);
+                      }}
+                      className="text-xs text-text-dim hover:text-danger px-2 py-1"
                     >
-                      Resume →
-                    </Link>
-                  )}
+                      Delete
+                    </button>
+                  </div>
                 </div>
               </details>
             );
