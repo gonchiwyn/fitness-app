@@ -7,7 +7,6 @@ import {
   EQUIPMENT_PRESETS,
   REHAB_ZONE_LABELS,
   type EquipmentPreset,
-  type Intensity,
   type RehabZone,
   type WorkoutModifiers,
 } from "@/lib/types";
@@ -92,24 +91,6 @@ export default function ModifierPanel({
 
           <div>
             <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold mb-2">
-              Intensity
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              {(["recovery", "normal", "push"] as Intensity[]).map((i) => (
-                <Chip
-                  key={i}
-                  active={(draft.intensity ?? "normal") === i}
-                  onClick={() => setDraft({ ...draft, intensity: i })}
-                  fullWidth
-                >
-                  {i === "recovery" ? "Easy" : i === "push" ? "Push" : "Normal"}
-                </Chip>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold mb-2">
               Rehab mode (zone is bothering me)
             </div>
             <div className="flex gap-2 flex-wrap">
@@ -162,7 +143,6 @@ function summarize(m: WorkoutModifiers, defaultEq?: EquipmentPreset): string {
   if (m.timeMinutes) parts.push(`${m.timeMinutes}m`);
   const eq = m.equipmentPreset ?? defaultEq;
   if (eq && eq !== "full_gym") parts.push(EQUIPMENT_PRESET_LABELS[eq]);
-  if (m.intensity && m.intensity !== "normal") parts.push(m.intensity === "recovery" ? "easy" : "push");
   if (m.rehab) parts.push(`rehab: ${m.rehab.replace("_", " ")}`);
   return parts.length === 0 ? "default" : parts.join(" · ");
 }

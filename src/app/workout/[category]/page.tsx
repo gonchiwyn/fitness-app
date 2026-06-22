@@ -26,6 +26,7 @@ import {
 } from "@/lib/types";
 import SetLogger from "@/components/SetLogger";
 import ModifierPanel from "@/components/ModifierPanel";
+import TemplatePicker from "@/components/TemplatePicker";
 
 const INFLUENCE_LABELS: Record<CoachInfluence, string> = {
   galpin: "Galpin",
@@ -74,6 +75,7 @@ export default function WorkoutForCategory({
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   useEffect(() => {
     if (!validCat) return;
@@ -188,8 +190,6 @@ export default function WorkoutForCategory({
     setLoading(false);
   };
 
-  const reroll = () => regenerateWithModifiers(session.modifiers ?? {});
-
   const setIntensity = (intensity: Intensity) => {
     regenerateWithModifiers({ ...(session.modifiers ?? {}), intensity });
   };
@@ -231,10 +231,10 @@ export default function WorkoutForCategory({
               ⤓ Print
             </button>
             <button
-              onClick={reroll}
+              onClick={() => setPickerOpen(true)}
               className="text-xs text-text-dim hover:text-text-muted px-3 py-1.5 rounded-lg border border-border"
             >
-              ↻ Reroll
+              ⇄ Change
             </button>
           </div>
         </div>
@@ -348,6 +348,22 @@ export default function WorkoutForCategory({
           />
         ))}
       </div>
+
+      {pickerOpen && (
+        <TemplatePicker
+          category={cat}
+          currentTemplateId={session.modifiers?.templateId}
+          onPickRandom={() => {
+            setPickerOpen(false);
+            regenerateWithModifiers({ ...(session.modifiers ?? {}), templateId: undefined });
+          }}
+          onPickTemplate={(id) => {
+            setPickerOpen(false);
+            regenerateWithModifiers({ ...(session.modifiers ?? {}), templateId: id });
+          }}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
 
       {/* PRIMARY CTA — depends on draft / in-progress / finished */}
       <div className="pt-4 no-print space-y-2">
