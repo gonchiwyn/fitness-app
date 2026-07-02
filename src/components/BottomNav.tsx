@@ -7,7 +7,6 @@ import clsx from "clsx";
 const ITEMS = [
   { href: "/", label: "Today", icon: HomeIcon },
   { href: "/plan", label: "Plan", icon: CalendarIcon },
-  { href: "/workout", label: "Train", icon: DumbbellIcon },
   { href: "/history", label: "History", icon: ChartIcon },
   { href: "/settings", label: "Profile", icon: UserIcon },
 ];
@@ -17,7 +16,7 @@ export default function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-bg-elevated/95 backdrop-blur border-t border-border safe-bottom z-40">
-      <div className="max-w-3xl mx-auto grid grid-cols-5">
+      <div className="max-w-3xl mx-auto grid grid-cols-4">
         {ITEMS.map((item) => {
           const active =
             item.href === "/"
@@ -47,14 +46,6 @@ function HomeIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M3 12L12 3l9 9M5 10v10a1 1 0 001 1h3v-6h6v6h3a1 1 0 001-1V10" />
-    </svg>
-  );
-}
-
-function DumbbellIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M6.5 6.5v11M3 9v6M17.5 6.5v11M21 9v6M6.5 12h11" />
     </svg>
   );
 }

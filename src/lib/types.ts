@@ -12,6 +12,7 @@ export const CATEGORIES = [
   "cardio",
   "core",
   "split",
+  "test",
 ] as const;
 
 export type Category = (typeof CATEGORIES)[number];
@@ -30,6 +31,7 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   cardio: "Cardio",
   core: "Core",
   split: "Split",
+  test: "Test",
 };
 
 export const CATEGORY_BLURBS: Record<Category, string> = {
@@ -46,6 +48,7 @@ export const CATEGORY_BLURBS: Record<Category, string> = {
   cardio: "Zone 2 or intervals",
   core: "3-part Galpin protection + abs",
   split: "Bro split — pick your day (push/pull/legs/chest/back/etc.)",
+  test: "Benchmark day — 1RMs, hangs, jumps, Cooper run",
 };
 
 export const CATEGORY_DURATION: Record<Category, number> = {
@@ -62,6 +65,7 @@ export const CATEGORY_DURATION: Record<Category, number> = {
   cardio: 40,
   core: 25,
   split: 55,
+  test: 75,
 };
 
 export type WarmupTarget = "lower_back" | "hip" | "shoulder" | "general";
@@ -156,6 +160,7 @@ export type Workout = {
   philosophy?: string;
   influences?: CoachInfluence[];
   modifiers?: WorkoutModifiers;
+  phase?: CyclePhase;
 };
 
 export type LoggedSet = {
@@ -186,18 +191,24 @@ export type LoggedBlock = {
   prescriptions: LoggedPrescription[];
 };
 
+// User's post-workout rating — how did it feel?
+// Feeds the auto-regulation logic that adjusts next week's loads.
+export type SessionRating = "easy" | "normal" | "hard";
+
 export type Session = {
   id?: number;
   workoutId: string;
   category: Category;
   name: string;
   date: string;
-  createdAt: number;          // when the workout was generated (preview)
-  startedAt?: number;          // null = draft (preview only). Set when user taps "Start" or logs a set.
+  createdAt: number;
+  startedAt?: number;
   finishedAt?: number;
+  rating?: SessionRating;      // asked after "I did this ✓"
   philosophy?: string;
   influences?: CoachInfluence[];
   modifiers?: WorkoutModifiers;
+  phase?: CyclePhase;
   blocks: LoggedBlock[];
 };
 
@@ -275,12 +286,12 @@ export type RunBenchmark = {
 // 5 chips instead of 3 — more granular but still one-tap
 export type Intensity = "rest" | "easy" | "normal" | "hard" | "push";
 
-export const INTENSITY_LABELS: Record<Intensity, { label: string; sub: string; emoji: string }> = {
-  rest: { label: "Rest", sub: "recovery", emoji: "😴" },
-  easy: { label: "Easy", sub: "lighter", emoji: "🫠" },
-  normal: { label: "Normal", sub: "as planned", emoji: "🙂" },
-  hard: { label: "Hard", sub: "step it up", emoji: "💪" },
-  push: { label: "Push", sub: "all in", emoji: "🔥" },
+export const INTENSITY_LABELS: Record<Intensity, { label: string; sub: string }> = {
+  rest: { label: "Rest", sub: "recovery" },
+  easy: { label: "Easy", sub: "lighter" },
+  normal: { label: "Normal", sub: "as planned" },
+  hard: { label: "Hard", sub: "step it up" },
+  push: { label: "Push", sub: "all in" },
 };
 
 export const EQUIPMENT_PRESETS = [
@@ -329,6 +340,56 @@ export type WorkoutModifiers = {
   intensity?: Intensity;
   rehab?: RehabZone;
   templateId?: string;
+};
+
+// ============================================================
+// BENCHMARKS — periodic tests you retest every 6-8 weeks
+// ============================================================
+export const BENCHMARK_TYPES = [
+  "bench_1rm",
+  "squat_1rm",
+  "deadlift_1rm",
+  "ohp_1rm",
+  "pullup_max",
+  "dead_hang_sec",
+  "broad_jump_cm",
+  "vertical_jump_cm",
+  "farmer_carry_sec",
+  "cooper_12min_m",
+  "5k_time_sec",
+  "plank_sec",
+] as const;
+export type BenchmarkType = (typeof BENCHMARK_TYPES)[number];
+
+export type BenchmarkMeta = {
+  label: string;
+  unit: string;
+  higherIsBetter: boolean;
+  group: "strength" | "power" | "endurance" | "mobility";
+  description: string;
+};
+
+export const BENCHMARK_META: Record<BenchmarkType, BenchmarkMeta> = {
+  bench_1rm: { label: "Bench press 1RM", unit: "kg", higherIsBetter: true, group: "strength", description: "Max weight × 1 rep" },
+  squat_1rm: { label: "Back squat 1RM", unit: "kg", higherIsBetter: true, group: "strength", description: "Max weight × 1 rep" },
+  deadlift_1rm: { label: "Deadlift 1RM", unit: "kg", higherIsBetter: true, group: "strength", description: "Max weight × 1 rep" },
+  ohp_1rm: { label: "Overhead press 1RM", unit: "kg", higherIsBetter: true, group: "strength", description: "Strict press, no leg drive" },
+  pullup_max: { label: "Max strict pull-ups", unit: "reps", higherIsBetter: true, group: "strength", description: "Dead hang start, chin over bar, unbroken" },
+  dead_hang_sec: { label: "Dead hang", unit: "sec", higherIsBetter: true, group: "strength", description: "Passive hang, straight arms, feet off ground" },
+  broad_jump_cm: { label: "Broad jump", unit: "cm", higherIsBetter: true, group: "power", description: "Standing, both feet, distance from take-off line" },
+  vertical_jump_cm: { label: "Vertical jump", unit: "cm", higherIsBetter: true, group: "power", description: "Reach standing vs reach at jump apex" },
+  farmer_carry_sec: { label: "Farmer carry (bodyweight × 2)", unit: "sec", higherIsBetter: true, group: "strength", description: "Hold heaviest DBs/KBs = your bodyweight, walk or stand, longest time" },
+  cooper_12min_m: { label: "Cooper 12-min run", unit: "m", higherIsBetter: true, group: "endurance", description: "Distance covered in 12 minutes at max sustainable pace" },
+  "5k_time_sec": { label: "5k time", unit: "sec", higherIsBetter: false, group: "endurance", description: "Best 5km run time" },
+  plank_sec: { label: "Plank hold", unit: "sec", higherIsBetter: true, group: "strength", description: "Straight line, elbows under shoulders, no sagging" },
+};
+
+export type Benchmark = {
+  id?: number;
+  date: string;      // yyyy-MM-dd
+  type: BenchmarkType;
+  value: number;
+  notes?: string;
 };
 
 // 7-element array, index 0 = Monday, 6 = Sunday
@@ -382,8 +443,33 @@ export type Profile = {
   otherCommitments?: string;
   currentGoal?: string;
   levels?: Partial<Record<Category, Level>>;
+  // Periodization — 4-week wave: base → +3% → +6% → deload
+  periodizationEnabled?: boolean;
+  programStartDate?: string;   // yyyy-MM-dd
   onboarded?: boolean;
 };
+
+export type CyclePhase = {
+  weekInCycle: 1 | 2 | 3 | 4;
+  label: string;
+  description: string;
+  intensityMultiplier: number;
+  setAdjustment: number;
+};
+
+export function getCurrentCyclePhase(startDate: string, today: Date = new Date()): CyclePhase {
+  const start = new Date(startDate + "T00:00:00");
+  const daysSince = Math.max(0, Math.floor((today.getTime() - start.getTime()) / 86400000));
+  const weeksSince = Math.floor(daysSince / 7);
+  const weekInCycle = ((weeksSince % 4) + 1) as 1 | 2 | 3 | 4;
+  const PHASES: Record<1 | 2 | 3 | 4, CyclePhase> = {
+    1: { weekInCycle: 1, label: "Base", description: "Establish baseline volume + intensity", intensityMultiplier: 1.0, setAdjustment: 0 },
+    2: { weekInCycle: 2, label: "Build", description: "+3% intensity — slightly heavier than last week", intensityMultiplier: 1.03, setAdjustment: 0 },
+    3: { weekInCycle: 3, label: "Peak", description: "+6% intensity, +1 set on main lifts — biggest week", intensityMultiplier: 1.06, setAdjustment: 1 },
+    4: { weekInCycle: 4, label: "Deload", description: "Cut intensity 15%, reduce a set — CNS recovery", intensityMultiplier: 0.85, setAdjustment: -1 },
+  };
+  return PHASES[weekInCycle];
+}
 
 export type CoreFocus = "off" | "protection" | "aesthetic" | "both";
 

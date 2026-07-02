@@ -22,10 +22,10 @@ import {
   type LoggedSet,
   type Profile,
   type Session,
+  type SessionRating,
   type Workout,
   type WorkoutModifiers,
 } from "@/lib/types";
-import SetLogger from "@/components/SetLogger";
 import ModifierPanel from "@/components/ModifierPanel";
 import TemplatePicker from "@/components/TemplatePicker";
 
@@ -128,27 +128,10 @@ export default function WorkoutForCategory({
   const update = async (mutator: (s: Session) => Session) => {
     setSession((prev) => {
       if (!prev) return prev;
-      let next = mutator(prev);
-      // Logging a set auto-promotes draft → started
-      const anySetLogged = next.blocks.some((b) =>
-        b.prescriptions.some((p) => p.sets.some((s) => s.completed))
-      );
-      if (anySetLogged && !next.startedAt) {
-        next = { ...next, startedAt: Date.now() };
-      }
-      if (next.id !== undefined) {
-        db.sessions.put(next);
-      }
+      const next = mutator(prev);
+      if (next.id !== undefined) db.sessions.put(next);
       return next;
     });
-  };
-
-  const startWorkout = async () => {
-    if (!session.id || session.startedAt) return;
-    const startedAt = Date.now();
-    const next = { ...session, startedAt };
-    setSession(next);
-    await db.sessions.put(next);
   };
 
   const discard = async () => {
@@ -158,24 +141,28 @@ export default function WorkoutForCategory({
     router.push("/");
   };
 
-  const completedCount = session.blocks
-    .flatMap((b) => b.prescriptions)
-    .reduce((acc, p) => acc + p.sets.filter((s) => s.completed).length, 0);
-  const totalCount = session.blocks
-    .flatMap((b) => b.prescriptions)
-    .reduce((acc, p) => acc + p.prescribedSets, 0);
-
   const finish = async () => {
     if (!session.id) return;
-    const finishedAt = Date.now();
-    await db.sessions.put({ ...session, finishedAt });
+    const now = Date.now();
+    // Sessions go straight from draft → done (no "in progress" phase)
+    const next = { ...session, startedAt: session.startedAt ?? now, finishedAt: now };
+    setSession(next);
+    await db.sessions.put(next);
+    // Stay on the page — the rating prompt shows in place of the button
+  };
+
+  const rateAndGoHome = async (rating: SessionRating) => {
+    if (!session.id) return;
+    const next = { ...session, rating };
+    setSession(next);
+    await db.sessions.put(next);
     router.push("/");
   };
 
   const regenerateWithModifiers = async (modifiers: WorkoutModifiers) => {
     if (!session.id) return;
-    if (completedCount > 0) {
-      if (!confirm("Regenerate this workout? Your current logs will be lost.")) {
+    if (session.finishedAt) {
+      if (!confirm("Regenerate this workout? The completion mark will be lost.")) {
         return;
       }
     }
@@ -243,14 +230,9 @@ export default function WorkoutForCategory({
         <div>
           <div className="text-[11px] uppercase tracking-[0.2em] text-accent font-semibold flex items-center gap-2">
             <span>{CATEGORY_LABELS[cat]}</span>
-            {!session.startedAt && !session.finishedAt && (
-              <span className="text-text-dim font-normal normal-case tracking-normal text-xs">
-                · Preview
-              </span>
-            )}
-            {session.startedAt && !session.finishedAt && (
-              <span className="text-text-dim font-normal normal-case tracking-normal text-xs">
-                · In progress
+            {session.finishedAt && (
+              <span className="text-success font-normal normal-case tracking-normal text-xs">
+                · ✓ Done
               </span>
             )}
           </div>
@@ -274,7 +256,6 @@ export default function WorkoutForCategory({
                 key={i}
                 active={currentIntensity === i}
                 onClick={() => setIntensity(i)}
-                emoji={INTENSITY_LABELS[i].emoji}
                 label={INTENSITY_LABELS[i].label}
                 sublabel={INTENSITY_LABELS[i].sub}
               />
@@ -282,24 +263,18 @@ export default function WorkoutForCategory({
           </div>
         </div>
 
-        {/* PROGRESS — small, not center stage */}
-        {completedCount > 0 && (
-          <div>
-            <div className="flex items-center justify-between text-[11px] text-text-dim mb-1">
-              <span>Logged · {completedCount} / {totalCount} sets</span>
-              <span>{totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0}%</span>
-            </div>
-            <div className="h-0.5 bg-bg-card rounded-full overflow-hidden">
-              <div
-                className="h-full bg-accent transition-all"
-                style={{ width: `${totalCount > 0 ? (completedCount / totalCount) * 100 : 0}%` }}
-              />
-            </div>
-          </div>
-        )}
       </header>
 
       {/* PHILOSOPHY */}
+      {session.phase && (
+        <div className="bg-bg-card border-l-2 border-accent rounded-r-xl px-4 py-3 no-print">
+          <div className="text-[10px] uppercase tracking-widest text-accent font-semibold mb-1">
+            Cycle · Week {session.phase.weekInCycle} of 4 · {session.phase.label}
+          </div>
+          <p className="text-sm text-text-muted leading-relaxed">{session.phase.description}</p>
+        </div>
+      )}
+
       {session.philosophy && (
         <div className="bg-bg-card border-l-2 border-accent rounded-r-xl px-4 py-3 no-print">
           <div className="text-[10px] uppercase tracking-widest text-accent font-semibold mb-1">
@@ -355,37 +330,59 @@ export default function WorkoutForCategory({
         />
       )}
 
-      {/* PRIMARY CTA — depends on draft / in-progress / finished */}
-      <div className="pt-4 no-print space-y-2">
-        {!session.startedAt && !session.finishedAt ? (
+      {/* PRIMARY CTA — one button. Done, then rate, or discard. */}
+      <div className="pt-4 no-print space-y-3">
+        {session.finishedAt && !session.rating ? (
           <>
+            <div className="w-full bg-success/10 border border-success/30 text-success text-center font-bold py-3 rounded-2xl">
+              ✓ Marked done
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-widest text-text-dim font-semibold text-center mb-2">
+                How did it feel?
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {(["easy", "normal", "hard"] as SessionRating[]).map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => rateAndGoHome(r)}
+                    className="py-4 rounded-xl border border-border bg-bg-card hover:border-accent/60 hover:bg-accent/10 transition-colors text-center"
+                  >
+                    <div className="text-base font-bold capitalize">{r}</div>
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-text-dim text-center mt-2">
+                Feeds next week&apos;s intensity — one tap, done.
+              </p>
+            </div>
+          </>
+        ) : session.finishedAt ? (
+          <>
+            <div className="w-full bg-success/10 border border-success/30 text-success text-center font-bold py-4 rounded-2xl text-lg">
+              ✓ Done · rated {session.rating}
+            </div>
             <button
-              onClick={startWorkout}
-              className="w-full bg-accent text-black font-bold py-4 rounded-2xl text-lg"
-            >
-              Start Workout
-            </button>
-            <button
-              onClick={discard}
+              onClick={() => router.push("/")}
               className="w-full text-text-dim text-sm py-2"
             >
-              Discard preview
+              Back to home
             </button>
-            <p className="text-center text-xs text-text-dim mt-1">
-              Just looking? This won&apos;t appear in your history until you Start.
-            </p>
           </>
         ) : (
           <>
             <button
               onClick={finish}
-              className="w-full bg-accent text-black font-bold py-4 rounded-2xl text-lg transition-colors hover:bg-accent-dim"
+              className="w-full bg-accent text-black font-bold py-4 rounded-2xl text-lg hover:bg-accent-dim transition-colors"
             >
-              {session.finishedAt ? "✓ Workout Complete" : "Mark Workout Done"}
+              I did this ✓
             </button>
-            <p className="text-center text-xs text-text-dim mt-1">
-              Logging is optional. Walk away phone-free if you want.
-            </p>
+            <button
+              onClick={discard}
+              className="w-full text-text-dim text-sm py-2"
+            >
+              Discard — I didn't do it
+            </button>
           </>
         )}
       </div>
@@ -396,13 +393,11 @@ export default function WorkoutForCategory({
 function ReadinessChip({
   active,
   onClick,
-  emoji,
   label,
   sublabel,
 }: {
   active: boolean;
   onClick: () => void;
-  emoji: string;
   label: string;
   sublabel: string;
 }) {
@@ -410,15 +405,14 @@ function ReadinessChip({
     <button
       onClick={onClick}
       className={clsx(
-        "px-1.5 py-2.5 rounded-xl border transition-all text-center",
+        "px-1.5 py-3 rounded-xl border transition-all text-center",
         active
           ? "bg-accent text-black border-accent"
           : "bg-bg border-border text-text-muted hover:border-border/60"
       )}
     >
-      <div className="text-lg leading-none">{emoji}</div>
-      <div className="text-[11px] font-semibold mt-1">{label}</div>
-      <div className={clsx("text-[9px] mt-0.5 leading-tight", active ? "opacity-70" : "text-text-dim")}>
+      <div className="text-sm font-bold">{label}</div>
+      <div className={clsx("text-[9px] mt-1 leading-tight uppercase tracking-wider", active ? "opacity-70" : "text-text-dim")}>
         {sublabel}
       </div>
     </button>
@@ -519,7 +513,6 @@ function BlockCard({
               <ExerciseCard
                 key={pi}
                 prescription={p}
-                units={units}
                 blockMode={mode}
                 position={pi}
                 totalInGroup={block.prescriptions.length}
@@ -527,12 +520,6 @@ function BlockCard({
                 isCooldown={isCooldown}
                 isCore={isCore}
                 availableEquipment={availableEquipment}
-                onUpdate={(updated) =>
-                  onUpdate({
-                    ...block,
-                    prescriptions: block.prescriptions.map((x, i) => (i === pi ? updated : x)),
-                  })
-                }
                 onSwap={(newId) => onSwap(pi, newId)}
               />
             ))}
@@ -545,19 +532,15 @@ function BlockCard({
 
 function ExerciseCard({
   prescription,
-  units,
   blockMode,
   position,
   totalInGroup,
   isWarmup,
   isCooldown,
-  isCore,
   availableEquipment,
-  onUpdate,
   onSwap,
 }: {
   prescription: LoggedPrescription;
-  units: "kg" | "lb";
   blockMode: BlockMode;
   position: number;
   totalInGroup: number;
@@ -565,16 +548,12 @@ function ExerciseCard({
   isCooldown: boolean;
   isCore: boolean;
   availableEquipment: Set<string>;
-  onUpdate: (p: LoggedPrescription) => void;
   onSwap: (newExerciseId: string) => void;
 }) {
   const [showSwaps, setShowSwaps] = useState(false);
-  const [showLogger, setShowLogger] = useState(false);
   const [showHowTo, setShowHowTo] = useState(false);
 
   const exercise = getExercise(prescription.exerciseId);
-  const showLoad = exercise.weighted && !isWarmup && !isCooldown;
-  const completedSets = prescription.sets.filter((s) => s.completed).length;
 
   const swapIds = findSwapAlternatives(prescription.exerciseId, availableEquipment as Set<never>, 4);
 
@@ -694,58 +673,6 @@ function ExerciseCard({
         </div>
       )}
 
-      {/* Log button (collapsed by default) */}
-      {!isWarmup && !isCooldown && (
-        <div className="mt-3 no-print">
-          {!showLogger ? (
-            <button
-              onClick={() => setShowLogger(true)}
-              className="text-[11px] text-text-dim hover:text-accent border border-border rounded-lg px-3 py-1.5"
-            >
-              {completedSets > 0
-                ? `✓ ${completedSets} logged · tap to add more`
-                : "+ Log set (optional)"}
-            </button>
-          ) : (
-            <div className="space-y-1.5 mt-2">
-              {prescription.sets.map((s, i) => (
-                <SetLogger
-                  key={i}
-                  index={i}
-                  set={s}
-                  units={units}
-                  showLoad={showLoad}
-                  onChange={(next) =>
-                    onUpdate({
-                      ...prescription,
-                      sets: prescription.sets.map((x, j) => (j === i ? next : x)),
-                    })
-                  }
-                />
-              ))}
-              <div className="flex items-center justify-between mt-1">
-                <button
-                  onClick={() =>
-                    onUpdate({
-                      ...prescription,
-                      sets: [...prescription.sets, { completed: false }],
-                    })
-                  }
-                  className="text-[11px] text-text-dim hover:text-accent"
-                >
-                  + Add set
-                </button>
-                <button
-                  onClick={() => setShowLogger(false)}
-                  className="text-[11px] text-text-dim"
-                >
-                  hide
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
@@ -774,10 +701,10 @@ function workoutToSession(w: Workout): Session {
     name: w.name,
     date: w.date,
     createdAt: Date.now(),
-    // startedAt left undefined — this is a DRAFT until user explicitly starts
     philosophy: w.philosophy,
     influences: w.influences,
     modifiers: w.modifiers,
+    phase: w.phase,
     blocks: w.blocks.map((b) => ({
       title: b.title,
       scheme: b.scheme,

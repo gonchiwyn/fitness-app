@@ -25,6 +25,7 @@ const VISIBLE_CATEGORIES: Category[] = [
   "burn",
   "stretching",
   "recovery",
+  "test",
 ];
 
 export default function WorkoutIndex() {

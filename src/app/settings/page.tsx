@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import clsx from "clsx";
 import { db, getProfile, saveProfile } from "@/lib/db";
+import { format } from "date-fns";
 import {
   CORE_FOCUS_DESCRIPTIONS,
   CORE_FOCUS_LABELS,
@@ -12,6 +13,7 @@ import {
   GOAL_LABELS,
   GOALS,
   TRACKED_LIFTS,
+  getCurrentCyclePhase,
   type CoreFocus,
   type EquipmentPreset,
   type Experience,
@@ -124,6 +126,18 @@ export default function SettingsPage() {
         </Link>
       )}
 
+      <Link
+        href="/benchmarks"
+        className="block bg-bg-card border border-border rounded-2xl p-4 hover:border-accent/40 transition-colors"
+      >
+        <div className="text-xs uppercase tracking-widest text-text-dim font-semibold">
+          Benchmarks →
+        </div>
+        <div className="text-sm text-text-muted mt-1">
+          Track 1RMs, dead hang, jumps, Cooper run. Retest every 6-8 weeks to know if the work is working.
+        </div>
+      </Link>
+
       <Section title="Basics">
         <Field label="Name">
           <input
@@ -209,6 +223,64 @@ export default function SettingsPage() {
             );
           })}
         </div>
+      </Section>
+
+      <Section title="Periodization">
+        <p className="text-sm text-text-muted -mt-2">
+          4-week wave loading on strength lifts: Base → Build → Peak → Deload. Load and set targets shift each week. Applies to Strength / Hypertrophy / Split / Athlete.
+        </p>
+        {(() => {
+          const enabled = profile.periodizationEnabled ?? false;
+          const start = profile.programStartDate;
+          const phase = enabled && start ? getCurrentCyclePhase(start) : null;
+          return (
+            <>
+              <button
+                onClick={() => {
+                  if (enabled) {
+                    update({ periodizationEnabled: false });
+                  } else {
+                    const today = format(new Date(), "yyyy-MM-dd");
+                    update({ periodizationEnabled: true, programStartDate: profile.programStartDate ?? today });
+                  }
+                }}
+                className={clsx(
+                  "w-full text-left p-4 rounded-xl border transition-colors flex items-center justify-between",
+                  enabled ? "bg-accent/10 border-accent/40" : "bg-bg-card border-border"
+                )}
+              >
+                <div>
+                  <div className="font-medium">{enabled ? "On" : "Off"}</div>
+                  <div className="text-xs text-text-dim mt-0.5">
+                    {enabled ? "Tap to disable" : "Tap to start today"}
+                  </div>
+                </div>
+                <Check active={enabled} />
+              </button>
+              {phase && (
+                <div className="bg-bg-card border-l-2 border-accent rounded-r-xl px-4 py-3 mt-2">
+                  <div className="text-[10px] uppercase tracking-widest text-accent font-semibold">
+                    Current: Week {phase.weekInCycle} of 4 · {phase.label}
+                  </div>
+                  <p className="text-xs text-text-muted mt-1">{phase.description}</p>
+                </div>
+              )}
+              {enabled && (
+                <button
+                  onClick={() => {
+                    const today = format(new Date(), "yyyy-MM-dd");
+                    if (confirm("Restart cycle from today?")) {
+                      update({ programStartDate: today });
+                    }
+                  }}
+                  className="w-full text-xs text-text-dim py-2 mt-1"
+                >
+                  ↻ Restart cycle from today
+                </button>
+              )}
+            </>
+          );
+        })()}
       </Section>
 
       <Section title="Core focus">

@@ -1012,6 +1012,104 @@ TEMPLATES.push(
   },
 
   // -------- PATRICK 4-MODALITY (catch-all weekly check) --------
+  // ============ TEST DAY ============
+  {
+    id: "test_strength_1rm",
+    category: "test",
+    name: "Strength Test Day",
+    description: "Retest your 1RM. Bench, squat, deadlift.",
+    philosophy:
+      "Every 6-8 weeks: retest to know. Without measurement, you're guessing whether the work is working. Rest full — you want max effort per lift, not fatigue accumulation.",
+    influences: ["galpin"],
+    blocks: [
+      {
+        title: "Warmup up to working weight",
+        scheme: "5 → 3 → 1 progressive",
+        note: "Long warmup — you're hunting 1RM. Rest 3+ min between working sets.",
+        prescriptions: [
+          { exerciseId: "bench_press", sets: 1, reps: "1RM attempt", rest: "5 min" },
+          { exerciseId: "back_squat", sets: 1, reps: "1RM attempt", rest: "5 min" },
+          { exerciseId: "deadlift", sets: 1, reps: "1RM attempt", rest: "5 min" },
+        ],
+      },
+      {
+        title: "Log to Benchmarks",
+        scheme: "After the workout",
+        note: "Head to Profile → Benchmarks and record your numbers.",
+        prescriptions: [],
+      },
+    ],
+  },
+  {
+    id: "test_athletic",
+    category: "test",
+    name: "Athletic Test Day",
+    description: "Jumps, hang, farmer carry, pull-ups.",
+    philosophy:
+      "Attia's Centenarian Decathlon in action: dead hang, farmer carry, jump height, pull-up max. These predict function into your 80s better than any powerlifting number.",
+    influences: ["attia", "galpin"],
+    blocks: [
+      {
+        title: "Warmup",
+        scheme: "10 min general",
+        prescriptions: [
+          { exerciseId: "jumping_jacks", sets: 1, reps: "2 min" },
+          { exerciseId: "world_greatest_stretch", sets: 1, reps: "5/side" },
+          { exerciseId: "shoulder_cars", sets: 1, reps: "5/side" },
+        ],
+      },
+      {
+        title: "Power tests",
+        scheme: "3 attempts each — full rest",
+        prescriptions: [
+          { exerciseId: "broad_jump", sets: 3, reps: "1 max attempt", rest: "2 min" },
+          { exerciseId: "seated_box_jump", sets: 3, reps: "1 max attempt", rest: "2 min" },
+        ],
+      },
+      {
+        title: "Strength endurance",
+        scheme: "Max effort",
+        prescriptions: [
+          { exerciseId: "pullup", sets: 1, reps: "Max unbroken", rest: "as needed" },
+          { exerciseId: "farmer_carry", sets: 1, reps: "Bodyweight × 2 → longest hold" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "test_endurance",
+    category: "test",
+    name: "Endurance Test Day",
+    description: "Cooper 12-min run.",
+    philosophy:
+      "12 minutes at max sustainable pace = tight VO2 max proxy. Attia's litmus test for aerobic capacity — the single strongest predictor of all-cause mortality.",
+    influences: ["attia", "patrick"],
+    blocks: [
+      {
+        title: "Warmup",
+        scheme: "10 min progressive",
+        prescriptions: [
+          { exerciseId: "easy_bike", sets: 1, reps: "5 min easy" },
+          { exerciseId: "run", sets: 1, reps: "5 min easy → tempo" },
+        ],
+      },
+      {
+        title: "12-Min Cooper Run",
+        scheme: "12 min sustained max pace",
+        note: "Cover as much ground as you can in exactly 12 minutes. Log distance to Benchmarks.",
+        prescriptions: [
+          { exerciseId: "run", sets: 1, reps: "12 min max sustained" },
+        ],
+      },
+      {
+        title: "Cooldown",
+        scheme: "5 min walk",
+        prescriptions: [
+          { exerciseId: "run", sets: 1, reps: "5 min walk-jog" },
+        ],
+      },
+    ],
+  },
   {
     id: "patrick_hiit_squat_jumps",
     category: "burn",

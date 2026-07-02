@@ -220,18 +220,42 @@ function PlannedTodayCard({ day }: { day: NonNullable<PlannedDay> }) {
     ? `${CATEGORY_LABELS[day.category]} · ${lockedTemplate.description}`
     : CATEGORY_BLURBS[day.category];
 
+  const markDone = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!confirm(`Mark today done — ${title}?`)) return;
+    const name = lockedTemplate
+      ? `${CATEGORY_LABELS[day.category]} — ${lockedTemplate.name}`
+      : CATEGORY_LABELS[day.category];
+    const today = format(new Date(), "yyyy-MM-dd");
+    const { logRetroactiveSession } = await import("@/lib/db");
+    await logRetroactiveSession(today, day.category, name, day.templateId);
+  };
+
   return (
     <Link
       href={href}
       className="block bg-gradient-to-br from-accent/25 to-accent/5 border border-accent/40 rounded-2xl p-5"
     >
-      <div className="text-xs uppercase tracking-widest text-accent font-semibold">
-        Today's session
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="text-xs uppercase tracking-widest text-accent font-semibold">
+            Today's session
+          </div>
+          <div className="text-2xl font-bold mt-2">{title}</div>
+          <div className="text-sm text-text-muted mt-1">{subtitle}</div>
+        </div>
+        <button
+          onClick={markDone}
+          className="shrink-0 w-11 h-11 rounded-xl bg-accent/20 border border-accent/50 text-accent flex items-center justify-center text-xl font-bold hover:bg-accent hover:text-black transition-colors"
+          aria-label="Mark today done — I already did this"
+          title="I already did this"
+        >
+          ✓
+        </button>
       </div>
-      <div className="text-2xl font-bold mt-2">{title}</div>
-      <div className="text-sm text-text-muted mt-1">{subtitle}</div>
       <div className="mt-4 text-sm text-accent font-medium">
-        Start workout →
+        Open workout →
       </div>
     </Link>
   );
@@ -342,34 +366,18 @@ function NoPlanCard() {
 }
 
 function TodaysSessionCard({ session }: { session: Session }) {
-  const completed = session.blocks
-    .flatMap((b) => b.prescriptions)
-    .reduce((acc, p) => acc + p.sets.filter((s) => s.completed).length, 0);
-  const total = session.blocks
-    .flatMap((b) => b.prescriptions)
-    .reduce((acc, p) => acc + p.prescribedSets, 0);
-  const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
-
+  const done = Boolean(session.finishedAt);
   return (
     <Link
       href={`/workout/${session.category}`}
       className="block bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/30 rounded-2xl p-5"
     >
       <div className="text-xs uppercase tracking-widest text-accent font-semibold">
-        Today's session — {session.finishedAt ? "Complete" : "In Progress"}
+        Today's session {done ? "· ✓ Done" : ""}
       </div>
       <div className="text-xl font-bold mt-2">{session.name}</div>
-      <div className="mt-4">
-        <div className="flex items-center justify-between text-xs text-text-muted mb-1">
-          <span>{completed} / {total} sets</span>
-          <span>{pct}%</span>
-        </div>
-        <div className="h-1.5 bg-bg rounded-full overflow-hidden">
-          <div className="h-full bg-accent transition-all" style={{ width: `${pct}%` }} />
-        </div>
-      </div>
       <div className="mt-4 text-sm text-accent font-medium">
-        {session.finishedAt ? "Review →" : "Resume →"}
+        {done ? "Review →" : "Open workout →"}
       </div>
     </Link>
   );

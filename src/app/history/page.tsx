@@ -71,7 +71,7 @@ export default function HistoryPage() {
         <div className="bg-bg-card border border-border rounded-2xl p-4">
           <div className="text-3xl font-bold text-accent">{totalWorkouts}</div>
           <div className="text-xs text-text-dim mt-1 uppercase tracking-widest">
-            Sessions logged
+            Workouts done
           </div>
         </div>
         <div className="bg-bg-card border border-border rounded-2xl p-4">
@@ -107,9 +107,6 @@ export default function HistoryPage() {
         </h2>
         <div className="space-y-2">
           {sessions.map((s) => {
-            const completed = s.blocks
-              .flatMap((b) => b.prescriptions)
-              .reduce((acc, p) => acc + p.sets.filter((set) => set.completed).length, 0);
             return (
               <details
                 key={s.id}
@@ -120,7 +117,7 @@ export default function HistoryPage() {
                   <div>
                     <div className="font-medium">{s.name}</div>
                     <div className="text-xs text-text-dim mt-0.5">
-                      {format(parseISO(s.date), "EEE, MMM d, yyyy")} · {completed} sets
+                      {format(parseISO(s.date), "EEE, MMM d, yyyy")}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -141,6 +138,11 @@ export default function HistoryPage() {
                   </div>
                 </summary>
                 <div className="border-t border-border/50 p-4 space-y-3 text-sm">
+                  {s.blocks.length === 0 && (
+                    <p className="text-xs text-text-dim italic">
+                      Logged retroactively — no session breakdown.
+                    </p>
+                  )}
                   {s.blocks.map((b, bi) => (
                     <div key={bi}>
                       <div className="text-xs uppercase tracking-widest text-text-dim mb-1">
@@ -149,23 +151,14 @@ export default function HistoryPage() {
                       <div className="space-y-1">
                         {b.prescriptions.map((p, pi) => {
                           const ex = safeGetExercise(p.exerciseId);
-                          const done = p.sets.filter((s) => s.completed);
                           return (
                             <div
                               key={pi}
                               className="flex items-baseline justify-between text-text-muted"
                             >
                               <span>{ex}</span>
-                              <span className="text-xs tabular-nums">
-                                {done.length > 0
-                                  ? done
-                                      .map((set) =>
-                                        set.weight
-                                          ? `${set.weight}×${set.reps ?? "-"}`
-                                          : `${set.reps ?? "-"}`
-                                      )
-                                      .join(" · ")
-                                  : "—"}
+                              <span className="text-xs tabular-nums text-text-dim">
+                                {p.prescribedSets}×{p.prescribedReps}
                               </span>
                             </div>
                           );
@@ -179,7 +172,7 @@ export default function HistoryPage() {
                         href={`/workout/${s.category}`}
                         className="text-accent text-sm font-medium"
                       >
-                        Resume →
+                        Open →
                       </Link>
                     ) : (
                       <span />

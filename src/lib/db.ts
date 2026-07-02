@@ -1,5 +1,5 @@
 import Dexie, { type Table } from "dexie";
-import type { PlannedDay, Profile, Session, WeeklyPlan } from "./types";
+import type { Benchmark, PlannedDay, Profile, Session, WeeklyPlan } from "./types";
 import { dateToPlanIndex, normalizePlannedDay } from "./types";
 import { PERSONAL_PROFILE, PERSONAL_WEEKLY_PLAN } from "./data/personalProfile";
 
@@ -7,6 +7,7 @@ export class FitnessDB extends Dexie {
   sessions!: Table<Session, number>;
   profile!: Table<Profile, "me">;
   weeklyPlan!: Table<WeeklyPlan, "me">;
+  benchmarks!: Table<Benchmark, number>;
 
   constructor() {
     super("fitness-app");
@@ -18,6 +19,12 @@ export class FitnessDB extends Dexie {
       sessions: "++id, date, category, workoutId",
       profile: "id",
       weeklyPlan: "id",
+    });
+    this.version(3).stores({
+      sessions: "++id, date, category, workoutId",
+      profile: "id",
+      weeklyPlan: "id",
+      benchmarks: "++id, date, type",
     });
   }
 }

@@ -7,10 +7,12 @@ import {
   CATEGORY_LABELS,
   EQUIPMENT_PRESET_INCLUDES,
   TRACKED_LIFTS,
+  getCurrentCyclePhase,
   type Block,
   type Category,
   type CoreFocus,
   type CoreFunction,
+  type CyclePhase,
   type Equipment,
   type Intensity,
   type LiftId,
@@ -519,7 +521,8 @@ async function buildLoadHint(
   prescription: Prescription,
   profile: Profile,
   category: Category,
-  intensity: Intensity
+  intensity: Intensity,
+  phase: CyclePhase | null = null
 ): Promise<string | undefined> {
   const exId = prescription.exerciseId;
   const units = profile.units;
@@ -529,7 +532,7 @@ async function buildLoadHint(
     if (oneRm) {
       let pct = targetPercentForCategory(category, prescription.reps, prescription.rpe, intensity);
       if (pct) {
-        // Personalized: cap intensity on lumbar-sensitive lifts at ~78%
+        // Cap on lumbar-sensitive lifts
         let cautionTag = "";
         if (LUMBAR_SENSITIVE_LIFTS.has(exId)) {
           if (pct > 78) {
@@ -539,8 +542,14 @@ async function buildLoadHint(
             cautionTag = " · brace, neutral spine";
           }
         }
+        // Apply periodization wave (only for tracked lifts, per phase multiplier)
+        let phaseTag = "";
+        if (phase && phase.intensityMultiplier !== 1.0) {
+          pct = Math.max(40, Math.min(95, Math.round(pct * phase.intensityMultiplier)));
+          phaseTag = ` · ${phase.label} week`;
+        }
         const target = roundToIncrement((oneRm * pct) / 100, units);
-        return `Target ${target}${units} (~${pct}% of est. 1RM ${oneRm}${units})${cautionTag}`;
+        return `Target ${target}${units} (~${pct}% of est. 1RM ${oneRm}${units})${cautionTag}${phaseTag}`;
       }
     }
   }
@@ -678,6 +687,10 @@ function applyRehabAdjustments(blocks: Block[], rehab: RehabZone): Block[] {
 // ============================================================
 // MAIN ENTRY
 // ============================================================
+// Periodization applies to strength-focused categories where wave loading makes sense.
+// Doesn't apply to cardio, stretching, recovery, etc.
+const PERIODIZED_CATEGORIES: Category[] = ["strength", "hypertrophy", "split", "athlete"];
+
 export async function generateWorkout(
   category: Category,
   profile: Profile,
@@ -687,6 +700,14 @@ export async function generateWorkout(
   const date = seedDate ?? new Date();
   const intensity = modifiers.intensity ?? "normal";
   const targetMinutes = modifiers.timeMinutes ?? CATEGORY_DURATION[category];
+
+  // Cycle phase — only computed if periodization enabled and category benefits
+  const phase: CyclePhase | null =
+    profile.periodizationEnabled &&
+    profile.programStartDate &&
+    PERIODIZED_CATEGORIES.includes(category)
+      ? getCurrentCyclePhase(profile.programStartDate, date)
+      : null;
 
   // Seed includes modifiers so different combos give different workouts
   const seed =
@@ -734,10 +755,15 @@ export async function generateWorkout(
     for (const rawP of b.prescriptions) {
       let p: Prescription | null = applyInjurySwaps(rawP, injuryFlags, available, usedExerciseIds);
       p = adaptToEquipment(p, available, rng, usedExerciseIds);
-      if (!p) continue; // dropped
-      // Prevent duplicates from cascading through the workout
+      if (!p) continue;
       p = dedupeAgainstUsed(p, usedExerciseIds, available, rng);
-      const loadHint = (await buildLoadHint(p, profile, category, intensity)) ?? p.loadHint;
+
+      // Apply periodization wave: adjust sets on tracked lifts (main compounds)
+      if (phase && LIFT_ID_SET.has(p.exerciseId) && phase.setAdjustment !== 0) {
+        p = { ...p, sets: Math.max(1, p.sets + phase.setAdjustment) };
+      }
+
+      const loadHint = (await buildLoadHint(p, profile, category, intensity, phase)) ?? p.loadHint;
       p = { ...p, loadHint };
       if (category === "cardio") p = tuneCardioPrescription(p, profile);
       enriched.push(p);
@@ -796,6 +822,7 @@ export async function generateWorkout(
     philosophy: template.philosophy,
     influences: template.influences,
     modifiers,
+    phase: phase ?? undefined,
   };
 }
 
