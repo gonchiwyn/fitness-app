@@ -116,6 +116,9 @@ export type Exercise = {
   equipment: Equipment[];
   weighted: boolean;
   cues?: string[];
+  // 2-3 sentence how-to for complex or uncommon movements.
+  // Not shown by default — user taps "How to →" to expand.
+  howTo?: string;
   warmupTarget?: WarmupTarget;
   coreFunction?: CoreFunction;
 };
@@ -201,6 +204,21 @@ export type Session = {
 export type Sex = "male" | "female" | "other" | "prefer_not_to_say";
 export type Experience = "beginner" | "intermediate" | "advanced";
 
+// Per-category proficiency level. You might be Pro at lifting but Starter at Hyrox.
+export type Level = "starter" | "comfortable" | "pro";
+
+export const LEVEL_LABELS: Record<Level, string> = {
+  starter: "Starter",
+  comfortable: "Comfortable",
+  pro: "Pro",
+};
+
+export const LEVEL_BLURBS: Record<Level, string> = {
+  starter: "New to this — simpler, gentler sessions",
+  comfortable: "Standard sessions across the range",
+  pro: "Advanced sessions, complex movements, higher volume",
+};
+
 export const GOALS = [
   "longevity",
   "aesthetic",
@@ -254,7 +272,16 @@ export type RunBenchmark = {
 // ============================================================
 // MODIFIERS — apply at generation time to adapt the workout
 // ============================================================
-export type Intensity = "recovery" | "normal" | "push";
+// 5 chips instead of 3 — more granular but still one-tap
+export type Intensity = "rest" | "easy" | "normal" | "hard" | "push";
+
+export const INTENSITY_LABELS: Record<Intensity, { label: string; sub: string; emoji: string }> = {
+  rest: { label: "Rest", sub: "recovery", emoji: "😴" },
+  easy: { label: "Easy", sub: "lighter", emoji: "🫠" },
+  normal: { label: "Normal", sub: "as planned", emoji: "🙂" },
+  hard: { label: "Hard", sub: "step it up", emoji: "💪" },
+  push: { label: "Push", sub: "all in", emoji: "🔥" },
+};
 
 export const EQUIPMENT_PRESETS = [
   "full_gym",
@@ -354,6 +381,7 @@ export type Profile = {
   coreFocus?: CoreFocus;
   otherCommitments?: string;
   currentGoal?: string;
+  levels?: Partial<Record<Category, Level>>;
   onboarded?: boolean;
 };
 

@@ -14,12 +14,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Forge",
-  description: "Your daily workout, your way. Built for training, not for scrolling.",
-  applicationName: "Forge",
+  title: "Outwork",
+  description: "Outwork yesterday. Daily training tuned to you.",
+  applicationName: "Outwork",
   appleWebApp: {
     capable: true,
-    title: "Forge",
+    title: "Outwork",
     statusBarStyle: "black-translucent",
   },
 };

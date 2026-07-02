@@ -1,4 +1,4 @@
-import type { Category, Block, CoachInfluence } from "../types";
+import type { Category, Block, CoachInfluence, Level } from "../types";
 
 export type Template = {
   id: string;
@@ -7,8 +7,20 @@ export type Template = {
   description: string;
   philosophy?: string;
   influences?: CoachInfluence[];
+  // complexity: which level of user this session suits.
+  // starter templates are shown to starter+comfortable users
+  // comfortable templates are shown to everyone
+  // pro templates are shown only to comfortable+pro users
+  complexity?: Level;
   blocks: Omit<Block, "id">[];
 };
+
+export function isTemplateAtLevel(t: Template, userLevel: Level): boolean {
+  const c = t.complexity ?? "comfortable";
+  if (userLevel === "starter") return c !== "pro";
+  if (userLevel === "pro") return c !== "starter";
+  return true; // comfortable sees all
+}
 
 export const TEMPLATES: Template[] = [
   // ============ STRENGTH ============
@@ -237,6 +249,7 @@ export const TEMPLATES: Template[] = [
     category: "crossfit",
     name: "EMOM 30",
     description: "Cycle 3 stations every minute.",
+    complexity: "pro",
     blocks: [
       {
         title: "Metcon",
@@ -257,6 +270,7 @@ export const TEMPLATES: Template[] = [
     category: "hyrox",
     name: "8-Station Sim",
     description: "Run + functional, race pace.",
+    complexity: "pro",
     blocks: [
       {
         title: "Race Sim",
@@ -384,6 +398,7 @@ export const TEMPLATES: Template[] = [
     category: "stretching",
     name: "Full-Body Flow",
     description: "Hold 45-60s each. Breathe.",
+    complexity: "starter",
     blocks: [
       {
         title: "Flow",
@@ -407,6 +422,7 @@ export const TEMPLATES: Template[] = [
     category: "stretching",
     name: "Hip Mobility",
     description: "Open up hips, hamstrings, lower back.",
+    complexity: "starter",
     blocks: [
       {
         title: "Hip Flow",
@@ -429,6 +445,7 @@ export const TEMPLATES: Template[] = [
     category: "athlete",
     name: "Power & Speed",
     description: "Jumps, throws, sprints.",
+    complexity: "pro",
     blocks: [
       {
         title: "Power",
@@ -523,6 +540,7 @@ export const TEMPLATES: Template[] = [
     category: "recovery",
     name: "Zone 2 + Mobility",
     description: "Easy aerobic, then open up.",
+    complexity: "starter",
     blocks: [
       {
         title: "Aerobic",
@@ -558,13 +576,19 @@ export const TEMPLATES: Template[] = [
         ],
       },
       {
-        title: "Arms",
-        scheme: "Superset 4x12",
+        title: "Arms — DB superset",
+        scheme: "Superset 4×12 (grab a pair of dumbbells)",
         prescriptions: [
           { exerciseId: "db_curl", sets: 4, reps: "12", rest: "45s" },
-          { exerciseId: "tricep_pushdown", sets: 4, reps: "12", rest: "45s" },
           { exerciseId: "hammer_curl", sets: 4, reps: "12", rest: "45s" },
           { exerciseId: "skullcrusher", sets: 4, reps: "12", rest: "45s" },
+        ],
+      },
+      {
+        title: "Triceps finisher",
+        scheme: "4×12 straight",
+        prescriptions: [
+          { exerciseId: "tricep_pushdown", sets: 4, reps: "12", rest: "45s" },
         ],
       },
       {
@@ -595,7 +619,8 @@ export const TEMPLATES: Template[] = [
       },
       {
         title: "Shoulders",
-        scheme: "Giant set",
+        scheme: "4 straight sets each",
+        note: "Different equipment for each — no need to camp on a station.",
         prescriptions: [
           { exerciseId: "overhead_press", sets: 4, reps: "8", rest: "60s" },
           { exerciseId: "lateral_raise", sets: 4, reps: "15", rest: "45s" },
@@ -611,6 +636,7 @@ export const TEMPLATES: Template[] = [
     category: "cardio",
     name: "Zone 2",
     description: "Aerobic base. Nose breathing.",
+    complexity: "starter",
     blocks: [
       {
         title: "Steady State",
@@ -694,6 +720,7 @@ export const TEMPLATES: Template[] = [
     category: "core",
     name: "Quick 10-Min",
     description: "Compact circuit — every function in 10 minutes.",
+    complexity: "starter",
     philosophy:
       "When you have 10 minutes. Hits all 3 protective functions plus one isolation move. Better than skipping.",
     influences: ["galpin"],
@@ -715,6 +742,7 @@ export const TEMPLATES: Template[] = [
     category: "cardio",
     name: "VO2 Max Intervals",
     description: "4x4 protocol. Hard.",
+    complexity: "pro",
     blocks: [
       {
         title: "Warmup",
@@ -745,6 +773,7 @@ TEMPLATES.push(
     category: "strength",
     name: "Galpin 3-5 — Upper Push/Pull",
     description: "3-5 reps, 3-5 sets, 3-5 min rest, 3-5 exercises. Pure strength.",
+    complexity: "pro",
     philosophy:
       "Andy Galpin's 3-5 framework: 3-5 reps per set × 3-5 sets × 3-5 min rest × 3-5 exercises × 3-5 days/wk. Heavy load, long rest, near maximal intent.",
     influences: ["galpin", "huberman"],
@@ -785,6 +814,7 @@ TEMPLATES.push(
     category: "strength",
     name: "Galpin 3-5 — Lower Power",
     description: "Heavy squat + plyo + posterior chain, Galpin's RFD focus.",
+    complexity: "pro",
     philosophy:
       "Power & strength on the same day — heavy compound, then plyometric for rate-of-force-development, then knee-health/posterior-chain accessories. From Andy Galpin's athletic performance template.",
     influences: ["galpin"],
@@ -828,6 +858,7 @@ TEMPLATES.push(
     category: "athlete",
     name: "Galpin Speed Day",
     description: "Sprints, plyos, power cleans. Practice the thing.",
+    complexity: "pro",
     philosophy:
       'Galpin: "To get really good at something you need to do that thing." Sprint every workout. Power before strength, strength before hypertrophy.',
     influences: ["galpin"],
@@ -872,6 +903,7 @@ TEMPLATES.push(
     category: "cardio",
     name: "Attia Zone 2 — 45 min",
     description: "Aerobic base. Conversational pace, lactate < 2 mmol/L.",
+    complexity: "starter",
     philosophy:
       "Peter Attia's Zone 2: highest output you can sustain while keeping blood lactate < 2 mmol/L — you should be able to speak in full sentences. Builds mitochondrial density. Aim for 180+ min/week.",
     influences: ["attia", "huberman"],
@@ -892,6 +924,7 @@ TEMPLATES.push(
     category: "cardio",
     name: "Attia 4×4 VO2 Max",
     description: "Norwegian 4×4 — 4 min hard / 3 min easy × 4.",
+    complexity: "pro",
     philosophy:
       "VO2 max is one of the strongest predictors of all-cause mortality — moving from 'low' to 'below average' drops mortality risk ~50% (Attia). 4×4 done weekly drives this metric harder than steady state.",
     influences: ["attia", "patrick"],
@@ -958,11 +991,12 @@ TEMPLATES.push(
     blocks: [
       {
         title: "Strength Triplet",
-        scheme: "4 rounds — minimal rest",
+        scheme: "4 rounds — pullup bar + DBs",
+        note: "Set up one pullup station + DBs. Do RDL with DBs (single-leg or Romanian).",
         prescriptions: [
           { exerciseId: "weighted_pullup", sets: 4, reps: "5", rpe: 8, rest: "60s" },
           { exerciseId: "incline_db_press", sets: 4, reps: "8", rpe: 8, rest: "60s" },
-          { exerciseId: "romanian_deadlift", sets: 4, reps: "8", rpe: 8, rest: "60s" },
+          { exerciseId: "single_leg_rdl", sets: 4, reps: "8/side", rpe: 8, rest: "60s" },
         ],
       },
       {
@@ -1034,7 +1068,8 @@ TEMPLATES.push(
       },
       {
         title: "Isolation",
-        scheme: "Superset 3×12-15",
+        scheme: "3×12-15 straight sets",
+        note: "One exercise at a time — no need to hog multiple stations.",
         prescriptions: [
           { exerciseId: "lateral_raise", sets: 3, reps: "15", rest: "45s" },
           { exerciseId: "tricep_pushdown", sets: 3, reps: "12", rest: "45s" },
@@ -1067,7 +1102,8 @@ TEMPLATES.push(
       },
       {
         title: "Isolation",
-        scheme: "Superset 3×12-15",
+        scheme: "3×12-15 straight sets",
+        note: "One exercise at a time — no need to hog multiple stations.",
         prescriptions: [
           { exerciseId: "lat_pulldown", sets: 3, reps: "12", rest: "60s" },
           { exerciseId: "db_curl", sets: 3, reps: "12", rest: "45s" },
@@ -1230,7 +1266,8 @@ TEMPLATES.push(
       },
       {
         title: "Triceps",
-        scheme: "Superset 3×10-12",
+        scheme: "3×10-12 straight sets",
+        note: "Pushdown uses the cable, skullcrusher uses DBs — do one, then the other.",
         prescriptions: [
           { exerciseId: "tricep_pushdown", sets: 3, reps: "12", rest: "45s" },
           { exerciseId: "skullcrusher", sets: 3, reps: "12", rest: "45s" },

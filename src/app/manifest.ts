@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Forge — Daily Workouts",
-    short_name: "Forge",
-    description: "Your daily workout, built for training, not for scrolling.",
+    name: "Outwork — Daily Training",
+    short_name: "Outwork",
+    description: "Outwork yesterday. Daily training tuned to you.",
     start_url: "/",
     display: "standalone",
     orientation: "portrait",

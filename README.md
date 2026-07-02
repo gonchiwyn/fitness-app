@@ -1,4 +1,4 @@
-# Forge
+# Outwork
 
 Your daily workout app. Built for training, not for scrolling.
 
@@ -37,7 +37,7 @@ That gives you something like `192.168.1.208`. Then on your iPhone (same WiFi):
 3. Scroll down → **Add to Home Screen**
 4. Tap **Add**
 
-Now Forge has its own icon on your home screen and opens full-screen like a real app.
+Now Outwork has its own icon on your home screen and opens full-screen like a real app.
 
 > Note: your Mac needs to be on for the iPhone version to work. To make it work anywhere, deploy it (see below).
 

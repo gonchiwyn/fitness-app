@@ -6,7 +6,9 @@ import { format, startOfWeek, addDays } from "date-fns";
 import { useLiveQuery } from "dexie-react-hooks";
 import clsx from "clsx";
 import { cleanupStaleDrafts, db, getProfile, getWeeklyPlan } from "@/lib/db";
+import QuickLogModal from "@/components/QuickLogModal";
 import { templatesFor } from "@/lib/data/templates";
+import { recommendForToday, type Recommendation } from "@/lib/recommend";
 import {
   CATEGORY_BLURBS,
   CATEGORY_LABELS,
@@ -20,6 +22,7 @@ import {
 
 export default function HomePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [logDate, setLogDate] = useState<string | null>(null);
   const today = format(new Date(), "yyyy-MM-dd");
   const todayIdx = dateToPlanIndex(new Date());
 
@@ -56,9 +59,29 @@ export default function HomePage() {
   }, []);
 
   const plannedToday: PlannedDay = plan?.days[todayIdx] ?? null;
+  // Always compute — used as primary CTA if no plan, or as secondary hint if plan disagrees
+  const recommendation: Recommendation | null = recent
+    ? recommendForToday(recent, new Date())
+    : null;
+
+  // Recommendation disagrees with the plan if the categories differ,
+  // or the plan is a specific template the user already did this week.
+  const planDisagreesWithRec = Boolean(
+    plannedToday &&
+      recommendation &&
+      (recommendation.category !== plannedToday.category ||
+        (recommendation.templateId &&
+          plannedToday.templateId &&
+          recommendation.templateId !== plannedToday.templateId))
+  );
   const streak = computeStreak(recent ?? []);
   const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
-  const recentSet = new Set((recent ?? []).filter((s) => s.finishedAt).map((s) => s.date));
+  // Map date → most recent finished session for that date
+  const sessionsByDate = new Map<string, Session>();
+  for (const s of recent ?? []) {
+    if (!s.finishedAt) continue;
+    if (!sessionsByDate.has(s.date)) sessionsByDate.set(s.date, s);
+  }
 
   return (
     <div className="max-w-3xl mx-auto px-5 py-6 space-y-7">
@@ -79,22 +102,6 @@ export default function HomePage() {
         )}
       </header>
 
-      {/* Context line — only if user filled either field */}
-      {profile && (profile.currentGoal || profile.otherCommitments) && (
-        <Link
-          href="/settings"
-          className="block text-xs text-text-dim leading-relaxed hover:text-text-muted -mt-1"
-        >
-          {profile.currentGoal && (
-            <span className="text-accent">🎯 {profile.currentGoal}</span>
-          )}
-          {profile.currentGoal && profile.otherCommitments && (
-            <span className="text-text-dim"> · </span>
-          )}
-          {profile.otherCommitments && <span>{profile.otherCommitments}</span>}
-        </Link>
-      )}
-
       {profile && !profile.onboarded && (
         <Link
           href="/onboarding"
@@ -114,7 +121,14 @@ export default function HomePage() {
       {todaysSession ? (
         <TodaysSessionCard session={todaysSession} />
       ) : plannedToday ? (
-        <PlannedTodayCard day={plannedToday} />
+        <>
+          <PlannedTodayCard day={plannedToday} />
+          {planDisagreesWithRec && recommendation && (
+            <RecommendationHint rec={recommendation} planned={plannedToday} />
+          )}
+        </>
+      ) : recommendation ? (
+        <RecommendationCard rec={recommendation} />
       ) : plan && plan.days.some((d) => d !== null) ? (
         <RestDayCard />
       ) : (
@@ -122,12 +136,19 @@ export default function HomePage() {
       )}
 
       {/* Week strip */}
-      {plan && plan.days.some((d) => d !== null) && (
-        <WeekStrip
-          days={plan.days}
-          weekStart={weekStart}
-          todayIdx={todayIdx}
-          completedDates={recentSet}
+      <WeekStrip
+        days={plan?.days ?? [null, null, null, null, null, null, null]}
+        weekStart={weekStart}
+        todayIdx={todayIdx}
+        sessionsByDate={sessionsByDate}
+        onLogPast={(date) => setLogDate(date)}
+      />
+
+      {logDate && (
+        <QuickLogModal
+          date={logDate}
+          onClose={() => setLogDate(null)}
+          onLogged={() => setLogDate(null)}
         />
       )}
 
@@ -216,6 +237,77 @@ function PlannedTodayCard({ day }: { day: NonNullable<PlannedDay> }) {
   );
 }
 
+function RecommendationHint({
+  rec,
+  planned,
+}: {
+  rec: Recommendation;
+  planned: NonNullable<PlannedDay>;
+}) {
+  const href = rec.templateId
+    ? `/workout/${rec.category}?template=${rec.templateId}`
+    : `/workout/${rec.category}`;
+  const recTemplate = rec.templateId
+    ? templatesFor(rec.category).find((t) => t.id === rec.templateId)
+    : null;
+  const plannedTemplate = planned.templateId
+    ? templatesFor(planned.category).find((t) => t.id === planned.templateId)
+    : null;
+  const recLabel = recTemplate
+    ? `${CATEGORY_LABELS[rec.category]} — ${recTemplate.name}`
+    : CATEGORY_LABELS[rec.category];
+  const plannedLabel = plannedTemplate
+    ? `${CATEGORY_LABELS[planned.category]} — ${plannedTemplate.name}`
+    : CATEGORY_LABELS[planned.category];
+
+  return (
+    <div className="border-l-2 border-accent/50 pl-4 -mt-1">
+      <div className="text-[10px] uppercase tracking-widest text-accent font-semibold">
+        Heads up — based on your week
+      </div>
+      <p className="text-sm text-text-muted mt-1 leading-relaxed">
+        Plan says {plannedLabel} today, but {rec.reasoning.charAt(0).toLowerCase()}{rec.reasoning.slice(1)}
+      </p>
+      <Link
+        href={href}
+        className="inline-block mt-2 text-sm text-accent font-medium"
+      >
+        Switch to {recLabel} today →
+      </Link>
+    </div>
+  );
+}
+
+function RecommendationCard({ rec }: { rec: Recommendation }) {
+  const href = rec.templateId
+    ? `/workout/${rec.category}?template=${rec.templateId}`
+    : `/workout/${rec.category}`;
+  const template = rec.templateId
+    ? templatesFor(rec.category).find((t) => t.id === rec.templateId)
+    : null;
+  const title = template ? template.name : CATEGORY_LABELS[rec.category];
+
+  return (
+    <Link
+      href={href}
+      className="block bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/40 rounded-2xl p-5"
+    >
+      <div className="text-[10px] uppercase tracking-widest text-accent font-semibold">
+        Based on your week — try today
+      </div>
+      <div className="text-2xl font-bold mt-2">
+        {CATEGORY_LABELS[rec.category]}{template ? ` — ${title}` : ""}
+      </div>
+      <p className="text-sm text-text-muted mt-2 leading-relaxed">
+        {rec.reasoning}
+      </p>
+      <div className="mt-4 text-sm text-accent font-medium">
+        Start workout →
+      </div>
+    </Link>
+  );
+}
+
 function RestDayCard() {
   return (
     <div className="bg-bg-card border border-border rounded-2xl p-5">
@@ -287,12 +379,14 @@ function WeekStrip({
   days,
   weekStart,
   todayIdx,
-  completedDates,
+  sessionsByDate,
+  onLogPast,
 }: {
   days: PlannedDay[];
   weekStart: Date;
   todayIdx: number;
-  completedDates: Set<string>;
+  sessionsByDate: Map<string, Session>;
+  onLogPast: (date: string) => void;
 }) {
   return (
     <section>
@@ -306,47 +400,89 @@ function WeekStrip({
         {days.map((day, i) => {
           const date = addDays(weekStart, i);
           const dateStr = format(date, "yyyy-MM-dd");
-          const done = completedDates.has(dateStr);
           const isToday = i === todayIdx;
-          const href = day
-            ? day.templateId
-              ? `/workout/${day.category}?template=${day.templateId}`
-              : `/workout/${day.category}`
-            : "/plan";
-          const tpl = day?.templateId
-            ? templatesFor(day.category).find((t) => t.id === day.templateId)
+          const isPast = i < todayIdx;
+          const session = sessionsByDate.get(dateStr);
+
+          // Prefer real session data over planned data when available
+          const displayCategory = session?.category ?? day?.category;
+          const templateId = session?.modifiers?.templateId ?? day?.templateId;
+          const tpl = templateId && displayCategory
+            ? templatesFor(displayCategory).find((t) => t.id === templateId)
             : null;
-          const dayLabel = tpl ? tpl.name : day ? CATEGORY_LABELS[day.category] : null;
-          return (
-            <Link
-              key={i}
-              href={href}
-              className={clsx(
-                "rounded-xl p-2 text-center border transition-colors",
-                isToday ? "border-accent/40 bg-accent/10" : "border-border bg-bg-card"
-              )}
-            >
+          const label = tpl?.name ?? (displayCategory ? CATEGORY_LABELS[displayCategory] : null);
+
+          const chipClasses = clsx(
+            "rounded-xl p-2 text-center border transition-colors block",
+            isToday ? "border-accent/40 bg-accent/10" : "border-border bg-bg-card",
+            isPast && !session && "hover:border-accent/30"
+          );
+
+          const inner = (
+            <>
               <div className="text-[10px] uppercase tracking-wider text-text-dim font-semibold">
                 {DAY_LABELS_SHORT[i]}
               </div>
               <div className="text-[9px] tabular-nums text-text-dim mt-0.5">
                 {format(date, "M/d")}
               </div>
-              <div className="mt-1.5 h-6 flex items-center justify-center">
-                {done ? (
-                  <span className="text-success text-lg">✓</span>
-                ) : dayLabel ? (
+              <div className="mt-1.5 h-6 flex flex-col items-center justify-center">
+                {session ? (
+                  <>
+                    <span className="text-success text-sm leading-none">✓</span>
+                    {label && (
+                      <span className="text-[8px] text-text-muted leading-tight mt-0.5">
+                        {label.slice(0, 6)}
+                      </span>
+                    )}
+                  </>
+                ) : label ? (
                   <span className="text-[9px] text-text-muted leading-tight">
-                    {dayLabel.slice(0, 5)}
+                    {label.slice(0, 5)}
                   </span>
+                ) : isPast ? (
+                  <span className="text-[8px] text-accent leading-tight">+ Log</span>
                 ) : (
                   <span className="text-text-dim text-xs">—</span>
                 )}
               </div>
+            </>
+          );
+
+          // Past + no session → open quick log modal
+          if (isPast && !session) {
+            return (
+              <button key={i} className={chipClasses} onClick={() => onLogPast(dateStr)}>
+                {inner}
+              </button>
+            );
+          }
+
+          // Past + session logged → view in history
+          if (isPast && session) {
+            return (
+              <Link key={i} className={chipClasses} href={`/history#${session.id ?? ""}`}>
+                {inner}
+              </Link>
+            );
+          }
+
+          // Today or future → navigate to workout or plan
+          const href = day
+            ? day.templateId
+              ? `/workout/${day.category}?template=${day.templateId}`
+              : `/workout/${day.category}`
+            : "/plan";
+          return (
+            <Link key={i} className={chipClasses} href={href}>
+              {inner}
             </Link>
           );
         })}
       </div>
+      <p className="text-[10px] text-text-dim mt-2 leading-relaxed">
+        Tap a past day to log what you actually did — the recommendation engine uses it.
+      </p>
     </section>
   );
 }

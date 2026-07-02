@@ -1,7 +1,15 @@
 "use client";
 
-import { templatesFor } from "@/lib/data/templates";
-import { CATEGORY_LABELS, type Category } from "@/lib/types";
+import { useEffect, useState } from "react";
+import clsx from "clsx";
+import { isTemplateAtLevel, templatesFor } from "@/lib/data/templates";
+import { getProfile, saveProfile } from "@/lib/db";
+import {
+  CATEGORY_LABELS,
+  LEVEL_LABELS,
+  type Category,
+  type Level,
+} from "@/lib/types";
 
 export default function TemplatePicker({
   category,
@@ -17,6 +25,24 @@ export default function TemplatePicker({
   onClose: () => void;
 }) {
   const templates = templatesFor(category);
+  const [level, setLevel] = useState<Level>("comfortable");
+
+  useEffect(() => {
+    // Load user's saved level for this category
+    getProfile().then((p) => {
+      const lv = p.levels?.[category] ?? "comfortable";
+      setLevel(lv);
+    });
+  }, [category]);
+
+  const changeLevel = async (lv: Level) => {
+    setLevel(lv);
+    const p = await getProfile();
+    const nextLevels = { ...(p.levels ?? {}), [category]: lv };
+    await saveProfile({ levels: nextLevels });
+  };
+
+  const filtered = templates.filter((t) => isTemplateAtLevel(t, level));
 
   return (
     <div
@@ -39,6 +65,29 @@ export default function TemplatePicker({
           </button>
         </div>
 
+        {/* Level chips — filters + saves preference per category */}
+        <div className="mb-4">
+          <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold mb-2">
+            Your level for {CATEGORY_LABELS[category]}
+          </div>
+          <div className="grid grid-cols-3 gap-1.5">
+            {(["starter", "comfortable", "pro"] as Level[]).map((lv) => (
+              <button
+                key={lv}
+                onClick={() => changeLevel(lv)}
+                className={clsx(
+                  "h-10 rounded-lg border text-xs font-medium transition-colors",
+                  level === lv
+                    ? "bg-accent text-black border-accent"
+                    : "bg-bg-card border-border text-text-muted hover:border-border/60"
+                )}
+              >
+                {LEVEL_LABELS[lv]}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <button
           onClick={onPickRandom}
           className={
@@ -49,18 +98,18 @@ export default function TemplatePicker({
         >
           <div className="font-medium">↻ Surprise me</div>
           <div className="text-xs text-text-dim mt-0.5">
-            Random pick — variety guaranteed
+            Random pick from sessions at your level
           </div>
         </button>
 
-        {templates.length > 0 && (
+        {filtered.length > 0 && (
           <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold pt-3 pb-1 px-1">
             Or pick a specific session
           </div>
         )}
 
         <div className="space-y-1.5">
-          {templates.map((t) => {
+          {filtered.map((t) => {
             const isCurrent = t.id === currentTemplateId;
             return (
               <button
@@ -72,11 +121,23 @@ export default function TemplatePicker({
                     : "w-full text-left p-3 rounded-xl border bg-bg-card border-border hover:border-accent/40 transition-colors"
                 }
               >
-                <div className="font-medium">{t.name}</div>
+                <div className="font-medium flex items-center gap-2">
+                  <span>{t.name}</span>
+                  {t.complexity && t.complexity !== "comfortable" && (
+                    <span className="text-[9px] uppercase tracking-widest text-text-dim">
+                      {t.complexity}
+                    </span>
+                  )}
+                </div>
                 <div className="text-xs text-text-dim mt-0.5">{t.description}</div>
               </button>
             );
           })}
+          {filtered.length === 0 && (
+            <div className="text-sm text-text-dim italic text-center p-4">
+              No sessions at this level. Try a different level chip above.
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -15,7 +15,7 @@ export const EXERCISES: Exercise[] = [
   { id: "ninety_ninety", name: "90/90 Hip Switch", pattern: "mobility", muscles: ["hip"], equipment: ["mat"], weighted: false, warmupTarget: "hip" },
   { id: "pigeon", name: "Pigeon Pose", pattern: "mobility", muscles: ["glutes", "hip"], equipment: ["mat"], weighted: false, warmupTarget: "hip" },
   { id: "couch_stretch", name: "Couch Stretch", pattern: "mobility", muscles: ["hip_flexor", "quads"], equipment: ["mat"], weighted: false, warmupTarget: "hip" },
-  { id: "cossack_squat", name: "Cossack Squat", pattern: "mobility", muscles: ["adductors", "hip"], equipment: ["bodyweight"], weighted: false, warmupTarget: "hip" },
+  { id: "cossack_squat", name: "Cossack Squat", pattern: "mobility", muscles: ["adductors", "hip"], equipment: ["bodyweight"], weighted: false, warmupTarget: "hip", howTo: "Wide stance, feet slightly turned out. Shift weight fully to one side and squat down onto that leg while keeping the other leg straight (toes pointing up). Chest tall, back neutral. Push back to center and shift to the other side. Deep hip and adductor mobility." },
 
   // ---------- WARMUP: SHOULDER ----------
   { id: "shoulder_cars", name: "Shoulder CARs", pattern: "mobility", muscles: ["shoulder"], equipment: ["bodyweight"], weighted: false, warmupTarget: "shoulder" },
@@ -70,10 +70,10 @@ export const EXERCISES: Exercise[] = [
   // Anti-extension — resist spine arching back (protects lumbar under load)
   { id: "plank", name: "Plank", pattern: "core", muscles: ["core"], equipment: ["mat"], weighted: false, coreFunction: "anti_extension", cues: ["Glutes squeezed", "Long neutral spine"] },
   { id: "hollow_hold", name: "Hollow Hold", pattern: "core", muscles: ["core"], equipment: ["mat"], weighted: false, coreFunction: "anti_extension", cues: ["Low back pressed into floor"] },
-  { id: "ab_wheel_rollout", name: "Ab Wheel Rollout", pattern: "core", muscles: ["core"], equipment: ["bodyweight"], weighted: false, coreFunction: "anti_extension", cues: ["Squeeze glutes", "Tuck pelvis", "No lumbar extension"] },
+  { id: "ab_wheel_rollout", name: "Ab Wheel Rollout", pattern: "core", muscles: ["core"], equipment: ["bodyweight"], weighted: false, coreFunction: "anti_extension", cues: ["Squeeze glutes", "Tuck pelvis", "No lumbar extension"], howTo: "Kneel with the wheel under shoulders, spine long, glutes squeezed, pelvis tucked (posterior tilt). Roll the wheel forward keeping the tuck — do NOT let the lower back arch. Return by pulling with the abs, not the arms. Range of motion is only as far as you can hold the position." },
 
   // Anti-rotation — resist twist (the most underrated core work)
-  { id: "pallof_press", name: "Pallof Press", pattern: "core", muscles: ["core", "obliques"], equipment: ["band"], weighted: false, coreFunction: "anti_rotation", cues: ["Resist the pull", "Slow extension"] },
+  { id: "pallof_press", name: "Pallof Press", pattern: "core", muscles: ["core", "obliques"], equipment: ["band"], weighted: false, coreFunction: "anti_rotation", cues: ["Resist the pull", "Slow extension"], howTo: "Kneel or stand perpendicular to a cable/band anchor at chest height. Hold the handle at your sternum with both hands. Slowly press it straight out and resist the pull that wants to rotate you. Hold 2 seconds, return. It's an anti-rotation isometric — the whole point is NOT twisting." },
   { id: "suitcase_carry", name: "Suitcase Carry (1 arm)", pattern: "carry", muscles: ["core", "obliques", "grip"], equipment: ["dumbbell", "kettlebell"], weighted: true, coreFunction: "anti_rotation", cues: ["Don't lean", "Stay tall"] },
   { id: "single_arm_farmer_carry", name: "Single-Arm Farmer Carry", pattern: "carry", muscles: ["core", "obliques", "grip"], equipment: ["dumbbell", "kettlebell"], weighted: true, coreFunction: "anti_rotation" },
 
@@ -83,7 +83,7 @@ export const EXERCISES: Exercise[] = [
 
   // Rotation — produce twist (athletic power)
   { id: "russian_twist", name: "Russian Twist", pattern: "rotation", muscles: ["obliques"], equipment: ["dumbbell"], weighted: true, coreFunction: "rotation" },
-  { id: "cable_woodchop", name: "Cable Woodchop", pattern: "rotation", muscles: ["obliques", "core"], equipment: ["machine", "band"], weighted: true, coreFunction: "rotation", cues: ["Drive from the hip", "Long arms"] },
+  { id: "cable_woodchop", name: "Cable Woodchop", pattern: "rotation", muscles: ["obliques", "core"], equipment: ["machine", "band"], weighted: true, coreFunction: "rotation", cues: ["Drive from the hip", "Long arms"], howTo: "Set cable at high anchor (for chop) or low (for lift). Grab handle, pivot away, and drive it diagonally across your body with straight arms — power from the hips, not the shoulders. Slow return. It's a rotational power move, not a shoulder move." },
 
   // Isolation — aesthetic-focused
   { id: "hanging_knee_raise", name: "Hanging Knee Raise", pattern: "core", muscles: ["abs"], equipment: ["pullup_bar"], weighted: false, coreFunction: "isolation" },
@@ -95,12 +95,12 @@ export const EXERCISES: Exercise[] = [
   { id: "bicycle_crunch", name: "Bicycle Crunch", pattern: "core", muscles: ["abs", "obliques"], equipment: ["mat"], weighted: false, coreFunction: "isolation" },
 
   // ---------- POWER / OLY-ISH ----------
-  { id: "power_clean", name: "Power Clean", pattern: "hinge", muscles: ["posterior_chain"], equipment: ["barbell"], weighted: true, cues: ["Bar close", "Vertical jump shape", "Fast elbows"] },
-  { id: "clean_and_jerk", name: "Clean & Jerk", pattern: "hinge", muscles: ["full_body"], equipment: ["barbell"], weighted: true },
-  { id: "snatch", name: "Snatch", pattern: "hinge", muscles: ["full_body"], equipment: ["barbell"], weighted: true },
+  { id: "power_clean", name: "Power Clean", pattern: "hinge", muscles: ["posterior_chain"], equipment: ["barbell"], weighted: true, cues: ["Bar close", "Vertical jump shape", "Fast elbows"], howTo: "Start from the floor: bar over mid-foot, shoulders slightly ahead of bar, back flat, arms straight. Push the floor away (deadlift start), keep bar close, then explode at the hips — jump-shrug-pull. Catch in a partial squat with elbows fast forward, bar on front delts." },
+  { id: "clean_and_jerk", name: "Clean & Jerk", pattern: "hinge", muscles: ["full_body"], equipment: ["barbell"], weighted: true, howTo: "Perform a full clean to the front rack. Reset breath, brace hard. Dip straight down 15cm bending only at knees, then drive up violently, punching the bar overhead while dropping under it in a split stance. Recover to standing with the bar locked out overhead." },
+  { id: "snatch", name: "Snatch", pattern: "hinge", muscles: ["full_body"], equipment: ["barbell"], weighted: true, howTo: "One motion: bar off the floor, up past hips, and overhead — wide grip. Same triple extension as clean, but pull the bar all the way up while dropping into an overhead squat. Bar ends locked out, arms straight, in the bottom of a squat. Advanced — practice with an empty bar first." },
   { id: "kb_swing", name: "Kettlebell Swing", pattern: "hinge", muscles: ["posterior_chain"], equipment: ["kettlebell"], weighted: true, cues: ["Hinge, don't squat", "Snap hips"] },
-  { id: "kb_snatch", name: "KB Snatch", pattern: "hinge", muscles: ["full_body"], equipment: ["kettlebell"], weighted: true },
-  { id: "box_jump", name: "Box Jump", pattern: "plyometric", muscles: ["legs"], equipment: ["box"], weighted: false },
+  { id: "kb_snatch", name: "KB Snatch", pattern: "hinge", muscles: ["full_body"], equipment: ["kettlebell"], weighted: true, howTo: "One-arm swing pattern that finishes with the KB overhead. As the KB reaches shoulder height on the up-swing, punch your hand through so the KB rotates around the wrist (doesn't crash on it) and lands soft in the racked overhead position. Full lockout." },
+  { id: "box_jump", name: "Box Jump", pattern: "plyometric", muscles: ["legs"], equipment: ["box"], weighted: false, howTo: "Stand a comfortable distance from the box. Swing arms back and down, then jump up onto the box, landing in a partial squat with feet flat. Stand fully upright on top. Step DOWN one leg at a time — don't jump back down (bad for tendons)." },
   { id: "broad_jump", name: "Broad Jump", pattern: "plyometric", muscles: ["legs"], equipment: ["bodyweight"], weighted: false },
   { id: "wallball", name: "Wall Ball", pattern: "squat", muscles: ["full_body"], equipment: ["bodyweight"], weighted: true },
   { id: "thruster", name: "Thruster", pattern: "squat", muscles: ["full_body"], equipment: ["barbell"], weighted: true },
@@ -120,10 +120,10 @@ export const EXERCISES: Exercise[] = [
   { id: "burpee_broad", name: "Burpee Broad Jump", pattern: "plyometric", muscles: ["full_body"], equipment: ["bodyweight"], weighted: false },
 
   // ---------- SURF SPECIFIC ----------
-  { id: "pop_up", name: "Pop-Up Drill", pattern: "plyometric", muscles: ["full_body"], equipment: ["mat"], weighted: false, cues: ["Explosive, one motion"] },
+  { id: "pop_up", name: "Pop-Up Drill", pattern: "plyometric", muscles: ["full_body"], equipment: ["mat"], weighted: false, cues: ["Explosive, one motion"], howTo: "Simulate popping up on a surfboard from prone. Explode from lying down: hands under shoulders, push up, sweep front foot forward while back foot stays put, land in surf stance. One fluid motion, no knee-plant." },
   { id: "paddle_sim", name: "Paddle Simulator (Band)", pattern: "pull", muscles: ["back", "shoulder"], equipment: ["band"], weighted: false },
-  { id: "single_leg_rdl", name: "Single-Leg RDL", pattern: "hinge", muscles: ["hamstrings", "glutes"], equipment: ["dumbbell"], weighted: true },
-  { id: "turkish_getup", name: "Turkish Get-Up", pattern: "core", muscles: ["full_body"], equipment: ["kettlebell"], weighted: true },
+  { id: "single_leg_rdl", name: "Single-Leg RDL", pattern: "hinge", muscles: ["hamstrings", "glutes"], equipment: ["dumbbell"], weighted: true, howTo: "Balance on one leg with a slight bend in the knee. Hinge at the hip — chest drops toward the floor, back leg extends straight behind you as a counterweight. Keep hips square (don't rotate open). Return by driving the standing hip forward. Hamstring + glute + balance all at once." },
+  { id: "turkish_getup", name: "Turkish Get-Up", pattern: "core", muscles: ["full_body"], equipment: ["kettlebell"], weighted: true, howTo: "Lie on your back holding a kettlebell straight up in one hand. Slowly stand up through this sequence: prop on opposite elbow → hand → hip up → sweep leg back → lunge → stand. Reverse to get down. Keep eyes on the bell throughout. 3-5 reps per side, moderate weight." },
   { id: "med_ball_slam", name: "Med Ball Slam", pattern: "rotation", muscles: ["core"], equipment: ["bodyweight"], weighted: true },
   { id: "med_ball_rotational_throw", name: "Rotational Med Ball Throw", pattern: "rotation", muscles: ["core", "obliques"], equipment: ["bodyweight"], weighted: true },
 
@@ -140,21 +140,21 @@ export const EXERCISES: Exercise[] = [
   { id: "foam_roll_quads", name: "Foam Roll Quads", pattern: "mobility", muscles: ["quads"], equipment: ["foam_roller"], weighted: false },
 
   // ---------- GALPIN POWER & SPRINTING ----------
-  { id: "hang_clean", name: "Hang Clean", pattern: "hinge", muscles: ["posterior_chain", "full_body"], equipment: ["barbell"], weighted: true, cues: ["Keep above the knee", "Fast elbows under bar", "Vertical jump shape"] },
-  { id: "hang_clean_below_knee", name: "Hang Clean Below Knee", pattern: "hinge", muscles: ["posterior_chain"], equipment: ["barbell"], weighted: true, cues: ["Lats packed", "Drive through floor"] },
-  { id: "snatch_balance", name: "Snatch Balance", pattern: "push", muscles: ["shoulder", "legs"], equipment: ["barbell"], weighted: true, cues: ["Press the body down, not the bar up"] },
-  { id: "bhn_push_press", name: "Behind-the-Neck Push Press + OHS", pattern: "push", muscles: ["shoulder", "core"], equipment: ["barbell"], weighted: true, cues: ["2 push press + 1 paused OHS", "Bar over mid-foot"] },
-  { id: "overhead_squat", name: "Overhead Squat", pattern: "squat", muscles: ["full_body", "shoulder"], equipment: ["barbell"], weighted: true, cues: ["Active shoulder press", "Sit between heels", "Chest tall"] },
+  { id: "hang_clean", name: "Hang Clean", pattern: "hinge", muscles: ["posterior_chain", "full_body"], equipment: ["barbell"], weighted: true, cues: ["Keep above the knee", "Fast elbows under bar", "Vertical jump shape"], howTo: "Start with the bar just above the knees, back neutral, chest tall. Explosively extend hips + knees + ankles (triple extension) — the bar is pulled up by momentum, not arms. As it rises, drop into a quarter squat and 'catch' with elbows fast forward, bar racked on front delts. Stand up." },
+  { id: "hang_clean_below_knee", name: "Hang Clean Below Knee", pattern: "hinge", muscles: ["posterior_chain"], equipment: ["barbell"], weighted: true, cues: ["Lats packed", "Drive through floor"], howTo: "Same as hang clean but starting position is bar just below the knees. Slightly longer pull, more posterior chain load. Keep shoulders over the bar, sweep it back into the hip pocket, then explode." },
+  { id: "snatch_balance", name: "Snatch Balance", pattern: "push", muscles: ["shoulder", "legs"], equipment: ["barbell"], weighted: true, cues: ["Press the body down, not the bar up"], howTo: "Bar behind the neck (snatch grip). Dip and drive, but instead of jumping the bar up, punch yourself DOWN into an overhead squat. It's a speed/mobility drill for hitting the overhead squat bottom." },
+  { id: "bhn_push_press", name: "Behind-the-Neck Push Press + OHS", pattern: "push", muscles: ["shoulder", "core"], equipment: ["barbell"], weighted: true, cues: ["2 push press + 1 paused OHS", "Bar over mid-foot"], howTo: "Bar behind the neck. Dip and drive up violently, using leg power to push the bar overhead. Do 2 push presses, then hold overhead and drop into an overhead squat with a 3-second pause. Complete the set." },
+  { id: "overhead_squat", name: "Overhead Squat", pattern: "squat", muscles: ["full_body", "shoulder"], equipment: ["barbell"], weighted: true, cues: ["Active shoulder press", "Sit between heels", "Chest tall"], howTo: "Bar overhead in a snatch-width grip, arms locked, shoulders active. Descend into a full squat keeping the bar aligned over your mid-foot. Chest tall, knees track over toes. Stand up. Requires strong shoulder mobility and t-spine extension." },
   { id: "closegrip_bench", name: "Close-Grip Bench Press", pattern: "push", muscles: ["tris", "chest"], equipment: ["barbell"], weighted: true, cues: ["Shoulder-width grip", "Elbows tucked"] },
-  { id: "landmine_rotational_punch", name: "Landmine Rotational Punch (Iso)", pattern: "rotation", muscles: ["core", "shoulder"], equipment: ["barbell"], weighted: true, cues: ["Drive from the hip", "Pause at end range"] },
+  { id: "landmine_rotational_punch", name: "Landmine Rotational Punch (Iso)", pattern: "rotation", muscles: ["core", "shoulder"], equipment: ["barbell"], weighted: true, cues: ["Drive from the hip", "Pause at end range"], howTo: "One end of a barbell in a landmine (or corner). Hold the free end at chest height with one hand. Rotate through the hips and punch the bar forward — power from the ground up. Pause 2 seconds at extension. Slow return. It's a rotational power builder." },
   { id: "ws_trx", name: "Ws (TRX)", pattern: "pull", muscles: ["rear_delt", "rotator_cuff"], equipment: ["rings"], weighted: false, warmupTarget: "shoulder", cues: ["Externally rotate", "Pinkies up"] },
   { id: "upright_row_kettlebell", name: "Upright Row (Kettlebell)", pattern: "pull", muscles: ["traps", "side_delt"], equipment: ["kettlebell"], weighted: true, cues: ["Slow eccentric"] },
   { id: "med_ball_perp_rotational_throw", name: "Med Ball Perpendicular Rotational Throw", pattern: "rotation", muscles: ["core", "obliques"], equipment: ["bodyweight"], weighted: true, cues: ["Hips lead", "Throw with intent"] },
 
   // ---------- GALPIN PLYOMETRICS ----------
-  { id: "depth_jump_24", name: 'Depth Jump (24")', pattern: "plyometric", muscles: ["legs"], equipment: ["box"], weighted: false, cues: ["Step off, do not jump down", "Minimal ground contact"] },
-  { id: "depth_jump_30", name: 'Depth Jump (30") + Jump Repeat', pattern: "plyometric", muscles: ["legs"], equipment: ["box"], weighted: false, cues: ["1 depth jump + 3 repeat jumps", "Stay tall, stiff ankles"] },
-  { id: "seated_box_jump", name: "Seated Box Jump", pattern: "plyometric", muscles: ["legs"], equipment: ["box"], weighted: false, cues: ["No countermovement", "Pure concentric power"] },
+  { id: "depth_jump_24", name: 'Depth Jump (24")', pattern: "plyometric", muscles: ["legs"], equipment: ["box"], weighted: false, cues: ["Step off, do not jump down", "Minimal ground contact"], howTo: "Step (don't jump) off a 24-inch box. As soon as both feet touch, spring straight up as fast and high as possible. The goal is minimal ground contact time — under 0.25s. Not a warm-up move; do it fresh." },
+  { id: "depth_jump_30", name: 'Depth Jump (30") + Jump Repeat', pattern: "plyometric", muscles: ["legs"], equipment: ["box"], weighted: false, cues: ["1 depth jump + 3 repeat jumps", "Stay tall, stiff ankles"], howTo: "Step off a 30-inch box, absorb the landing with stiff ankles, then explode into 3 continuous jumps as tall as possible. First jump is the depth response; the next three train reactive strength. Full rest between reps." },
+  { id: "seated_box_jump", name: "Seated Box Jump", pattern: "plyometric", muscles: ["legs"], equipment: ["box"], weighted: false, cues: ["No countermovement", "Pure concentric power"], howTo: "Sit on a low box with feet planted. From a dead stop (no rock or countermovement), explode up onto a taller box in front of you. Trains pure concentric power — great for RFD without the eccentric stress of a countermovement jump." },
   { id: "linear_bound_stabilize", name: "Linear Bound — Countermovement to Stabilize", pattern: "plyometric", muscles: ["legs"], equipment: ["bodyweight"], weighted: false, cues: ["Stick each landing", "Quiet feet"] },
   { id: "linear_bound_continuous", name: "Linear Bound — Continuous", pattern: "plyometric", muscles: ["legs"], equipment: ["bodyweight"], weighted: false, cues: ["Distance + short ground contact"] },
   { id: "ankle_bound", name: "Ankle Bound", pattern: "plyometric", muscles: ["calves"], equipment: ["bodyweight"], weighted: false, cues: ["Stiff ankles", "Continuous hops"] },
@@ -174,7 +174,7 @@ export const EXERCISES: Exercise[] = [
   { id: "jump_rope_continuous", name: "Jump Rope — Continuous", pattern: "conditioning", muscles: ["calves", "full_body"], equipment: ["bodyweight"], weighted: false, warmupTarget: "general", cues: ["15s bilateral / R / L / bilateral"] },
 
   // ---------- GALPIN UNILATERAL / KNEE HEALTH ----------
-  { id: "nordic_leg_curl", name: "Nordic Leg Curl", pattern: "hinge", muscles: ["hamstrings"], equipment: ["bodyweight"], weighted: false, cues: ["Slow eccentric", "Push back up with hands if needed"] },
+  { id: "nordic_leg_curl", name: "Nordic Leg Curl", pattern: "hinge", muscles: ["hamstrings"], equipment: ["bodyweight"], weighted: false, cues: ["Slow eccentric", "Push back up with hands if needed"], howTo: "Kneel with feet anchored under a padded bar or partner. Keeping your body a straight line from knees to head, slowly lower your torso forward as if hinging at the knees. Use your hands to catch the fall and push back to start. Elite hamstring builder." },
   { id: "single_leg_squat_counter", name: "Single-Leg Squat — Counterbalance", pattern: "squat", muscles: ["quads", "glutes"], equipment: ["dumbbell"], weighted: true, cues: ["Counterweight in front", "Heel stays down"] },
   { id: "single_leg_squat_goblet", name: "Single-Leg Squat — Goblet", pattern: "squat", muscles: ["quads", "glutes"], equipment: ["dumbbell", "kettlebell"], weighted: true },
   { id: "rdl_deficit_band", name: "RDL from Deficit with Bands", pattern: "hinge", muscles: ["hamstrings", "glutes"], equipment: ["barbell", "band"], weighted: true, cues: ["Stand on plate for ROM", "Band accommodates resistance"] },

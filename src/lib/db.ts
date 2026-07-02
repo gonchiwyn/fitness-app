@@ -64,6 +64,33 @@ export async function deleteSession(id: number): Promise<void> {
   await db.sessions.delete(id);
 }
 
+/**
+ * Log a workout that happened outside the app.
+ * Creates a minimal finished session — no blocks, no set data —
+ * just the fact that a category+template happened on a date.
+ */
+export async function logRetroactiveSession(
+  date: string,
+  category: Session["category"],
+  name: string,
+  templateId?: string
+): Promise<number> {
+  const now = Date.now();
+  const session: Session = {
+    workoutId: `retro-${category}-${date}-${templateId ?? "any"}-${now}`,
+    category,
+    name,
+    date,
+    createdAt: now,
+    startedAt: now,
+    finishedAt: now,
+    modifiers: templateId ? { templateId } : undefined,
+    blocks: [], // no exercise-level data — user logged after the fact
+  };
+  const id = await db.sessions.add(session);
+  return id;
+}
+
 export async function getWeeklyPlan(): Promise<WeeklyPlan> {
   const existing = await db.weeklyPlan.get("me");
   if (existing) {

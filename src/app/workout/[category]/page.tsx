@@ -12,6 +12,7 @@ import {
   CATEGORIES,
   CATEGORY_LABELS,
   EQUIPMENT_PRESET_INCLUDES,
+  INTENSITY_LABELS,
   type Category,
   type CoachInfluence,
   type EquipmentPreset,
@@ -267,28 +268,17 @@ export default function WorkoutForCategory({
           <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold mb-2 px-1">
             How do you feel today?
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            <ReadinessChip
-              active={currentIntensity === "recovery"}
-              onClick={() => setIntensity("recovery")}
-              emoji="🫠"
-              label="Tired"
-              sublabel="lighter"
-            />
-            <ReadinessChip
-              active={currentIntensity === "normal"}
-              onClick={() => setIntensity("normal")}
-              emoji="🙂"
-              label="Normal"
-              sublabel="as planned"
-            />
-            <ReadinessChip
-              active={currentIntensity === "push"}
-              onClick={() => setIntensity("push")}
-              emoji="🔥"
-              label="Strong"
-              sublabel="push it"
-            />
+          <div className="grid grid-cols-5 gap-1.5">
+            {(["rest", "easy", "normal", "hard", "push"] as Intensity[]).map((i) => (
+              <ReadinessChip
+                key={i}
+                active={currentIntensity === i}
+                onClick={() => setIntensity(i)}
+                emoji={INTENSITY_LABELS[i].emoji}
+                label={INTENSITY_LABELS[i].label}
+                sublabel={INTENSITY_LABELS[i].sub}
+              />
+            ))}
           </div>
         </div>
 
@@ -420,15 +410,15 @@ function ReadinessChip({
     <button
       onClick={onClick}
       className={clsx(
-        "p-3 rounded-xl border transition-all text-center",
+        "px-1.5 py-2.5 rounded-xl border transition-all text-center",
         active
           ? "bg-accent text-black border-accent"
           : "bg-bg border-border text-text-muted hover:border-border/60"
       )}
     >
-      <div className="text-xl">{emoji}</div>
-      <div className="text-sm font-semibold mt-0.5">{label}</div>
-      <div className={clsx("text-[10px] mt-0.5", active ? "opacity-70" : "text-text-dim")}>
+      <div className="text-lg leading-none">{emoji}</div>
+      <div className="text-[11px] font-semibold mt-1">{label}</div>
+      <div className={clsx("text-[9px] mt-0.5 leading-tight", active ? "opacity-70" : "text-text-dim")}>
         {sublabel}
       </div>
     </button>
@@ -580,6 +570,7 @@ function ExerciseCard({
 }) {
   const [showSwaps, setShowSwaps] = useState(false);
   const [showLogger, setShowLogger] = useState(false);
+  const [showHowTo, setShowHowTo] = useState(false);
 
   const exercise = getExercise(prescription.exerciseId);
   const showLoad = exercise.weighted && !isWarmup && !isCooldown;
@@ -657,6 +648,23 @@ function ExerciseCard({
       {exercise.cues && exercise.cues.length > 0 && (
         <div className="text-xs text-text-dim leading-snug">
           {exercise.cues.join(" · ")}
+        </div>
+      )}
+
+      {/* How-to expandable for complex movements */}
+      {exercise.howTo && (
+        <div className="mt-2">
+          <button
+            onClick={() => setShowHowTo((s) => !s)}
+            className="text-[11px] text-accent hover:underline"
+          >
+            {showHowTo ? "Hide" : "How to →"}
+          </button>
+          {showHowTo && (
+            <p className="text-xs text-text-muted leading-relaxed mt-2 bg-bg rounded-lg border border-border p-3">
+              {exercise.howTo}
+            </p>
+          )}
         </div>
       )}
 

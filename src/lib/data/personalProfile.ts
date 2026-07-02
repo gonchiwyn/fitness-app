@@ -30,6 +30,22 @@ export const PERSONAL_PROFILE: Profile = {
   },
   defaultEquipment: "full_gym",
   coreFocus: "protection",
+  // Per-category proficiency. Pro at lifting, starter at Hyrox/CrossFit.
+  levels: {
+    split: "pro",
+    hypertrophy: "pro",
+    strength: "pro",
+    hyrox: "starter",
+    crossfit: "starter",
+    athlete: "comfortable",
+    cardio: "comfortable",
+    core: "comfortable",
+    surf: "comfortable",
+    burn: "comfortable",
+    stretching: "comfortable",
+    recovery: "comfortable",
+    beach: "comfortable",
+  },
   workoutHistory:
     "15+ years lifting. Long history of hypertrophy + strength cycles. " +
     "Vegetarian 8 years (lifts a bit lighter than pre-veg, otherwise stable). " +

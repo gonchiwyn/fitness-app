@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 import { EXERCISES } from "./data/exercises";
-import { templatesFor, type Template } from "./data/templates";
+import { isTemplateAtLevel, templatesFor, type Template } from "./data/templates";
 import { lastSessionForExercise } from "./db";
 import {
   CATEGORY_DURATION,
@@ -108,8 +108,15 @@ function targetPercentForCategory(
   }
 
   if (base === null) return null;
-  if (intensity === "recovery") base -= 15;
-  else if (intensity === "push") base += 5;
+  // 5-chip intensity: -15% for rest, -8% for easy, 0 for normal, +4% for hard, +8% for push
+  const delta: Record<Intensity, number> = {
+    rest: -15,
+    easy: -8,
+    normal: 0,
+    hard: 4,
+    push: 8,
+  };
+  base += delta[intensity] ?? 0;
   return Math.max(40, Math.min(95, base));
 }
 
@@ -136,65 +143,76 @@ function parseInjuries(text?: string): Set<InjuryFlag> {
   return flags;
 }
 
-const INJURY_SWAPS: Record<InjuryFlag, Record<string, string>> = {
+// Each entry is a CHAIN of preferred swaps. Generator tries them in order,
+// skipping any that are already used earlier in the same workout.
+const INJURY_SWAPS: Record<InjuryFlag, Record<string, string[]>> = {
   knee: {
-    back_squat: "leg_press",
-    front_squat: "leg_press",
-    box_jump: "kb_swing",
-    broad_jump: "kb_swing",
-    depth_jump_24: "kb_swing",
-    depth_jump_30: "kb_swing",
-    sprint: "easy_bike",
-    walking_lunge: "leg_press",
-    bulgarian_split_squat: "leg_press",
+    back_squat: ["leg_press", "goblet_squat_hold", "hip_thrust"],
+    front_squat: ["leg_press", "goblet_squat_hold"],
+    box_jump: ["kb_swing", "hip_thrust"],
+    broad_jump: ["kb_swing", "hip_thrust"],
+    depth_jump_24: ["kb_swing"],
+    depth_jump_30: ["kb_swing"],
+    sprint: ["easy_bike", "easy_row"],
+    walking_lunge: ["leg_press", "hip_thrust"],
+    bulgarian_split_squat: ["leg_press", "step_up"],
   },
   shoulder: {
-    overhead_press: "incline_db_press",
-    snatch_balance: "front_squat",
-    bhn_push_press: "front_squat",
-    overhead_squat: "front_squat",
-    weighted_pullup: "lat_pulldown",
-    pullup: "lat_pulldown",
-    weighted_dip: "db_bench",
-    bench_press: "incline_db_press",
+    overhead_press: ["incline_db_press", "db_bench", "seated_row"],
+    snatch_balance: ["front_squat"],
+    bhn_push_press: ["front_squat", "incline_db_press"],
+    overhead_squat: ["front_squat", "goblet_squat_hold"],
+    weighted_pullup: ["lat_pulldown", "seated_row", "db_row"],
+    pullup: ["lat_pulldown", "seated_row"],
+    weighted_dip: ["db_bench", "incline_db_press", "tricep_pushdown"],
+    bench_press: ["incline_db_press", "db_bench", "weighted_dip"],
   },
   lower_back: {
-    deadlift: "romanian_deadlift",
-    barbell_row: "seated_row",
-    power_clean: "kb_swing",
-    hang_clean: "kb_swing",
-    hang_clean_below_knee: "kb_swing",
-    clean_and_jerk: "kb_swing",
-    back_squat: "leg_press",
+    deadlift: ["romanian_deadlift", "hip_thrust", "kb_swing"],
+    barbell_row: ["seated_row", "db_row", "lat_pulldown"],
+    power_clean: ["kb_swing", "hip_thrust"],
+    hang_clean: ["kb_swing", "hip_thrust"],
+    hang_clean_below_knee: ["kb_swing", "hip_thrust"],
+    clean_and_jerk: ["kb_swing"],
+    back_squat: ["leg_press", "goblet_squat_hold"],
   },
   elbow: {
-    pullup: "lat_pulldown",
-    weighted_pullup: "lat_pulldown",
-    chinup: "lat_pulldown",
-    db_curl: "hammer_curl",
+    pullup: ["lat_pulldown", "seated_row"],
+    weighted_pullup: ["lat_pulldown", "seated_row"],
+    chinup: ["lat_pulldown", "seated_row"],
+    db_curl: ["hammer_curl", "face_pull"],
   },
   hip: {
-    back_squat: "leg_press",
-    deadlift: "romanian_deadlift",
+    back_squat: ["leg_press", "goblet_squat_hold"],
+    deadlift: ["romanian_deadlift", "hip_thrust"],
   },
   neck: {
-    bhn_push_press: "overhead_press",
-    snatch_balance: "front_squat",
+    bhn_push_press: ["overhead_press", "incline_db_press"],
+    snatch_balance: ["front_squat"],
   },
 };
 
-function applyInjurySwaps(p: Prescription, flags: Set<InjuryFlag>, availableEquipment: Set<Equipment>): Prescription {
+function applyInjurySwaps(
+  p: Prescription,
+  flags: Set<InjuryFlag>,
+  availableEquipment: Set<Equipment>,
+  usedExerciseIds: Set<string>
+): Prescription {
   for (const flag of flags) {
-    const swap = INJURY_SWAPS[flag]?.[p.exerciseId];
-    if (!swap) continue;
-    const swapEx = EXERCISES.find((e) => e.id === swap);
-    if (!swapEx) continue;
-    if (!swapEx.equipment.some((eq) => availableEquipment.has(eq))) continue;
-    return {
-      ...p,
-      exerciseId: swap,
-      notes: [p.notes, `Swapped for ${flag.replace("_", " ")} consideration`].filter(Boolean).join(" · "),
-    };
+    const chain = INJURY_SWAPS[flag]?.[p.exerciseId];
+    if (!chain || chain.length === 0) continue;
+    for (const candidate of chain) {
+      // Don't dup an exercise already in this workout
+      if (usedExerciseIds.has(candidate)) continue;
+      const swapEx = EXERCISES.find((e) => e.id === candidate);
+      if (!swapEx) continue;
+      if (!swapEx.equipment.some((eq) => availableEquipment.has(eq))) continue;
+      return {
+        ...p,
+        exerciseId: candidate,
+        notes: [p.notes, `Swapped for ${flag.replace("_", " ")} consideration`].filter(Boolean).join(" · "),
+      };
+    }
   }
   return p;
 }
@@ -210,7 +228,12 @@ function resolveAvailableEquipment(profile: Profile, modifiers: WorkoutModifiers
   return new Set(EQUIPMENT_PRESET_INCLUDES[preset]);
 }
 
-function findEquipmentAlternative(exerciseId: string, available: Set<Equipment>, rng: () => number): string | null {
+function findEquipmentAlternative(
+  exerciseId: string,
+  available: Set<Equipment>,
+  rng: () => number,
+  usedExerciseIds: Set<string>
+): string | null {
   const target = EXERCISES.find((e) => e.id === exerciseId);
   if (!target) return null;
   if (target.equipment.some((eq) => available.has(eq))) return null; // OK as-is
@@ -219,6 +242,7 @@ function findEquipmentAlternative(exerciseId: string, available: Set<Equipment>,
     EXERCISES.filter(
       (e) =>
         e.id !== exerciseId &&
+        !usedExerciseIds.has(e.id) &&
         e.pattern === target.pattern &&
         e.weighted === target.weighted &&
         e.equipment.some((eq) => available.has(eq))
@@ -228,17 +252,55 @@ function findEquipmentAlternative(exerciseId: string, available: Set<Equipment>,
   return candidates[0]?.id ?? null;
 }
 
-function adaptToEquipment(p: Prescription, available: Set<Equipment>, rng: () => number): Prescription | null {
+function adaptToEquipment(
+  p: Prescription,
+  available: Set<Equipment>,
+  rng: () => number,
+  usedExerciseIds: Set<string>
+): Prescription | null {
   const target = EXERCISES.find((e) => e.id === p.exerciseId);
   if (!target) return p;
   if (target.equipment.some((eq) => available.has(eq))) return p;
 
-  const alt = findEquipmentAlternative(p.exerciseId, available, rng);
+  const alt = findEquipmentAlternative(p.exerciseId, available, rng, usedExerciseIds);
   if (!alt) return null; // can't adapt; drop
   return {
     ...p,
     exerciseId: alt,
     notes: [p.notes, `Adapted from ${target.name} for available equipment`].filter(Boolean).join(" · "),
+  };
+}
+
+// If a prescription ends up as a duplicate of something already in the workout
+// (typically because an injury swap landed on the same exercise), find a
+// same-pattern alternative. Keeps original as a fallback if no match.
+function dedupeAgainstUsed(
+  p: Prescription,
+  used: Set<string>,
+  available: Set<Equipment>,
+  rng: () => number
+): Prescription {
+  if (!used.has(p.exerciseId)) return p;
+  const target = EXERCISES.find((e) => e.id === p.exerciseId);
+  if (!target) return p;
+  const alternatives = shuffle(
+    EXERCISES.filter(
+      (e) =>
+        e.id !== p.exerciseId &&
+        !used.has(e.id) &&
+        e.pattern === target.pattern &&
+        e.weighted === target.weighted &&
+        e.equipment.some((eq) => available.has(eq))
+    ),
+    rng
+  );
+  if (alternatives.length === 0) return p; // no alt available, tolerate the dupe
+  return {
+    ...p,
+    exerciseId: alternatives[0].id,
+    // Load hint no longer applies since exercise changed
+    loadHint: undefined,
+    notes: [p.notes, `Swapped from ${target.name} to avoid duplicate`].filter(Boolean).join(" · "),
   };
 }
 
@@ -492,8 +554,9 @@ async function buildLoadHint(
 
   const repsTarget = parseInt(prescription.reps, 10);
   const lastReps = sets[0].reps ?? 0;
+  const pushingIt = intensity === "push" || intensity === "hard";
   if (
-    intensity === "push" &&
+    pushingIt &&
     Number.isFinite(repsTarget) &&
     lastReps >= repsTarget &&
     (prescription.rpe ?? 7) >= 7
@@ -639,32 +702,46 @@ export async function generateWorkout(
 
   const available = resolveAvailableEquipment(profile, modifiers);
 
-  const templates = templatesFor(category);
-  if (templates.length === 0) {
+  const allTemplates = templatesFor(category);
+  if (allTemplates.length === 0) {
     throw new Error(`No templates for category ${category}`);
   }
-  // Locked template (from Plan day) takes precedence over rotation
+  // Locked template (from Plan day) takes precedence — respect user's explicit choice
   const lockedTemplate = modifiers.templateId
-    ? templates.find((t) => t.id === modifiers.templateId)
+    ? allTemplates.find((t) => t.id === modifiers.templateId)
     : undefined;
-  const template = lockedTemplate ?? pickTemplate(templates, profile, rng);
+  // For rotation, filter to templates at user's level for this category
+  const userLevel = profile.levels?.[category] ?? "comfortable";
+  const levelFiltered = allTemplates.filter((t) => isTemplateAtLevel(t, userLevel));
+  const pool = levelFiltered.length > 0 ? levelFiltered : allTemplates;
+  const template = lockedTemplate ?? pickTemplate(pool, profile, rng);
 
   const injuryFlags = parseInjuries(profile.injuryHistory);
   if (modifiers.rehab) injuryFlags.add(modifiers.rehab);
 
-  let blocks: Block[] = [buildWarmup(profile, category, modifiers, rng, available)];
+  const warmup = buildWarmup(profile, category, modifiers, rng, available);
+  // Track every exercise added to the workout so injury swaps + equipment
+  // adaptations avoid producing duplicates within a single session.
+  const usedExerciseIds = new Set<string>(
+    warmup.prescriptions.map((p) => p.exerciseId)
+  );
+
+  let blocks: Block[] = [warmup];
 
   for (let i = 0; i < template.blocks.length; i++) {
     const b = template.blocks[i];
     const enriched: Prescription[] = [];
     for (const rawP of b.prescriptions) {
-      let p: Prescription | null = applyInjurySwaps(rawP, injuryFlags, available);
-      p = adaptToEquipment(p, available, rng);
+      let p: Prescription | null = applyInjurySwaps(rawP, injuryFlags, available, usedExerciseIds);
+      p = adaptToEquipment(p, available, rng, usedExerciseIds);
       if (!p) continue; // dropped
+      // Prevent duplicates from cascading through the workout
+      p = dedupeAgainstUsed(p, usedExerciseIds, available, rng);
       const loadHint = (await buildLoadHint(p, profile, category, intensity)) ?? p.loadHint;
       p = { ...p, loadHint };
       if (category === "cardio") p = tuneCardioPrescription(p, profile);
       enriched.push(p);
+      usedExerciseIds.add(p.exerciseId);
     }
     if (enriched.length > 0) {
       blocks.push({
@@ -725,7 +802,9 @@ export async function generateWorkout(
 function buildWorkoutName(category: Category, templateName: string, m: WorkoutModifiers): string {
   const tags: string[] = [];
   if (m.timeMinutes) tags.push(`${m.timeMinutes}m`);
-  if (m.intensity && m.intensity !== "normal") tags.push(m.intensity === "recovery" ? "Easy" : "Push");
+  if (m.intensity && m.intensity !== "normal") {
+    tags.push(m.intensity.charAt(0).toUpperCase() + m.intensity.slice(1));
+  }
   if (m.rehab) tags.push(`Rehab: ${m.rehab.replace("_", " ")}`);
   const base = `${CATEGORY_LABELS[category]} — ${templateName}`;
   return tags.length > 0 ? `${base} (${tags.join(" · ")})` : base;
