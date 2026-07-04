@@ -78,6 +78,12 @@ export default function WorkoutForCategory({
   const cat = category as Category;
   const validCat = (CATEGORIES as readonly string[]).includes(cat);
 
+  // Sport is a log-only category — nothing to generate. Bounce to the picker
+  // (which opens the SportLogModal on the /workout index).
+  useEffect(() => {
+    if (cat === "sport") router.replace("/workout");
+  }, [cat, router]);
+
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -152,8 +158,14 @@ export default function WorkoutForCategory({
   const finish = async () => {
     if (!session.id) return;
     const now = Date.now();
-    // Sessions go straight from draft → done (no "in progress" phase)
-    const next = { ...session, startedAt: session.startedAt ?? now, finishedAt: now };
+    // Stamp block name at finish time so the history calendar can group
+    // consecutive days inside the same block into one continuous stripe.
+    const next = {
+      ...session,
+      startedAt: session.startedAt ?? now,
+      finishedAt: now,
+      focusName: session.focusName ?? profile.currentFocus?.name,
+    };
     setSession(next);
     await db.sessions.put(next);
     // Stay on the page — the rating prompt shows in place of the button

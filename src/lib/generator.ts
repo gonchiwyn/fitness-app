@@ -679,6 +679,64 @@ const PERIODIZED_CATEGORIES: Category[] = ["strength", "hypertrophy", "split", "
 
 // Scale any "X min" duration references in a prescription's reps text.
 // Push extends, easy shortens — so intensity feels real on cardio / stretching / mobility.
+// Focus block name → per-prescription bias. Applied on top of intensity + phase.
+// Kept minimal: only touches reps target, sets, rest — nothing that would break
+// the template's structure or coach attribution.
+function applyBlockBias(
+  p: Prescription,
+  focusName: string | undefined,
+  isMainLift: boolean
+): Prescription {
+  if (!focusName) return p;
+  const name = focusName.toLowerCase();
+  // Extract the top-end rep target from bare numbers ("8") and simple ranges
+  // ("6-8", "8-12"). Skips time-based ("30 sec", "5 min"), AMRAP, etc.
+  const trimmedReps = p.reps.trim();
+  const bareReps = /^\d+$/.test(trimmedReps) ? parseInt(trimmedReps, 10) : null;
+  const rangeMatch = trimmedReps.match(/^(\d+)\s*[-–]\s*(\d+)$/);
+  const rangeHigh = rangeMatch ? parseInt(rangeMatch[2], 10) : null;
+  const repsIsNumeric = bareReps !== null || rangeHigh !== null;
+  const currentTop = bareReps ?? rangeHigh ?? 0;
+
+  if (name.includes("hypertrophy") || name.includes("aesthetic")) {
+    // 8–12 rep range, moderate rest, +1 set on accessories.
+    let next = { ...p };
+    if (repsIsNumeric && (currentTop < 8 || currentTop > 12)) {
+      next.reps = "8-12";
+    }
+    if (!isMainLift && next.sets < 4) next.sets = next.sets + 1;
+    if (!isMainLift && next.rest && /^\d+/.test(next.rest)) {
+      // Cap rest at 60s for accessories to keep density up.
+      next.rest = "60s";
+    }
+    return next;
+  }
+
+  if (name.includes("strength")) {
+    // 3–5 rep range on main lifts, longer rest.
+    let next = { ...p };
+    if (isMainLift && repsIsNumeric && currentTop > 5) {
+      next.reps = "3-5";
+    }
+    if (isMainLift) next.rest = "3 min";
+    return next;
+  }
+
+  if (name.includes("cardio")) {
+    // Cap accessory volume so lifting days stay maintenance.
+    if (!isMainLift && p.sets > 2) return { ...p, sets: 2 };
+    return p;
+  }
+
+  if (name.includes("recovery")) {
+    // Everything easy — cap sets and reduce load intent.
+    if (p.sets > 2) return { ...p, sets: 2 };
+    return p;
+  }
+
+  return p;
+}
+
 function applyIntensityToDuration(p: Prescription, intensity: Intensity): Prescription {
   if (intensity === "normal") return p;
   const factor = intensity === "easy" ? 0.75 : 1.2;
@@ -703,7 +761,12 @@ export async function generateWorkout(
   modifiers: WorkoutModifiers = {}
 ): Promise<Workout> {
   const date = seedDate ?? new Date();
-  const intensity = modifiers.intensity ?? "normal";
+  // If the user didn't pick a readiness explicitly and the current focus is
+  // a Recovery block, default to easy — a recovery block should feel like one.
+  const focusName = profile.currentFocus?.name?.toLowerCase();
+  const defaultIntensity: Intensity =
+    focusName?.includes("recovery") ? "easy" : "normal";
+  const intensity = modifiers.intensity ?? defaultIntensity;
   const targetMinutes = modifiers.timeMinutes ?? CATEGORY_DURATION[category];
 
   // Cycle phase — only computed if periodization enabled and category benefits
@@ -794,6 +857,11 @@ export async function generateWorkout(
       } else if (intensity === "easy" && !LIFT_ID_SET.has(p.exerciseId) && p.sets > 2) {
         p = { ...p, sets: p.sets - 1 };
       }
+
+      // Focus block bias — the coach thinks in blocks. Hypertrophy shifts reps to
+      // 8-12; Strength peak to 3-5 w/ long rest; Cardio caps accessory volume;
+      // Recovery caps everything. See applyBlockBias for the exact rules.
+      p = applyBlockBias(p, profile.currentFocus?.name, LIFT_ID_SET.has(p.exerciseId));
 
       // Scale time-based durations (cardio, stretching holds, warmup, etc.) — visible on
       // categories where load% doesn't apply. "45 min Z2" becomes 34 min easy / 54 min push.

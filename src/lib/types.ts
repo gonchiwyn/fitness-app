@@ -13,6 +13,7 @@ export const CATEGORIES = [
   "core",
   "split",
   "test",
+  "sport",
 ] as const;
 
 export type Category = (typeof CATEGORIES)[number];
@@ -32,6 +33,7 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   core: "Core",
   split: "Split",
   test: "Test",
+  sport: "Sport",
 };
 
 export const CATEGORY_BLURBS: Record<Category, string> = {
@@ -49,6 +51,7 @@ export const CATEGORY_BLURBS: Record<Category, string> = {
   core: "3-part Galpin protection + abs",
   split: "Bro split — pick your day (push/pull/legs/chest/back/etc.)",
   test: "Benchmark day — 1RMs, hangs, jumps, Cooper run",
+  sport: "Log outside movement — tennis, football, swim, ski",
 };
 
 export const CATEGORY_DURATION: Record<Category, number> = {
@@ -66,6 +69,7 @@ export const CATEGORY_DURATION: Record<Category, number> = {
   core: 25,
   split: 55,
   test: 75,
+  sport: 60,
 };
 
 export type WarmupTarget = "lower_back" | "hip" | "shoulder" | "general";
@@ -213,6 +217,13 @@ export type Session = {
   influences?: CoachInfluence[];
   modifiers?: WorkoutModifiers;
   phase?: CyclePhase;
+  // Focus block name at the time this session was saved. Used by the history
+  // calendar to color consecutive days inside the same block the same shade,
+  // so "2 months of Hypertrophy" reads as one continuous stripe.
+  focusName?: string;
+  // Optional: for the "Sport" category — tennis, football, swim etc.
+  // Free-text so users aren't boxed in.
+  sportName?: string;
   blocks: LoggedBlock[];
 };
 
@@ -465,6 +476,13 @@ export type Profile = {
   // Periodization — 4-week wave: base → +3% → +6% → deload
   periodizationEnabled?: boolean;
   programStartDate?: string;
+  // Named focus block (e.g. "Hypertrophy month", "Cardio base") — the last preset
+  // the user applied. Surfaces on Home as an anchor: "Focus: Hypertrophy · Week 2 of 4"
+  currentFocus?: {
+    name: string;
+    startedAt: string;   // yyyy-MM-dd
+    durationWeeks: number;
+  };
   // Currently-active issues — drives injury swaps in the generator.
   // Text `injuryHistory` above is just context/description.
   activeConcerns?: RehabZone[];

@@ -202,23 +202,18 @@ export default function HistoryPage() {
   );
 }
 
-// Category → chip color for the calendar cells
-const CAT_COLORS: Partial<Record<Category, string>> = {
-  split: "bg-accent",
-  hypertrophy: "bg-accent",
-  strength: "bg-accent",
-  hyrox: "bg-emerald-500",
-  athlete: "bg-emerald-500",
-  core: "bg-fuchsia-500",
-  cardio: "bg-sky-500",
-  crossfit: "bg-orange-500",
-  surf: "bg-cyan-500",
-  burn: "bg-rose-500",
-  stretching: "bg-violet-500",
-  recovery: "bg-teal-500",
-  beach: "bg-amber-500",
-  test: "bg-white",
-};
+// Mono palette: 3 shades of accent yellow rotate per contiguous block instance.
+// "2 months of Hypertrophy" reads as one stripe; the next block gets a
+// different shade so the transition is visible.
+const BLOCK_SHADES = ["bg-accent", "bg-accent/60", "bg-accent/35"] as const;
+// Categories the app treats as "light" — recovery/mobility. They still count
+// as movement so we show them, but as an outline rather than filled.
+const LIGHT_CATS = new Set<Category>(["recovery", "stretching"]);
+// Off-plan / free sessions (no block attached) get a neutral white outline.
+const NO_BLOCK_CLASS = "bg-white/20";
+// Sport is always outlined in white — it's logged outside movement,
+// not part of the block. Displayed identically whether a block is active or not.
+const SPORT_CLASS = "border border-white bg-transparent";
 
 function ConsistencyCalendar({ sessions }: { sessions: Session[] }) {
   // 12 weeks, ending with current week. Rows = weeks (oldest → newest), cols = Mon–Sun.
@@ -230,6 +225,26 @@ function ConsistencyCalendar({ sessions }: { sessions: Session[] }) {
   for (const s of sessions) {
     if (!s.finishedAt) continue;
     if (!byDate.has(s.date)) byDate.set(s.date, s);
+  }
+
+  // Walk sessions chronologically and assign a shade index to each
+  // *block instance* — contiguous runs of sessions sharing the same focusName.
+  // Off-plan (no focusName) sessions don't consume a shade slot; they render
+  // as a neutral outline. Adjacent block instances get different shades so
+  // "Hypertrophy → Cardio base" visibly steps down/across.
+  const shadeByDate = new Map<string, string>();
+  const chronological = [...byDate.values()].sort((a, b) =>
+    a.date.localeCompare(b.date)
+  );
+  let currentBlockName: string | undefined;
+  let shadeIdx = -1;
+  for (const s of chronological) {
+    if (!s.focusName) continue;
+    if (s.focusName !== currentBlockName) {
+      shadeIdx = (shadeIdx + 1) % BLOCK_SHADES.length;
+      currentBlockName = s.focusName;
+    }
+    shadeByDate.set(s.date, BLOCK_SHADES[shadeIdx]);
   }
 
   const rows: { weekStart: Date; days: (Session | null)[] }[] = [];
@@ -275,16 +290,37 @@ function ConsistencyCalendar({ sessions }: { sessions: Session[] }) {
                   const inFuture = date > today;
                   const dateStr = format(date, "yyyy-MM-dd");
                   const cat = session?.category;
-                  const bgClass = session && cat ? CAT_COLORS[cat] ?? "bg-accent" : "";
+                  const isLight = cat ? LIGHT_CATS.has(cat) : false;
+                  const blockShade = shadeByDate.get(dateStr);
+                  // Filled if you did something. Shade tells you which block.
+                  // No block attached → neutral outline (off-plan/free session).
+                  // Light (recovery/stretch) → same block shade but drawn as outline.
+                  let cellClass = "bg-bg border border-border";
+                  if (session) {
+                    if (cat === "sport") {
+                      cellClass = SPORT_CLASS;
+                    } else if (blockShade) {
+                      cellClass = isLight
+                        ? `border ${blockShade.replace("bg-", "border-")} bg-transparent`
+                        : blockShade;
+                    } else {
+                      cellClass = isLight
+                        ? "border border-white/30 bg-transparent"
+                        : NO_BLOCK_CLASS;
+                    }
+                  }
+                  const title = session
+                    ? `${session.name}${session.focusName ? ` · ${session.focusName}` : " · off-plan"} · ${format(date, "EEE MMM d")}`
+                    : dateStr;
                   return (
                     <Link
                       key={di}
                       href={session?.id ? `/history#${session.id}` : "#"}
-                      title={session ? `${session.name} · ${format(date, "EEE MMM d")}` : dateStr}
+                      title={title}
                       className={clsx(
                         "aspect-square rounded transition-opacity",
                         inFuture && "opacity-20",
-                        session ? bgClass : "bg-bg border border-border",
+                        cellClass,
                         !session && "pointer-events-none"
                       )}
                     />
@@ -294,23 +330,25 @@ function ConsistencyCalendar({ sessions }: { sessions: Session[] }) {
             );
           })}
         </div>
-        <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border/50">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mt-3 pt-3 border-t border-border/50">
           <span className="text-[9px] text-text-dim uppercase tracking-widest">Legend</span>
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded bg-accent" />
-            <span className="text-[9px] text-text-dim">Strength</span>
+            <div className="w-3 h-3 rounded bg-accent/60" />
+            <div className="w-3 h-3 rounded bg-accent/35" />
+            <span className="text-[9px] text-text-dim ml-1">Blocks</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-emerald-500" />
-            <span className="text-[9px] text-text-dim">Athletic</span>
+            <div className="w-3 h-3 rounded border border-white/30" />
+            <span className="text-[9px] text-text-dim">Recovery</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-sky-500" />
-            <span className="text-[9px] text-text-dim">Cardio</span>
+            <div className={clsx("w-3 h-3 rounded", NO_BLOCK_CLASS)} />
+            <span className="text-[9px] text-text-dim">Off-plan</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-fuchsia-500" />
-            <span className="text-[9px] text-text-dim">Core</span>
+            <div className={clsx("w-3 h-3 rounded", SPORT_CLASS)} />
+            <span className="text-[9px] text-text-dim">Sport</span>
           </div>
         </div>
       </div>

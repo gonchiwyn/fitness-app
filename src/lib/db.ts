@@ -83,6 +83,7 @@ export async function logRetroactiveSession(
   templateId?: string
 ): Promise<number> {
   const now = Date.now();
+  const profile = await getProfile();
   const session: Session = {
     workoutId: `retro-${category}-${date}-${templateId ?? "any"}-${now}`,
     category,
@@ -92,6 +93,7 @@ export async function logRetroactiveSession(
     startedAt: now,
     finishedAt: now,
     modifiers: templateId ? { templateId } : undefined,
+    focusName: profile?.currentFocus?.name,
     blocks: [], // no exercise-level data — user logged after the fact
   };
   const id = await db.sessions.add(session);

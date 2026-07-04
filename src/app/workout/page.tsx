@@ -9,9 +9,11 @@ import {
   type Category,
 } from "@/lib/types";
 import TemplatePicker from "@/components/TemplatePicker";
+import SportLogModal from "@/components/SportLogModal";
 
 // Personalized order: performance / functional first.
 // Beach is hidden ("less beach vibes, more strong-guy").
+// Sport at the bottom — it's a log, not a workout to program.
 const VISIBLE_CATEGORIES: Category[] = [
   "split",
   "hypertrophy",
@@ -26,11 +28,13 @@ const VISIBLE_CATEGORIES: Category[] = [
   "stretching",
   "recovery",
   "test",
+  "sport",
 ];
 
 export default function WorkoutIndex() {
   const router = useRouter();
   const [pickerCat, setPickerCat] = useState<Category | null>(null);
+  const [sportOpen, setSportOpen] = useState(false);
 
   return (
     <div className="max-w-3xl mx-auto px-5 py-6 space-y-6">
@@ -46,7 +50,12 @@ export default function WorkoutIndex() {
         {VISIBLE_CATEGORIES.map((cat) => (
           <button
             key={cat}
-            onClick={() => setPickerCat(cat)}
+            onClick={() => {
+              // Sport bypasses the template picker — no program to build,
+              // just capture what activity happened.
+              if (cat === "sport") setSportOpen(true);
+              else setPickerCat(cat);
+            }}
             className="block rounded-2xl p-5 bg-bg-card border border-border hover:border-accent/40 transition-colors text-left"
           >
             <div className="flex items-start justify-between">
@@ -68,6 +77,16 @@ export default function WorkoutIndex() {
           onPickRandom={() => router.push(`/workout/${pickerCat}`)}
           onPickTemplate={(id) => router.push(`/workout/${pickerCat}?template=${id}`)}
           onClose={() => setPickerCat(null)}
+        />
+      )}
+
+      {sportOpen && (
+        <SportLogModal
+          onClose={() => setSportOpen(false)}
+          onLogged={() => {
+            setSportOpen(false);
+            router.push("/");
+          }}
         />
       )}
     </div>

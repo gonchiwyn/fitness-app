@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from "react";
 import clsx from "clsx";
-import { db, getWeeklyPlan, saveWeeklyPlan } from "@/lib/db";
+import { differenceInCalendarDays, format } from "date-fns";
+import {
+  db,
+  getProfile,
+  getWeeklyPlan,
+  saveProfile,
+  saveWeeklyPlan,
+} from "@/lib/db";
 import { templatesFor } from "@/lib/data/templates";
 import { useBodyScrollLock } from "@/lib/useBodyScrollLock";
 import {
@@ -13,16 +20,20 @@ import {
   dateToPlanIndex,
   type Category,
   type PlannedDay,
+  type Profile,
   type WeeklyPlan,
 } from "@/lib/types";
 
 export default function PlanPage() {
   const [plan, setPlan] = useState<WeeklyPlan | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [editingDay, setEditingDay] = useState<number | null>(null);
+  const [showPresets, setShowPresets] = useState(false);
   const todayIdx = dateToPlanIndex(new Date());
 
   useEffect(() => {
     getWeeklyPlan().then(setPlan);
+    getProfile().then(setProfile);
   }, []);
 
   if (!plan) {
@@ -49,21 +60,88 @@ export default function PlanPage() {
     setPlan(fresh);
   };
 
-  const presets: { label: string; days: PlannedDay[] }[] = [
+  // Presets ordered by focus type. "durationWeeks" powers the Home indicator's
+  // "Week X of N" counter — pick something meaningful for that block.
+  const presets: {
+    label: string;
+    focusName: string;
+    durationWeeks: number;
+    days: PlannedDay[];
+  }[] = [
     {
-      label: "Hyrox-focused (M-F Hyrox, Sat Cardio, Sun rest)",
+      label: "Hypertrophy month (PPL twice + cardio)",
+      focusName: "Hypertrophy",
+      durationWeeks: 4,
       days: [
-        { category: "hyrox" },
-        { category: "hyrox" },
-        { category: "hyrox" },
-        { category: "hyrox" },
-        { category: "hyrox" },
-        { category: "cardio" },
+        { category: "split", templateId: "split_push" },
+        { category: "split", templateId: "split_pull" },
+        { category: "split", templateId: "split_legs" },
+        { category: "split", templateId: "split_push" },
+        { category: "hypertrophy" },
+        { category: "cardio", templateId: "attia_zone2_45" },
         null,
       ],
     },
     {
-      label: "Push / Pull / Legs (M-W rotation, repeat Th-Sat, Sun rest)",
+      label: "Strength peak (heavy compounds + accessories)",
+      focusName: "Strength peak",
+      durationWeeks: 4,
+      days: [
+        { category: "strength", templateId: "strength_lower_a" },
+        { category: "strength", templateId: "strength_upper_a" },
+        null,
+        { category: "strength", templateId: "strength_deadlift_day" },
+        { category: "split", templateId: "split_arms" },
+        { category: "cardio", templateId: "attia_zone2_45" },
+        null,
+      ],
+    },
+    {
+      label: "Cardio base (mostly Z2 + strength maintenance)",
+      focusName: "Cardio base",
+      durationWeeks: 6,
+      days: [
+        { category: "cardio", templateId: "attia_zone2_45" },
+        { category: "strength" },
+        { category: "cardio", templateId: "attia_zone2_45" },
+        { category: "cardio", templateId: "attia_4x4_vo2" },
+        { category: "strength" },
+        { category: "cardio", templateId: "attia_zone2_45" },
+        null,
+      ],
+    },
+    {
+      label: "Athletic month (Hyrox + power + legs)",
+      focusName: "Athletic",
+      durationWeeks: 4,
+      days: [
+        { category: "athlete" },
+        { category: "hyrox" },
+        { category: "split", templateId: "split_legs" },
+        { category: "athlete" },
+        { category: "hyrox" },
+        { category: "cardio", templateId: "attia_zone2_45" },
+        { category: "recovery" },
+      ],
+    },
+    {
+      label: "Recovery week (mobility + easy Z2)",
+      focusName: "Recovery",
+      durationWeeks: 1,
+      days: [
+        { category: "stretching" },
+        { category: "cardio", templateId: "attia_zone2_45" },
+        { category: "stretching" },
+        { category: "recovery" },
+        { category: "cardio", templateId: "attia_zone2_45" },
+        { category: "recovery" },
+        null,
+      ],
+    },
+    {
+      label: "PPL classic (Push/Pull/Legs × 2)",
+      focusName: "PPL",
+      durationWeeks: 4,
       days: [
         { category: "split", templateId: "split_push" },
         { category: "split", templateId: "split_pull" },
@@ -75,7 +153,9 @@ export default function PlanPage() {
       ],
     },
     {
-      label: "Bro Split (chest/back/sh/arms/legs + 2 rest)",
+      label: "Bro split (chest/back/sh/arms/legs + rest)",
+      focusName: "Bro split",
+      durationWeeks: 4,
       days: [
         { category: "split", templateId: "split_chest" },
         { category: "split", templateId: "split_back" },
@@ -87,113 +167,230 @@ export default function PlanPage() {
       ],
     },
     {
-      label: "Galpin Power (S/A intercalado + recovery)",
+      label: "Longevity (3 strength · 2 Z2 · 1 VO2 · 1 stretch)",
+      focusName: "Longevity",
+      durationWeeks: 8,
       days: [
         { category: "strength" },
-        { category: "athlete" },
-        null,
-        { category: "strength" },
-        { category: "athlete" },
-        { category: "recovery" },
-        null,
-      ],
-    },
-    {
-      label: "Longevity (3 strength, 2 Z2, 1 VO2, 1 stretch)",
-      days: [
-        { category: "strength" },
-        { category: "cardio" },
+        { category: "cardio", templateId: "attia_zone2_45" },
         { category: "hypertrophy" },
-        { category: "cardio" },
+        { category: "cardio", templateId: "attia_4x4_vo2" },
         { category: "strength" },
-        { category: "cardio" },
+        { category: "cardio", templateId: "attia_zone2_45" },
         { category: "stretching" },
       ],
     },
   ];
 
-  const applyPreset = async (days: PlannedDay[]) => {
-    if (!confirm("Replace your current weekly plan with this preset?")) return;
-    const next: WeeklyPlan = { id: "me", days };
+  const applyPreset = async (preset: (typeof presets)[number]) => {
+    if (!confirm(`Start "${preset.focusName}" focus? Replaces your current weekly plan.`)) return;
+    const next: WeeklyPlan = { id: "me", days: preset.days };
     setPlan(next);
     await saveWeeklyPlan(next);
+    const today = format(new Date(), "yyyy-MM-dd");
+    const focus = {
+      name: preset.focusName,
+      startedAt: today,
+      durationWeeks: preset.durationWeeks,
+    };
+    await saveProfile({ currentFocus: focus });
+    setProfile((p) => (p ? { ...p, currentFocus: focus } : p));
+    setShowPresets(false);
   };
+
+  const endBlock = async () => {
+    if (!confirm("End the current focus block? Your weekly plan stays as-is.")) return;
+    await saveProfile({ currentFocus: undefined });
+    setProfile((p) => (p ? { ...p, currentFocus: undefined } : p));
+  };
+
+  // Compute block state — drives whether we render the "current block" hero
+  // or the "pick a block" hero at the top of the page.
+  const focus = profile?.currentFocus;
+  let blockState: "active" | "completed" | "none" = "none";
+  let weekNum = 0;
+  let progressPct = 0;
+  if (focus) {
+    const daysIn = Math.max(
+      0,
+      differenceInCalendarDays(new Date(), new Date(focus.startedAt))
+    );
+    weekNum = Math.floor(daysIn / 7) + 1;
+    const totalDays = focus.durationWeeks * 7;
+    progressPct = Math.min(100, Math.round((daysIn / totalDays) * 100));
+    blockState = weekNum > focus.durationWeeks ? "completed" : "active";
+  }
+
+  const patternIntro =
+    blockState === "active"
+      ? "Your weekly pattern for this block. Tap a day to override just that day."
+      : blockState === "completed"
+      ? "Last block's pattern. Pick your next focus to reshape the week."
+      : "Tap a day to override. Or pick a focus block below to reshape the whole week.";
 
   return (
     <div className="max-w-3xl mx-auto px-5 py-6 space-y-6">
       <header>
-        <p className="text-xs uppercase tracking-widest text-text-dim">Your week</p>
+        <p className="text-xs uppercase tracking-widest text-text-dim">Your program</p>
         <h1 className="text-3xl font-bold mt-1">Plan</h1>
-        <p className="text-text-muted text-sm mt-2">
-          Set what you train each day. Plan repeats every week. Lock a specific template (e.g. Push, Pull, Legs) or leave on rotation.
-        </p>
       </header>
 
-      <div className="space-y-2">
-        {plan.days.map((day, i) => {
-          const isToday = i === todayIdx;
-          const lockedTemplate = day?.templateId
-            ? templatesFor(day.category).find((t) => t.id === day.templateId)
-            : null;
-          return (
-            <button
-              key={i}
-              onClick={() => setEditingDay(i)}
-              className={clsx(
-                "w-full text-left rounded-2xl border p-4 transition-colors flex items-center gap-4",
-                isToday
-                  ? "bg-accent/10 border-accent/40"
-                  : "bg-bg-card border-border"
-              )}
-            >
-              <div className={clsx("w-14 text-center", isToday ? "text-accent" : "text-text-dim")}>
-                <div className="text-[10px] uppercase tracking-widest font-bold">
-                  {DAY_LABELS_LONG[i].slice(0, 3)}
-                </div>
-                {isToday && (
-                  <div className="text-[10px] mt-0.5 font-semibold uppercase tracking-widest">
-                    Today
-                  </div>
-                )}
+      {blockState === "active" && focus && (
+        <section className="bg-bg-card border border-accent/40 rounded-2xl p-5 space-y-3">
+          <div className="flex items-baseline justify-between gap-3">
+            <div>
+              <div className="text-[10px] uppercase tracking-widest text-accent font-semibold">
+                Current focus block
               </div>
-              <div className="flex-1 min-w-0">
-                {day ? (
-                  <>
-                    <div className="font-semibold">
-                      {lockedTemplate
-                        ? `${CATEGORY_LABELS[day.category]} — ${lockedTemplate.name}`
-                        : CATEGORY_LABELS[day.category]}
-                    </div>
-                    <div className="text-xs text-text-dim mt-0.5">
-                      {lockedTemplate ? lockedTemplate.description : CATEGORY_BLURBS[day.category]}
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-text-dim italic">Rest day</div>
-                )}
-              </div>
-              <span className="text-xs text-text-dim">Edit ›</span>
+              <div className="text-2xl font-bold mt-1">{focus.name}</div>
+            </div>
+            <div className="text-xs text-text-dim shrink-0">
+              Week {weekNum} of {focus.durationWeeks}
+            </div>
+          </div>
+          <div className="h-1 bg-border rounded-full overflow-hidden">
+            <div className="h-full bg-accent" style={{ width: `${progressPct}%` }} />
+          </div>
+          <div className="flex items-center justify-between text-xs text-text-dim">
+            <span>Started {format(new Date(focus.startedAt), "MMM d")}</span>
+            <button onClick={endBlock} className="text-text-muted underline">
+              End block
             </button>
-          );
-        })}
-      </div>
+          </div>
+        </section>
+      )}
 
-      <section className="space-y-3 pt-2">
-        <h2 className="text-xs uppercase tracking-widest text-text-dim font-semibold">
-          Quick presets
-        </h2>
-        <div className="space-y-2">
-          {presets.map((p, i) => (
+      {blockState === "completed" && focus && (
+        <section className="bg-bg-card border border-border rounded-2xl p-5 space-y-3">
+          <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold">
+            Block complete
+          </div>
+          <div className="text-lg font-semibold">
+            {focus.name} — {focus.durationWeeks} weeks done.
+          </div>
+          <p className="text-sm text-text-muted">
+            Pick your next focus below, or end the block to stay on this pattern without a target.
+          </p>
+          <button
+            onClick={endBlock}
+            className="text-xs text-text-dim underline"
+          >
+            End block
+          </button>
+        </section>
+      )}
+
+      {blockState === "none" && (
+        <section className="bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/30 rounded-2xl p-5">
+          <div className="text-[10px] uppercase tracking-widest text-accent font-semibold">
+            Pick a focus block
+          </div>
+          <p className="text-sm text-text-muted mt-2 leading-snug">
+            A block is 1–8 weeks with a clear intent — Hypertrophy, Cardio base,
+            Athletic, Recovery. The whole app adapts to it. You can end early or
+            switch anytime.
+          </p>
+          <button
+            onClick={() => setShowPresets(true)}
+            className="mt-3 text-sm text-accent font-semibold"
+          >
+            Choose a block →
+          </button>
+        </section>
+      )}
+
+      <section className="space-y-2">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-xs uppercase tracking-widest text-text-dim font-semibold">
+            {blockState === "active" ? "This block's week" : "Weekly pattern"}
+          </h2>
+          {blockState === "active" && (
             <button
-              key={i}
-              onClick={() => applyPreset(p.days)}
-              className="w-full text-left bg-bg-card border border-border rounded-xl px-4 py-3 hover:border-accent/40 transition-colors"
+              onClick={() => setShowPresets((v) => !v)}
+              className="text-xs text-accent"
             >
-              <div className="text-sm">{p.label}</div>
+              {showPresets ? "Hide" : "Change block"}
             </button>
-          ))}
+          )}
+        </div>
+        <p className="text-xs text-text-dim">{patternIntro}</p>
+
+        <div className="space-y-2 pt-1">
+          {plan.days.map((day, i) => {
+            const isToday = i === todayIdx;
+            const lockedTemplate = day?.templateId
+              ? templatesFor(day.category).find((t) => t.id === day.templateId)
+              : null;
+            return (
+              <button
+                key={i}
+                onClick={() => setEditingDay(i)}
+                className={clsx(
+                  "w-full text-left rounded-2xl border p-4 transition-colors flex items-center gap-4",
+                  isToday
+                    ? "bg-accent/10 border-accent/40"
+                    : "bg-bg-card border-border"
+                )}
+              >
+                <div className={clsx("w-14 text-center", isToday ? "text-accent" : "text-text-dim")}>
+                  <div className="text-[10px] uppercase tracking-widest font-bold">
+                    {DAY_LABELS_LONG[i].slice(0, 3)}
+                  </div>
+                  {isToday && (
+                    <div className="text-[10px] mt-0.5 font-semibold uppercase tracking-widest">
+                      Today
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  {day ? (
+                    <>
+                      <div className="font-semibold">
+                        {lockedTemplate
+                          ? `${CATEGORY_LABELS[day.category]} — ${lockedTemplate.name}`
+                          : CATEGORY_LABELS[day.category]}
+                      </div>
+                      <div className="text-xs text-text-dim mt-0.5">
+                        {lockedTemplate ? lockedTemplate.description : CATEGORY_BLURBS[day.category]}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-text-dim italic">Rest day</div>
+                  )}
+                </div>
+                <span className="text-xs text-text-dim">Edit ›</span>
+              </button>
+            );
+          })}
         </div>
       </section>
+
+      {(blockState !== "active" || showPresets) && (
+        <section className="space-y-3 pt-2">
+          <h2 className="text-xs uppercase tracking-widest text-text-dim font-semibold">
+            {blockState === "completed" ? "Pick your next block" : "Focus blocks"}
+          </h2>
+          <p className="text-xs text-text-dim">
+            Each block sets the weekly pattern + tags Home with "Week X of N".
+          </p>
+          <div className="space-y-2">
+            {presets.map((p, i) => (
+              <button
+                key={i}
+                onClick={() => applyPreset(p)}
+                className="w-full text-left bg-bg-card border border-border rounded-xl px-4 py-3 hover:border-accent/40 transition-colors"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm">{p.label}</div>
+                  <div className="text-[10px] uppercase tracking-widest text-text-dim shrink-0">
+                    {p.durationWeeks}w
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       <button
         onClick={reset}
@@ -201,11 +398,6 @@ export default function PlanPage() {
       >
         Reset to default plan
       </button>
-
-      <p className="text-xs text-text-dim text-center pt-2">
-        On a planned day, the Home screen shows you exactly what to do.
-        You can always override by tapping a different category from Train.
-      </p>
 
       {editingDay !== null && (
         <DayPicker
@@ -279,7 +471,7 @@ function DayPicker({
               <div className="text-xs text-text-dim mt-0.5">Active recovery encouraged</div>
             </button>
 
-            {CATEGORIES.map((cat) => (
+            {CATEGORIES.filter((c) => c !== "sport").map((cat) => (
               <button
                 key={cat}
                 onClick={() => {

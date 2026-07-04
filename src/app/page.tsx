@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { format, startOfWeek, addDays } from "date-fns";
+import { format, startOfWeek, addDays, differenceInCalendarDays } from "date-fns";
 import { useLiveQuery } from "dexie-react-hooks";
 import clsx from "clsx";
 import { cleanupStaleDrafts, db, getProfile, getWeeklyPlan } from "@/lib/db";
@@ -117,6 +117,10 @@ export default function HomePage() {
         </Link>
       )}
 
+      {profile?.currentFocus && (
+        <FocusIndicator focus={profile.currentFocus} />
+      )}
+
       {/* TODAY's primary CTA */}
       {todaysSession ? (
         <TodaysSessionCard session={todaysSession} />
@@ -205,6 +209,43 @@ export default function HomePage() {
         </section>
       )}
     </div>
+  );
+}
+
+function FocusIndicator({
+  focus,
+}: {
+  focus: NonNullable<Profile["currentFocus"]>;
+}) {
+  const daysIn = Math.max(0, differenceInCalendarDays(new Date(), new Date(focus.startedAt)));
+  const weekNum = Math.floor(daysIn / 7) + 1;
+  const done = weekNum > focus.durationWeeks;
+  const totalDays = focus.durationWeeks * 7;
+  const pct = Math.min(100, Math.round((daysIn / totalDays) * 100));
+
+  return (
+    <Link
+      href="/plan"
+      className="block bg-bg-card border border-border rounded-2xl px-4 py-3 hover:border-accent/40 transition-colors"
+    >
+      <div className="flex items-baseline justify-between gap-3">
+        <div>
+          <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold">
+            Focus block
+          </div>
+          <div className="text-sm font-medium mt-0.5">{focus.name}</div>
+        </div>
+        <div className="text-xs text-text-dim shrink-0">
+          {done ? "block complete →" : `Week ${weekNum} of ${focus.durationWeeks}`}
+        </div>
+      </div>
+      <div className="mt-2 h-1 bg-border rounded-full overflow-hidden">
+        <div
+          className="h-full bg-accent"
+          style={{ width: `${done ? 100 : pct}%` }}
+        />
+      </div>
+    </Link>
   );
 }
 
