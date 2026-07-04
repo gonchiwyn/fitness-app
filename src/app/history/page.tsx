@@ -1,11 +1,12 @@
 "use client";
 
 import { useLiveQuery } from "dexie-react-hooks";
-import { format, parseISO } from "date-fns";
+import { addDays, format, parseISO, startOfWeek } from "date-fns";
 import Link from "next/link";
+import clsx from "clsx";
 import { db, deleteSession } from "@/lib/db";
 import { getExercise } from "@/lib/data/exercises";
-import { CATEGORY_LABELS } from "@/lib/types";
+import { CATEGORY_LABELS, DAY_LABELS_SHORT, type Category, type Session } from "@/lib/types";
 
 export default function HistoryPage() {
   // Filter out drafts (previews that were never started)
@@ -81,6 +82,10 @@ export default function HistoryPage() {
           </div>
         </div>
       </section>
+
+      <ConsistencyCalendar sessions={sessions} />
+
+
 
       {topCategories.length > 0 && (
         <section>
@@ -194,6 +199,122 @@ export default function HistoryPage() {
         </div>
       </section>
     </div>
+  );
+}
+
+// Category → chip color for the calendar cells
+const CAT_COLORS: Partial<Record<Category, string>> = {
+  split: "bg-accent",
+  hypertrophy: "bg-accent",
+  strength: "bg-accent",
+  hyrox: "bg-emerald-500",
+  athlete: "bg-emerald-500",
+  core: "bg-fuchsia-500",
+  cardio: "bg-sky-500",
+  crossfit: "bg-orange-500",
+  surf: "bg-cyan-500",
+  burn: "bg-rose-500",
+  stretching: "bg-violet-500",
+  recovery: "bg-teal-500",
+  beach: "bg-amber-500",
+  test: "bg-white",
+};
+
+function ConsistencyCalendar({ sessions }: { sessions: Session[] }) {
+  // 12 weeks, ending with current week. Rows = weeks (oldest → newest), cols = Mon–Sun.
+  const WEEKS = 12;
+  const today = new Date();
+  const currentWeekStart = startOfWeek(today, { weekStartsOn: 1 });
+
+  const byDate = new Map<string, Session>();
+  for (const s of sessions) {
+    if (!s.finishedAt) continue;
+    if (!byDate.has(s.date)) byDate.set(s.date, s);
+  }
+
+  const rows: { weekStart: Date; days: (Session | null)[] }[] = [];
+  for (let w = WEEKS - 1; w >= 0; w--) {
+    const weekStart = addDays(currentWeekStart, -w * 7);
+    const days: (Session | null)[] = [];
+    for (let d = 0; d < 7; d++) {
+      const date = addDays(weekStart, d);
+      const key = format(date, "yyyy-MM-dd");
+      days.push(byDate.get(key) ?? null);
+    }
+    rows.push({ weekStart, days });
+  }
+
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-xs uppercase tracking-widest text-text-dim font-semibold">
+          Last {WEEKS} weeks
+        </h2>
+        <span className="text-[10px] text-text-dim">
+          {sessions.filter((s) => s.finishedAt).length} sessions total
+        </span>
+      </div>
+      <div className="bg-bg-card border border-border rounded-2xl p-3">
+        <div className="grid grid-cols-[auto_repeat(7,1fr)] gap-1 items-center">
+          <div />
+          {DAY_LABELS_SHORT.map((d) => (
+            <div key={d} className="text-[8px] uppercase tracking-widest text-text-dim text-center">
+              {d[0]}
+            </div>
+          ))}
+          {rows.map((row, ri) => {
+            const monthLabel =
+              ri === 0 || row.weekStart.getDate() <= 7 ? format(row.weekStart, "MMM") : "";
+            return (
+              <div key={ri} className="contents">
+                <div className="text-[9px] text-text-dim tabular-nums text-right pr-1">
+                  {monthLabel}
+                </div>
+                {row.days.map((session, di) => {
+                  const date = addDays(row.weekStart, di);
+                  const inFuture = date > today;
+                  const dateStr = format(date, "yyyy-MM-dd");
+                  const cat = session?.category;
+                  const bgClass = session && cat ? CAT_COLORS[cat] ?? "bg-accent" : "";
+                  return (
+                    <Link
+                      key={di}
+                      href={session?.id ? `/history#${session.id}` : "#"}
+                      title={session ? `${session.name} · ${format(date, "EEE MMM d")}` : dateStr}
+                      className={clsx(
+                        "aspect-square rounded transition-opacity",
+                        inFuture && "opacity-20",
+                        session ? bgClass : "bg-bg border border-border",
+                        !session && "pointer-events-none"
+                      )}
+                    />
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border/50">
+          <span className="text-[9px] text-text-dim uppercase tracking-widest">Legend</span>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded bg-accent" />
+            <span className="text-[9px] text-text-dim">Strength</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded bg-emerald-500" />
+            <span className="text-[9px] text-text-dim">Athletic</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded bg-sky-500" />
+            <span className="text-[9px] text-text-dim">Cardio</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded bg-fuchsia-500" />
+            <span className="text-[9px] text-text-dim">Core</span>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 

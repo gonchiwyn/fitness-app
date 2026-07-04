@@ -6,6 +6,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { format, parseISO } from "date-fns";
 import clsx from "clsx";
 import { db } from "@/lib/db";
+import { useBodyScrollLock } from "@/lib/useBodyScrollLock";
 import {
   BENCHMARK_META,
   BENCHMARK_TYPES,
@@ -127,6 +128,7 @@ function LogModal({
   onClose: () => void;
   onLogged: () => void;
 }) {
+  useBodyScrollLock(true);
   const meta = BENCHMARK_META[type];
   const [value, setValue] = useState("");
   const [notes, setNotes] = useState("");

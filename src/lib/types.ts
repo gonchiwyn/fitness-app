@@ -137,6 +137,10 @@ export type Prescription = {
   rpe?: number;
   loadHint?: string;
   notes?: string;
+  // Rotation pool: if set, generator picks ONE exerciseId from this list per session.
+  // Same day/seed = same pick, so it's stable within a session but varies day-to-day.
+  // Anchor exercises leave this undefined; accessories use pools for variety.
+  pool?: string[];
 };
 
 export type Block = {
@@ -283,15 +287,13 @@ export type RunBenchmark = {
 // ============================================================
 // MODIFIERS — apply at generation time to adapt the workout
 // ============================================================
-// 5 chips instead of 3 — more granular but still one-tap
-export type Intensity = "rest" | "easy" | "normal" | "hard" | "push";
+// 3 modes — a gut choice, not a slider. Each shifts multiple dials at once.
+export type Intensity = "easy" | "normal" | "push";
 
 export const INTENSITY_LABELS: Record<Intensity, { label: string; sub: string }> = {
-  rest: { label: "Rest", sub: "recovery" },
-  easy: { label: "Easy", sub: "lighter" },
+  easy: { label: "Easy", sub: "lighter, shorter rest" },
   normal: { label: "Normal", sub: "as planned" },
-  hard: { label: "Hard", sub: "step it up" },
-  push: { label: "Push", sub: "all in" },
+  push: { label: "Push", sub: "heavier, chase RPE 9" },
 };
 
 export const EQUIPMENT_PRESETS = [
@@ -367,6 +369,23 @@ export type BenchmarkMeta = {
   higherIsBetter: boolean;
   group: "strength" | "power" | "endurance" | "mobility";
   description: string;
+};
+
+// Which benchmark does a given exercise map to when used in a Test-category workout?
+export const EXERCISE_TO_BENCHMARK: Record<string, BenchmarkType> = {
+  bench_press: "bench_1rm",
+  back_squat: "squat_1rm",
+  deadlift: "deadlift_1rm",
+  overhead_press: "ohp_1rm",
+  pullup: "pullup_max",
+  weighted_pullup: "pullup_max",
+  chinup: "pullup_max",
+  broad_jump: "broad_jump_cm",
+  seated_box_jump: "vertical_jump_cm",
+  box_jump: "vertical_jump_cm",
+  farmer_carry: "farmer_carry_sec",
+  run: "cooper_12min_m",
+  plank: "plank_sec",
 };
 
 export const BENCHMARK_META: Record<BenchmarkType, BenchmarkMeta> = {
@@ -445,7 +464,14 @@ export type Profile = {
   levels?: Partial<Record<Category, Level>>;
   // Periodization — 4-week wave: base → +3% → +6% → deload
   periodizationEnabled?: boolean;
-  programStartDate?: string;   // yyyy-MM-dd
+  programStartDate?: string;
+  // Currently-active issues — drives injury swaps in the generator.
+  // Text `injuryHistory` above is just context/description.
+  activeConcerns?: RehabZone[];
+  // Chronic lumbar care — always-on emphasis without blanket swaps.
+  // Caps intensity on hinge/squat, always includes glute activation in warmup.
+  // Does NOT swap back squat / OHP wholesale.
+  chronicLumbarCare?: boolean;
   onboarded?: boolean;
 };
 

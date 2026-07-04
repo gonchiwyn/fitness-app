@@ -30,6 +30,12 @@ export const PERSONAL_PROFILE: Profile = {
   },
   defaultEquipment: "full_gym",
   coreFocus: "protection",
+  // Shoulder recovered — no active concerns. Text history stays as context.
+  // Turn on/off from Settings when something flares up.
+  activeConcerns: [],
+  // Lumbar is chronic — keep caps on hinge/squat + glute-forward warmup,
+  // but don't blanket-swap squats/deadlifts.
+  chronicLumbarCare: true,
   // Per-category proficiency. Pro at lifting, starter at Hyrox/CrossFit.
   levels: {
     split: "pro",

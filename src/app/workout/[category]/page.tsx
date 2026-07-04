@@ -5,16 +5,21 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { format } from "date-fns";
 import clsx from "clsx";
-import { db, getProfile } from "@/lib/db";
+import { db, getProfile, saveProfile } from "@/lib/db";
+import { useBodyScrollLock } from "@/lib/useBodyScrollLock";
 import { findSwapAlternatives, generateWorkout } from "@/lib/generator";
 import { EXERCISES, getExercise } from "@/lib/data/exercises";
 import {
+  BENCHMARK_META,
   CATEGORIES,
   CATEGORY_LABELS,
+  CORE_FOCUS_LABELS,
   EQUIPMENT_PRESET_INCLUDES,
+  EXERCISE_TO_BENCHMARK,
   INTENSITY_LABELS,
   type Category,
   type CoachInfluence,
+  type CoreFocus,
   type EquipmentPreset,
   type Intensity,
   type LoggedBlock,
@@ -77,6 +82,9 @@ export default function WorkoutForCategory({
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [corePickerOpen, setCorePickerOpen] = useState(false);
+  // When true, all collapsible blocks force expand — used for Print/PDF export
+  const [printExpandAll, setPrintExpandAll] = useState(false);
 
   useEffect(() => {
     if (!validCat) return;
@@ -211,7 +219,14 @@ export default function WorkoutForCategory({
           <Link href="/workout" className="text-text-dim text-sm">← Categories</Link>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => window.print()}
+              onClick={() => {
+                setPrintExpandAll(true);
+                // Give React one frame to render all blocks expanded before printing
+                setTimeout(() => {
+                  window.print();
+                  setPrintExpandAll(false);
+                }, 100);
+              }}
               className="text-xs text-text-dim hover:text-text-muted px-3 py-1.5 rounded-lg border border-border"
               aria-label="Print or save as PDF"
               title="Print or save as PDF"
@@ -245,13 +260,13 @@ export default function WorkoutForCategory({
           </div>
         </div>
 
-        {/* READINESS CHECK-IN — front and center */}
+        {/* READINESS CHECK-IN — front and center. 3 modes, gut choice. */}
         <div className="bg-bg-card border border-border rounded-2xl p-3">
           <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold mb-2 px-1">
             How do you feel today?
           </div>
-          <div className="grid grid-cols-5 gap-1.5">
-            {(["rest", "easy", "normal", "hard", "push"] as Intensity[]).map((i) => (
+          <div className="grid grid-cols-3 gap-2">
+            {(["easy", "normal", "push"] as Intensity[]).map((i) => (
               <ReadinessChip
                 key={i}
                 active={currentIntensity === i}
@@ -262,6 +277,22 @@ export default function WorkoutForCategory({
             ))}
           </div>
         </div>
+
+        {/* Mode banner — category-aware description of what actually changed */}
+        {currentIntensity !== "normal" && (
+          <div className={clsx(
+            "rounded-xl px-3 py-2 border text-xs",
+            currentIntensity === "push"
+              ? "bg-accent/10 border-accent/40 text-accent"
+              : "bg-bg-card border-border text-text-muted"
+          )}>
+            <span className="font-bold uppercase tracking-widest">
+              {INTENSITY_LABELS[currentIntensity].label} mode
+            </span>
+            {" — "}
+            {intensityBannerText(cat, currentIntensity)}
+          </div>
+        )}
 
       </header>
 
@@ -296,22 +327,33 @@ export default function WorkoutForCategory({
 
       {/* BLOCKS */}
       <div className="space-y-4">
-        {session.blocks.map((block, bi) => (
-          <BlockCard
-            key={bi}
-            block={block}
-            units={profile.units}
-            availableEquipment={resolveEquipmentForUI(session.modifiers, profile.defaultEquipment)}
-            onUpdate={(updated) =>
-              update((s) => {
-                const blocks = [...s.blocks];
-                blocks[bi] = updated;
-                return { ...s, blocks };
-              })
-            }
-            onSwap={(pi, newId) => swapExercise(bi, pi, newId)}
-          />
-        ))}
+        {(() => {
+          // Every exercise already in the workout — swap alternatives filter against this
+          const usedInSession = new Set<string>();
+          for (const b of session.blocks) {
+            for (const p of b.prescriptions) usedInSession.add(p.exerciseId);
+          }
+          return session.blocks.map((block, bi) => (
+            <BlockCard
+              key={bi}
+              block={block}
+              units={profile.units}
+              category={cat}
+              availableEquipment={resolveEquipmentForUI(session.modifiers, profile.defaultEquipment)}
+              usedInSession={usedInSession}
+              forceExpanded={printExpandAll}
+              onChangeCoreFocus={() => setCorePickerOpen(true)}
+              onUpdate={(updated) =>
+                update((s) => {
+                  const blocks = [...s.blocks];
+                  blocks[bi] = updated;
+                  return { ...s, blocks };
+                })
+              }
+              onSwap={(pi, newId) => swapExercise(bi, pi, newId)}
+            />
+          ));
+        })()}
       </div>
 
       {pickerOpen && (
@@ -327,6 +369,20 @@ export default function WorkoutForCategory({
             regenerateWithModifiers({ ...(session.modifiers ?? {}), templateId: id });
           }}
           onClose={() => setPickerOpen(false)}
+        />
+      )}
+
+      {corePickerOpen && (
+        <CoreFocusPicker
+          current={profile.coreFocus ?? "protection"}
+          onPick={async (focus) => {
+            setCorePickerOpen(false);
+            await saveProfile({ coreFocus: focus });
+            setProfile({ ...profile, coreFocus: focus });
+            // Regenerate the current workout so the new core block appears
+            regenerateWithModifiers(session.modifiers ?? {});
+          }}
+          onClose={() => setCorePickerOpen(false)}
         />
       )}
 
@@ -419,6 +475,32 @@ function ReadinessChip({
   );
 }
 
+// Describe what actually changes in a category when intensity shifts.
+// Purely informational text — the real math is in the generator.
+function intensityBannerText(category: Category, intensity: Intensity): string {
+  const CARDIO_LIKE: Category[] = ["cardio", "recovery", "stretching"];
+  const push = intensity === "push";
+  if (CARDIO_LIKE.includes(category)) {
+    return push
+      ? "durations extended +20%, chase upper end of the zone"
+      : "durations shortened -25%, easier pace";
+  }
+  if (category === "hyrox" || category === "crossfit" || category === "burn" || category === "athlete") {
+    return push
+      ? "loads +8%, intervals extended, +1 set on main lifts"
+      : "loads -12%, intervals shortened, fewer sets";
+  }
+  if (category === "test") {
+    return push
+      ? "aim for a PR — full send with adequate rest"
+      : "back off — retest another day if not feeling it";
+  }
+  // Strength / Hypertrophy / Split / Beach / Core
+  return push
+    ? "loads +8%, +1 set on main lifts"
+    : "loads -12%, -1 set on accessories";
+}
+
 function resolveEquipmentForUI(
   modifiers: WorkoutModifiers | undefined,
   defaultEq: EquipmentPreset | undefined
@@ -433,13 +515,21 @@ function resolveEquipmentForUI(
 function BlockCard({
   block,
   units,
+  category,
   availableEquipment,
+  usedInSession,
+  forceExpanded,
+  onChangeCoreFocus,
   onUpdate,
   onSwap,
 }: {
   block: LoggedBlock;
   units: "kg" | "lb";
+  category: Category;
   availableEquipment: Set<string>;
+  usedInSession: Set<string>;
+  forceExpanded: boolean;
+  onChangeCoreFocus: () => void;
   onUpdate: (b: LoggedBlock) => void;
   onSwap: (prescIdx: number, newExerciseId: string) => void;
 }) {
@@ -447,8 +537,9 @@ function BlockCard({
   const isCooldown = block.title === "Cooldown";
   const isCore = block.title === "Core";
 
-  // Collapse warmup/cooldown by default; main + core open
+  // Collapse warmup/cooldown by default; main + core open. Print force-expands all.
   const [collapsed, setCollapsed] = useState(isWarmup || isCooldown);
+  const effectivelyCollapsed = collapsed && !forceExpanded;
 
   // Block scheme detection (only used for visible grouping label)
   const scheme = (block as { scheme?: string }).scheme ?? "";
@@ -463,8 +554,20 @@ function BlockCard({
       >
         <div className="flex items-center gap-3">
           <div className="flex-1">
-            <div className="text-xs uppercase tracking-[0.18em] text-text-dim font-bold">
-              {block.title}
+            <div className="text-xs uppercase tracking-[0.18em] text-text-dim font-bold flex items-center gap-2">
+              <span>{block.title}</span>
+              {isCore && (
+                <span
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onChangeCoreFocus();
+                  }}
+                  className="text-[10px] normal-case tracking-normal text-accent hover:underline no-print"
+                >
+                  Change
+                </span>
+              )}
             </div>
             {scheme && (
               <div className={clsx(
@@ -482,7 +585,7 @@ function BlockCard({
           </div>
         </div>
         <svg
-          className={clsx("w-5 h-5 text-text-dim transition-transform shrink-0 ml-2", !collapsed && "rotate-180")}
+          className={clsx("w-5 h-5 text-text-dim transition-transform shrink-0 ml-2 no-print", !effectivelyCollapsed && "rotate-180")}
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -492,7 +595,7 @@ function BlockCard({
         </svg>
       </button>
 
-      {!collapsed && (
+      {!effectivelyCollapsed && (
         <div className="border-t border-border/50">
           {block.note && (
             <div className="px-4 pt-3 text-xs italic text-text-dim">{block.note}</div>
@@ -519,7 +622,9 @@ function BlockCard({
                 isWarmup={isWarmup}
                 isCooldown={isCooldown}
                 isCore={isCore}
+                category={category}
                 availableEquipment={availableEquipment}
+                usedInSession={usedInSession}
                 onSwap={(newId) => onSwap(pi, newId)}
               />
             ))}
@@ -537,7 +642,9 @@ function ExerciseCard({
   totalInGroup,
   isWarmup,
   isCooldown,
+  category,
   availableEquipment,
+  usedInSession,
   onSwap,
 }: {
   prescription: LoggedPrescription;
@@ -547,15 +654,40 @@ function ExerciseCard({
   isWarmup: boolean;
   isCooldown: boolean;
   isCore: boolean;
+  category: Category;
   availableEquipment: Set<string>;
+  usedInSession: Set<string>;
   onSwap: (newExerciseId: string) => void;
 }) {
   const [showSwaps, setShowSwaps] = useState(false);
   const [showHowTo, setShowHowTo] = useState(false);
+  const [showBenchmarkLog, setShowBenchmarkLog] = useState(false);
+  const [benchmarkValue, setBenchmarkValue] = useState("");
+  const [benchmarkSaved, setBenchmarkSaved] = useState(false);
 
   const exercise = getExercise(prescription.exerciseId);
+  // Test-category exercises may map to a benchmark for inline logging
+  const benchmarkType =
+    category === "test" ? EXERCISE_TO_BENCHMARK[prescription.exerciseId] : undefined;
 
-  const swapIds = findSwapAlternatives(prescription.exerciseId, availableEquipment as Set<never>, 4);
+  const saveBenchmark = async () => {
+    if (!benchmarkType) return;
+    const num = parseFloat(benchmarkValue);
+    if (!Number.isFinite(num) || num <= 0) return;
+    const today = format(new Date(), "yyyy-MM-dd");
+    await db.benchmarks.add({ date: today, type: benchmarkType, value: num });
+    setBenchmarkSaved(true);
+    setShowBenchmarkLog(false);
+    setBenchmarkValue("");
+    setTimeout(() => setBenchmarkSaved(false), 3000);
+  };
+
+  const swapIds = findSwapAlternatives(
+    prescription.exerciseId,
+    availableEquipment as Set<never>,
+    4,
+    usedInSession
+  );
 
   // Letter labels for supersets: A1, A2 / B1, B2
   const isGrouped = blockMode !== "straight" && totalInGroup > 1;
@@ -647,6 +779,61 @@ function ExerciseCard({
         </div>
       )}
 
+      {/* Inline benchmark log — only for Test-category exercises with a mapping */}
+      {benchmarkType && (
+        <div className="mt-3 no-print">
+          {benchmarkSaved ? (
+            <div className="text-xs text-success bg-success/10 border border-success/30 rounded-lg px-3 py-2">
+              ✓ Saved to Benchmarks
+            </div>
+          ) : !showBenchmarkLog ? (
+            <button
+              onClick={() => setShowBenchmarkLog(true)}
+              className="text-[11px] text-accent border border-accent/40 rounded-lg px-3 py-1.5 hover:bg-accent/10"
+            >
+              Log result →
+            </button>
+          ) : (
+            <div className="p-3 bg-bg rounded-lg border border-border space-y-2">
+              <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold">
+                Log to Benchmarks · {BENCHMARK_META[benchmarkType].label}
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.5"
+                  autoFocus
+                  value={benchmarkValue}
+                  onChange={(e) => setBenchmarkValue(e.target.value)}
+                  placeholder="Value"
+                  className="flex-1 h-10 px-3 bg-bg-card border border-border rounded-lg text-center tabular-nums focus:outline-none focus:border-accent"
+                />
+                <span className="text-sm text-text-muted">
+                  {BENCHMARK_META[benchmarkType].unit}
+                </span>
+                <button
+                  onClick={saveBenchmark}
+                  disabled={!benchmarkValue}
+                  className="h-10 px-4 rounded-lg bg-accent text-black font-semibold text-sm disabled:bg-bg-card disabled:text-text-dim"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => {
+                    setShowBenchmarkLog(false);
+                    setBenchmarkValue("");
+                  }}
+                  className="h-10 px-3 rounded-lg text-text-dim text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Swap UI */}
       {showSwaps && (
         <div className="mt-3 p-3 bg-bg rounded-lg border border-border space-y-1.5 no-print">
@@ -690,6 +877,54 @@ function Stat({ big, label, muted }: { big: string; label: string; muted?: boole
       {label && (
         <div className="text-[9px] uppercase tracking-widest text-text-dim mt-0.5">{label}</div>
       )}
+    </div>
+  );
+}
+
+function CoreFocusPicker({
+  current,
+  onPick,
+  onClose,
+}: {
+  current: CoreFocus;
+  onPick: (focus: CoreFocus) => void;
+  onClose: () => void;
+}) {
+  useBodyScrollLock(true);
+  const options: CoreFocus[] = ["off", "protection", "aesthetic", "both"];
+  return (
+    <div
+      className="fixed inset-0 bg-black/70 z-50 flex items-end sm:items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-bg-elevated border border-border rounded-2xl p-5 max-w-md w-full"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold">Core focus</h3>
+          <button onClick={onClose} className="text-text-dim text-2xl leading-none">×</button>
+        </div>
+        <p className="text-sm text-text-muted mb-4">
+          Auto-injects a Core block at the end of every workout (Stretching / Recovery / Cardio excluded).
+        </p>
+        <div className="space-y-1.5">
+          {options.map((c) => (
+            <button
+              key={c}
+              onClick={() => onPick(c)}
+              className={clsx(
+                "w-full text-left p-3 rounded-xl border transition-colors",
+                c === current
+                  ? "bg-accent/10 border-accent/40"
+                  : "bg-bg-card border-border hover:border-accent/40"
+              )}
+            >
+              <div className="font-medium">{CORE_FOCUS_LABELS[c]}</div>
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

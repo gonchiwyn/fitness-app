@@ -110,12 +110,10 @@ function targetPercentForCategory(
   }
 
   if (base === null) return null;
-  // 5-chip intensity: -15% for rest, -8% for easy, 0 for normal, +4% for hard, +8% for push
+  // 3-mode intensity — wider deltas so the effect is visible on load hints
   const delta: Record<Intensity, number> = {
-    rest: -15,
-    easy: -8,
+    easy: -12,
     normal: 0,
-    hard: 4,
     push: 8,
   };
   base += delta[intensity] ?? 0;
@@ -131,19 +129,6 @@ function roundToIncrement(weight: number, units: "kg" | "lb"): number {
 // INJURY / REHAB
 // ============================================================
 type InjuryFlag = "knee" | "shoulder" | "lower_back" | "elbow" | "hip" | "neck";
-
-function parseInjuries(text?: string): Set<InjuryFlag> {
-  const flags = new Set<InjuryFlag>();
-  if (!text) return flags;
-  const t = text.toLowerCase();
-  if (/(knee|patellar|meniscus|acl|mcl|rodilla)/.test(t)) flags.add("knee");
-  if (/(shoulder|rotator|cuff|labr|impinge|ac joint|hombro|manguito)/.test(t)) flags.add("shoulder");
-  if (/(lower back|low back|lumbar|disc|sciatic|herni|spine|espalda|lumbar)/.test(t)) flags.add("lower_back");
-  if (/(elbow|tennis elbow|golfer|codo)/.test(t)) flags.add("elbow");
-  if (/(\bhip\b|labrum|fai|cadera)/.test(t)) flags.add("hip");
-  if (/(neck|cervical|cuello)/.test(t)) flags.add("neck");
-  return flags;
-}
 
 // Each entry is a CHAIN of preferred swaps. Generator tries them in order,
 // skipping any that are already used earlier in the same workout.
@@ -534,7 +519,8 @@ async function buildLoadHint(
       if (pct) {
         // Cap on lumbar-sensitive lifts
         let cautionTag = "";
-        if (LUMBAR_SENSITIVE_LIFTS.has(exId)) {
+        // Lumbar caps only when user opts in via chronicLumbarCare
+        if (profile.chronicLumbarCare && LUMBAR_SENSITIVE_LIFTS.has(exId)) {
           if (pct > 78) {
             pct = Math.min(pct, 78);
             cautionTag = " · brace 360, no grinders";
@@ -563,7 +549,7 @@ async function buildLoadHint(
 
   const repsTarget = parseInt(prescription.reps, 10);
   const lastReps = sets[0].reps ?? 0;
-  const pushingIt = intensity === "push" || intensity === "hard";
+  const pushingIt = intensity === "push";
   if (
     pushingIt &&
     Number.isFinite(repsTarget) &&
@@ -691,6 +677,25 @@ function applyRehabAdjustments(blocks: Block[], rehab: RehabZone): Block[] {
 // Doesn't apply to cardio, stretching, recovery, etc.
 const PERIODIZED_CATEGORIES: Category[] = ["strength", "hypertrophy", "split", "athlete"];
 
+// Scale any "X min" duration references in a prescription's reps text.
+// Push extends, easy shortens — so intensity feels real on cardio / stretching / mobility.
+function applyIntensityToDuration(p: Prescription, intensity: Intensity): Prescription {
+  if (intensity === "normal") return p;
+  const factor = intensity === "easy" ? 0.75 : 1.2;
+  const scaleNumber = (n: string) => {
+    const num = parseFloat(n);
+    if (!Number.isFinite(num) || num <= 0) return n;
+    const scaled = Math.max(1, Math.round(num * factor));
+    return String(scaled);
+  };
+  const newReps = p.reps
+    .replace(/(\d+(?:\.\d+)?)\s*min/g, (_, n) => `${scaleNumber(n)} min`)
+    .replace(/(\d+(?:\.\d+)?)\s*sec/g, (_, n) => `${scaleNumber(n)} sec`)
+    .replace(/(\d+(?:\.\d+)?)s(?![a-z])/g, (_, n) => `${scaleNumber(n)}s`);
+  if (newReps === p.reps) return p;
+  return { ...p, reps: newReps };
+}
+
 export async function generateWorkout(
   category: Category,
   profile: Profile,
@@ -737,7 +742,12 @@ export async function generateWorkout(
   const pool = levelFiltered.length > 0 ? levelFiltered : allTemplates;
   const template = lockedTemplate ?? pickTemplate(pool, profile, rng);
 
-  const injuryFlags = parseInjuries(profile.injuryHistory);
+  // Injury swaps only from explicitly-active concerns + per-session rehab modifier.
+  // Old behavior parsed injuryHistory text — that made past injuries permanent.
+  // Now text is just context; swaps come from what's currently affecting you.
+  const injuryFlags = new Set<InjuryFlag>(
+    (profile.activeConcerns ?? []) as InjuryFlag[]
+  );
   if (modifiers.rehab) injuryFlags.add(modifiers.rehab);
 
   const warmup = buildWarmup(profile, category, modifiers, rng, available);
@@ -753,7 +763,21 @@ export async function generateWorkout(
     const b = template.blocks[i];
     const enriched: Prescription[] = [];
     for (const rawP of b.prescriptions) {
-      let p: Prescription | null = applyInjurySwaps(rawP, injuryFlags, available, usedExerciseIds);
+      // Resolve rotation pool first — pick one exercise for this session.
+      // Prefer options not already used (variety within workout).
+      let resolvedP = rawP;
+      if (rawP.pool && rawP.pool.length > 0) {
+        const availableFromPool = rawP.pool.filter(
+          (id) => !usedExerciseIds.has(id) && EXERCISES.find((e) => e.id === id)
+        );
+        const chosen =
+          availableFromPool.length > 0
+            ? pick(availableFromPool, rng)
+            : pick(rawP.pool, rng);
+        resolvedP = { ...rawP, exerciseId: chosen };
+      }
+
+      let p: Prescription | null = applyInjurySwaps(resolvedP, injuryFlags, available, usedExerciseIds);
       p = adaptToEquipment(p, available, rng, usedExerciseIds);
       if (!p) continue;
       p = dedupeAgainstUsed(p, usedExerciseIds, available, rng);
@@ -762,6 +786,18 @@ export async function generateWorkout(
       if (phase && LIFT_ID_SET.has(p.exerciseId) && phase.setAdjustment !== 0) {
         p = { ...p, sets: Math.max(1, p.sets + phase.setAdjustment) };
       }
+
+      // Intensity mode also adjusts volume — makes readiness feel real, not cosmetic.
+      // Push: +1 set on main lifts. Easy: -1 set on accessories (never below 2).
+      if (intensity === "push" && LIFT_ID_SET.has(p.exerciseId)) {
+        p = { ...p, sets: p.sets + 1 };
+      } else if (intensity === "easy" && !LIFT_ID_SET.has(p.exerciseId) && p.sets > 2) {
+        p = { ...p, sets: p.sets - 1 };
+      }
+
+      // Scale time-based durations (cardio, stretching holds, warmup, etc.) — visible on
+      // categories where load% doesn't apply. "45 min Z2" becomes 34 min easy / 54 min push.
+      p = applyIntensityToDuration(p, intensity);
 
       const loadHint = (await buildLoadHint(p, profile, category, intensity, phase)) ?? p.loadHint;
       p = { ...p, loadHint };
@@ -821,7 +857,9 @@ export async function generateWorkout(
     seed,
     philosophy: template.philosophy,
     influences: template.influences,
-    modifiers,
+    // Always store the picked template. So subsequent modifier changes
+    // (time / equipment / readiness) preserve the workout instead of re-rolling.
+    modifiers: { ...modifiers, templateId: template.id },
     phase: phase ?? undefined,
   };
 }
@@ -843,13 +881,15 @@ function buildWorkoutName(category: Category, templateName: string, m: WorkoutMo
 export function findSwapAlternatives(
   exerciseId: string,
   available: Set<Equipment>,
-  count = 3
+  count = 3,
+  usedExerciseIds: Set<string> = new Set()
 ): string[] {
   const target = EXERCISES.find((e) => e.id === exerciseId);
   if (!target) return [];
   return EXERCISES.filter(
     (e) =>
       e.id !== exerciseId &&
+      !usedExerciseIds.has(e.id) &&
       e.pattern === target.pattern &&
       e.equipment.some((eq) => available.has(eq))
   )

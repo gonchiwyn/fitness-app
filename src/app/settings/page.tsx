@@ -12,6 +12,7 @@ import {
   EQUIPMENT_PRESETS,
   GOAL_LABELS,
   GOALS,
+  REHAB_ZONE_LABELS,
   TRACKED_LIFTS,
   getCurrentCyclePhase,
   type CoreFocus,
@@ -20,6 +21,7 @@ import {
   type Goal,
   type LiftId,
   type Profile,
+  type RehabZone,
   type Sex,
   type WarmupTarget,
 } from "@/lib/types";
@@ -385,7 +387,62 @@ export default function SettingsPage() {
         </Field>
       </Section>
 
-      <Section title="History & injuries">
+      <Section title="Current concerns">
+        <p className="text-sm text-text-muted -mt-2">
+          Only tick what&apos;s <em>currently</em> bothering you. Ticking triggers swaps
+          (e.g. bench → incline DB). Untick when it heals.
+        </p>
+        <div className="space-y-2">
+          {(["shoulder", "knee", "elbow", "hip", "neck", "lower_back"] as RehabZone[]).map((zone) => {
+            const active = (profile.activeConcerns ?? []).includes(zone);
+            return (
+              <button
+                key={zone}
+                onClick={() => {
+                  const cur = new Set(profile.activeConcerns ?? []);
+                  if (cur.has(zone)) cur.delete(zone);
+                  else cur.add(zone);
+                  update({ activeConcerns: Array.from(cur) });
+                }}
+                className={clsx(
+                  "w-full text-left p-3 rounded-xl border transition-colors flex items-center justify-between",
+                  active ? "bg-accent/10 border-accent/40" : "bg-bg-card border-border"
+                )}
+              >
+                <span className="font-medium">{REHAB_ZONE_LABELS[zone]}</span>
+                <Check active={active} />
+              </button>
+            );
+          })}
+        </div>
+      </Section>
+
+      <Section title="Chronic lumbar care">
+        <p className="text-sm text-text-muted -mt-2">
+          Always-on gentle care without blanket swaps: caps intensity on
+          hinge/squat lifts at ~78% 1RM and adds glute activation to warmup.
+          Doesn&apos;t remove exercises — trusts you to lift smart.
+        </p>
+        <button
+          onClick={() => update({ chronicLumbarCare: !profile.chronicLumbarCare })}
+          className={clsx(
+            "w-full text-left p-4 rounded-xl border transition-colors flex items-center justify-between",
+            profile.chronicLumbarCare ? "bg-accent/10 border-accent/40" : "bg-bg-card border-border"
+          )}
+        >
+          <div>
+            <div className="font-medium">{profile.chronicLumbarCare ? "On" : "Off"}</div>
+            <div className="text-xs text-text-dim mt-0.5">Tap to {profile.chronicLumbarCare ? "disable" : "enable"}</div>
+          </div>
+          <Check active={profile.chronicLumbarCare ?? false} />
+        </button>
+      </Section>
+
+      <Section title="History & context">
+        <p className="text-sm text-text-muted -mt-2">
+          Free text — informational only. Doesn&apos;t drive swaps (that&apos;s Current concerns above).
+          Useful for you to reference, and future AI coach will read it as context.
+        </p>
         <Field label="Workout history">
           <textarea
             value={profile.workoutHistory ?? ""}
@@ -400,7 +457,7 @@ export default function SettingsPage() {
             value={profile.injuryHistory ?? ""}
             onChange={(e) => update({ injuryHistory: e.target.value })}
             rows={4}
-            placeholder="Mention knee, shoulder, lower back, etc. — we'll swap risky lifts."
+            placeholder="Past injuries, surgeries, quirks. Context only — active concerns above trigger swaps."
             className="w-full p-4 bg-bg-card border border-border rounded-xl text-sm"
           />
         </Field>

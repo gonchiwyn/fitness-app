@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import clsx from "clsx";
 import { db, getWeeklyPlan, saveWeeklyPlan } from "@/lib/db";
 import { templatesFor } from "@/lib/data/templates";
+import { useBodyScrollLock } from "@/lib/useBodyScrollLock";
 import {
   CATEGORIES,
   CATEGORY_BLURBS,
@@ -229,6 +230,7 @@ function DayPicker({
   onPick: (d: PlannedDay) => void;
   onClose: () => void;
 }) {
+  useBodyScrollLock(true);
   // Step 1: category pick. Step 2 (if templates exist): optional template lock.
   const [stage, setStage] = useState<"category" | "template">(
     current ? "template" : "category"

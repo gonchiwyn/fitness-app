@@ -5,6 +5,7 @@ import clsx from "clsx";
 import { format, parseISO } from "date-fns";
 import { logRetroactiveSession } from "@/lib/db";
 import { templatesFor } from "@/lib/data/templates";
+import { useBodyScrollLock } from "@/lib/useBodyScrollLock";
 import {
   CATEGORIES,
   CATEGORY_BLURBS,
@@ -21,6 +22,7 @@ export default function QuickLogModal({
   onClose: () => void;
   onLogged: () => void;
 }) {
+  useBodyScrollLock(true);
   const [stage, setStage] = useState<"category" | "template">("category");
   const [pickedCategory, setPickedCategory] = useState<Category | null>(null);
   const [saving, setSaving] = useState(false);

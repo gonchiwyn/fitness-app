@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import clsx from "clsx";
 import { isTemplateAtLevel, templatesFor } from "@/lib/data/templates";
 import { getProfile, saveProfile } from "@/lib/db";
+import { useBodyScrollLock } from "@/lib/useBodyScrollLock";
 import {
   CATEGORY_LABELS,
   LEVEL_LABELS,
@@ -24,6 +25,7 @@ export default function TemplatePicker({
   onPickTemplate: (templateId: string) => void;
   onClose: () => void;
 }) {
+  useBodyScrollLock(true);
   const templates = templatesFor(category);
   const [level, setLevel] = useState<Level>("comfortable");
 
