@@ -13,8 +13,8 @@ import { recommendForToday, type Recommendation } from "@/lib/recommend";
 import {
   CATEGORY_BLURBS,
   CATEGORY_LABELS,
-  CATEGORY_SHORT,
   DAY_LABELS_SHORT,
+  chipShortLabel,
   dateToPlanIndex,
   normalizePlannedDay,
   type PlannedDay,
@@ -534,9 +534,14 @@ function WeekStrip({
 
           // Prefer real session data over planned data when available.
           // Use the short label — the strip is narrow; full names belong in
-          // the Today card and preview modal.
+          // the Today card and preview modal. Locked templates get their own
+          // short (Push/Pull/Legs/Z2/DL/…) so a PPL week is legible.
           const displayCategory = session?.category ?? day?.category;
-          const label = displayCategory ? CATEGORY_SHORT[displayCategory] : null;
+          const displayTemplateId =
+            session?.modifiers?.templateId ?? day?.templateId;
+          const label = displayCategory
+            ? chipShortLabel(displayCategory, displayTemplateId)
+            : null;
 
           const chipClasses = clsx(
             "rounded-xl px-1.5 py-2 text-center border transition-colors block min-h-[86px] flex flex-col",

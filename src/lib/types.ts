@@ -36,6 +36,37 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   sport: "Sport",
 };
 
+// Chip label given a category + optional locked template. Prefers a
+// template-derived short (Push, Pull, Z2, VO2, DL, …) so a PPL week
+// doesn't just say "Splt / Splt / Splt / Splt". Falls back to the
+// category short. Kept ≤4 chars so it fits in ~30px content width.
+export function chipShortLabel(
+  category: Category,
+  templateId?: string
+): string {
+  if (templateId) {
+    const t = TEMPLATE_SHORT[templateId];
+    if (t) return t;
+  }
+  return CATEGORY_SHORT[category];
+}
+
+const TEMPLATE_SHORT: Record<string, string> = {
+  split_push: "Push",
+  split_pull: "Pull",
+  split_legs: "Legs",
+  split_chest: "Chst",
+  split_back: "Back",
+  split_shoulders: "Shld",
+  split_arms: "Arms",
+  split_full_body: "Full",
+  attia_zone2_45: "Z2",
+  attia_4x4_vo2: "VO2",
+  strength_upper_a: "Uppr",
+  strength_lower_a: "Lowr",
+  strength_deadlift_day: "DL",
+};
+
 // Short labels for cramped surfaces (the 7-day week strip).
 // ≤4 chars — the chip content area is ~30px wide at 375px viewport.
 // Anything longer will get an ellipsis, which looks worse than a
