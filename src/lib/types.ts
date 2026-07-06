@@ -547,25 +547,81 @@ export type Profile = {
 };
 
 export type CyclePhase = {
-  weekInCycle: 1 | 2 | 3 | 4;
+  weekInCycle: number;
   label: string;
   description: string;
   intensityMultiplier: number;
   setAdjustment: number;
 };
 
+// Galpin-style block wave: Accumulation → Intensification → Realization → Deload.
+// Applied always when a focus block is active — this is how programs actually work.
+// Wave adapts to block duration: last week is always Deload, second-to-last is
+// Realization, first third is Accumulation, the middle is Intensification.
+export function getBlockPhase(
+  startDate: string,
+  durationWeeks: number,
+  today: Date = new Date()
+): CyclePhase {
+  const start = new Date(startDate + "T00:00:00");
+  const daysSince = Math.max(0, Math.floor((today.getTime() - start.getTime()) / 86400000));
+  const weekInBlock = Math.min(durationWeeks, Math.floor(daysSince / 7) + 1);
+  const weeksLeft = durationWeeks - weekInBlock;
+
+  const ACCUMULATION: Omit<CyclePhase, "weekInCycle"> = {
+    label: "Accumulation",
+    description: "Build volume tolerance. Reps moderate, add sets. Not the peak week.",
+    intensityMultiplier: 1.0,
+    setAdjustment: 0,
+  };
+  const INTENSIFICATION: Omit<CyclePhase, "weekInCycle"> = {
+    label: "Intensification",
+    description: "Load creeps up, reps drop slightly. Push harder, moderate volume.",
+    intensityMultiplier: 1.05,
+    setAdjustment: 0,
+  };
+  const REALIZATION: Omit<CyclePhase, "weekInCycle"> = {
+    label: "Realization",
+    description: "Peak week — biggest loads, one extra set on main lifts. Chase PRs.",
+    intensityMultiplier: 1.08,
+    setAdjustment: 1,
+  };
+  const DELOAD: Omit<CyclePhase, "weekInCycle"> = {
+    label: "Deload",
+    description: "Cut intensity ~15% and a set. CNS recovery — necessary, not optional.",
+    intensityMultiplier: 0.85,
+    setAdjustment: -1,
+  };
+
+  // Recovery-length blocks (1w) are pure deload.
+  if (durationWeeks <= 1) return { ...DELOAD, weekInCycle: weekInBlock };
+  // Final week is always deload.
+  if (weeksLeft === 0) return { ...DELOAD, weekInCycle: weekInBlock };
+  // Second-to-last is realization — unless the block is only 2 weeks
+  // (then treat as accumulation → deload).
+  if (weeksLeft === 1 && durationWeeks >= 3)
+    return { ...REALIZATION, weekInCycle: weekInBlock };
+  // First third is accumulation.
+  if (weekInBlock <= Math.ceil(durationWeeks / 3))
+    return { ...ACCUMULATION, weekInCycle: weekInBlock };
+  // Middle is intensification.
+  return { ...INTENSIFICATION, weekInCycle: weekInBlock };
+}
+
+// Legacy — kept for callers that don't know about focus blocks yet.
+// Runs a fixed 4-week Base→Build→Peak→Deload wave from a program start date.
 export function getCurrentCyclePhase(startDate: string, today: Date = new Date()): CyclePhase {
   const start = new Date(startDate + "T00:00:00");
   const daysSince = Math.max(0, Math.floor((today.getTime() - start.getTime()) / 86400000));
   const weeksSince = Math.floor(daysSince / 7);
-  const weekInCycle = ((weeksSince % 4) + 1) as 1 | 2 | 3 | 4;
-  const PHASES: Record<1 | 2 | 3 | 4, CyclePhase> = {
-    1: { weekInCycle: 1, label: "Base", description: "Establish baseline volume + intensity", intensityMultiplier: 1.0, setAdjustment: 0 },
-    2: { weekInCycle: 2, label: "Build", description: "+3% intensity — slightly heavier than last week", intensityMultiplier: 1.03, setAdjustment: 0 },
-    3: { weekInCycle: 3, label: "Peak", description: "+6% intensity, +1 set on main lifts — biggest week", intensityMultiplier: 1.06, setAdjustment: 1 },
-    4: { weekInCycle: 4, label: "Deload", description: "Cut intensity 15%, reduce a set — CNS recovery", intensityMultiplier: 0.85, setAdjustment: -1 },
+  const weekInCycle = (weeksSince % 4) + 1;
+  const PHASES: Record<number, Omit<CyclePhase, "weekInCycle">> = {
+    1: { label: "Base", description: "Establish baseline volume + intensity", intensityMultiplier: 1.0, setAdjustment: 0 },
+    2: { label: "Build", description: "+3% intensity — slightly heavier than last week", intensityMultiplier: 1.03, setAdjustment: 0 },
+    3: { label: "Peak", description: "+6% intensity, +1 set on main lifts — biggest week", intensityMultiplier: 1.06, setAdjustment: 1 },
+    4: { label: "Deload", description: "Cut intensity 15%, reduce a set — CNS recovery", intensityMultiplier: 0.85, setAdjustment: -1 },
   };
-  return PHASES[weekInCycle];
+  return { ...PHASES[weekInCycle], weekInCycle };
 }
 
 export type CoreFocus = "off" | "protection" | "aesthetic" | "both";

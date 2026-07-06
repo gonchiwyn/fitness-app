@@ -68,28 +68,32 @@ export default function PlanPage() {
     durationWeeks: number;
     days: PlannedDay[];
   }[] = [
+    // Durations per Galpin (real hypertrophy adaptation takes 5–6 weeks
+    // minimum, strength peaks want 6–8 with a real deload). Every preset
+    // holds 2× Zone 2 minimum — Attia/Patrick's non-negotiable for aerobic
+    // maintenance and mortality prevention regardless of block focus.
     {
-      label: "Hypertrophy month (PPL twice + cardio)",
+      label: "Hypertrophy month (PPL + Z2 maintenance)",
       focusName: "Hypertrophy",
-      durationWeeks: 4,
+      durationWeeks: 6,
       days: [
         { category: "split", templateId: "split_push" },
         { category: "split", templateId: "split_pull" },
+        { category: "cardio", templateId: "attia_zone2_45" },
         { category: "split", templateId: "split_legs" },
-        { category: "split", templateId: "split_push" },
         { category: "hypertrophy" },
         { category: "cardio", templateId: "attia_zone2_45" },
         null,
       ],
     },
     {
-      label: "Strength peak (heavy compounds + accessories)",
+      label: "Strength peak (heavy compounds + Z2)",
       focusName: "Strength peak",
-      durationWeeks: 4,
+      durationWeeks: 8,
       days: [
         { category: "strength", templateId: "strength_lower_a" },
         { category: "strength", templateId: "strength_upper_a" },
-        null,
+        { category: "cardio", templateId: "attia_zone2_45" },
         { category: "strength", templateId: "strength_deadlift_day" },
         { category: "split", templateId: "split_arms" },
         { category: "cardio", templateId: "attia_zone2_45" },
@@ -99,7 +103,7 @@ export default function PlanPage() {
     {
       label: "Cardio base (mostly Z2 + strength maintenance)",
       focusName: "Cardio base",
-      durationWeeks: 6,
+      durationWeeks: 8,
       days: [
         { category: "cardio", templateId: "attia_zone2_45" },
         { category: "strength" },
@@ -111,14 +115,14 @@ export default function PlanPage() {
       ],
     },
     {
-      label: "Athletic month (Hyrox + power + legs)",
+      label: "Athletic month (Hyrox + power + Z2)",
       focusName: "Athletic",
-      durationWeeks: 4,
+      durationWeeks: 6,
       days: [
         { category: "athlete" },
         { category: "hyrox" },
+        { category: "cardio", templateId: "attia_zone2_45" },
         { category: "split", templateId: "split_legs" },
-        { category: "athlete" },
         { category: "hyrox" },
         { category: "cardio", templateId: "attia_zone2_45" },
         { category: "recovery" },
@@ -139,31 +143,31 @@ export default function PlanPage() {
       ],
     },
     {
-      label: "PPL classic (Push/Pull/Legs × 2)",
+      label: "PPL classic (Push/Pull/Legs + Z2)",
       focusName: "PPL",
-      durationWeeks: 4,
+      durationWeeks: 6,
       days: [
         { category: "split", templateId: "split_push" },
         { category: "split", templateId: "split_pull" },
         { category: "split", templateId: "split_legs" },
+        { category: "cardio", templateId: "attia_zone2_45" },
         { category: "split", templateId: "split_push" },
-        { category: "split", templateId: "split_pull" },
         { category: "split", templateId: "split_legs" },
-        null,
+        { category: "cardio", templateId: "attia_zone2_45" },
       ],
     },
     {
-      label: "Bro split (chest/back/sh/arms/legs + rest)",
+      label: "Bro split (5 lifts + 2× Z2)",
       focusName: "Bro split",
-      durationWeeks: 4,
+      durationWeeks: 6,
       days: [
         { category: "split", templateId: "split_chest" },
         { category: "split", templateId: "split_back" },
+        { category: "cardio", templateId: "attia_zone2_45" },
         { category: "split", templateId: "split_shoulders" },
         { category: "split", templateId: "split_arms" },
         { category: "split", templateId: "split_legs" },
-        null,
-        null,
+        { category: "cardio", templateId: "attia_zone2_45" },
       ],
     },
     {

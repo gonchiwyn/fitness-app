@@ -7,6 +7,7 @@ import {
   CATEGORY_LABELS,
   EQUIPMENT_PRESET_INCLUDES,
   TRACKED_LIFTS,
+  getBlockPhase,
   getCurrentCyclePhase,
   type Block,
   type Category,
@@ -829,13 +830,23 @@ export async function generateWorkout(
   const intensity = modifiers.intensity ?? defaultIntensity;
   const targetMinutes = modifiers.timeMinutes ?? CATEGORY_DURATION[category];
 
-  // Cycle phase — only computed if periodization enabled and category benefits
-  const phase: CyclePhase | null =
-    profile.periodizationEnabled &&
-    profile.programStartDate &&
-    PERIODIZED_CATEGORIES.includes(category)
-      ? getCurrentCyclePhase(profile.programStartDate, date)
-      : null;
+  // Wave phase — computed automatically from the active focus block.
+  // Galpin's frame: Accumulation → Intensification → Realization → Deload
+  // spread across the block duration. No profile toggle — this is how
+  // programs actually work. Falls back to legacy programStartDate mode
+  // for old profiles that were on the manual 4-week wave.
+  let phase: CyclePhase | null = null;
+  if (PERIODIZED_CATEGORIES.includes(category)) {
+    if (profile.currentFocus?.startedAt && profile.currentFocus.durationWeeks) {
+      phase = getBlockPhase(
+        profile.currentFocus.startedAt,
+        profile.currentFocus.durationWeeks,
+        date
+      );
+    } else if (profile.periodizationEnabled && profile.programStartDate) {
+      phase = getCurrentCyclePhase(profile.programStartDate, date);
+    }
+  }
 
   // Seed includes modifiers so different combos give different workouts
   const seed =

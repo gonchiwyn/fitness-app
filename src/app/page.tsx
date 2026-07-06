@@ -16,6 +16,7 @@ import {
   DAY_LABELS_SHORT,
   chipShortLabel,
   dateToPlanIndex,
+  getBlockPhase,
   normalizePlannedDay,
   type PlannedDay,
   type Profile,
@@ -245,6 +246,11 @@ function FocusIndicator({
   const done = weekNum > focus.durationWeeks;
   const totalDays = focus.durationWeeks * 7;
   const pct = Math.min(100, Math.round((daysIn / totalDays) * 100));
+  // Same wave the generator uses — surfacing it here so the user sees why
+  // this week feels different (Realization = peak, Deload = ease off).
+  const phase = done
+    ? null
+    : getBlockPhase(focus.startedAt, focus.durationWeeks, new Date());
 
   return (
     <Link
@@ -258,8 +264,19 @@ function FocusIndicator({
           </div>
           <div className="text-sm font-medium mt-0.5">{focus.name}</div>
         </div>
-        <div className="text-xs text-text-dim shrink-0">
-          {done ? "block complete →" : `Week ${weekNum} of ${focus.durationWeeks}`}
+        <div className="text-xs text-text-dim shrink-0 text-right">
+          {done ? (
+            "block complete →"
+          ) : (
+            <>
+              Week {weekNum} of {focus.durationWeeks}
+              {phase && (
+                <span className="block text-[10px] text-accent mt-0.5">
+                  {phase.label}
+                </span>
+              )}
+            </>
+          )}
         </div>
       </div>
       <div className="mt-2 h-1 bg-border rounded-full overflow-hidden">
