@@ -551,18 +551,18 @@ function WeekStrip({
               <div className="text-[10px] tabular-nums text-text-dim mt-0.5">
                 {format(date, "M/d")}
               </div>
-              <div className="mt-2 flex-1 flex flex-col items-center justify-center">
+              <div className="mt-2 flex-1 flex flex-col items-center justify-center w-full min-w-0">
                 {session ? (
                   <>
                     <span className="text-accent text-base leading-none font-bold">✓</span>
                     {label && (
-                      <span className="text-[10px] text-text-muted leading-tight mt-1 break-words px-0.5">
+                      <span className="text-[10px] text-text-muted leading-tight mt-1 w-full px-0.5 truncate">
                         {label}
                       </span>
                     )}
                   </>
                 ) : label ? (
-                  <span className="text-[11px] text-text leading-tight break-words px-0.5">
+                  <span className="text-[11px] text-text leading-tight w-full px-0.5 truncate">
                     {label}
                   </span>
                 ) : isPast ? (
