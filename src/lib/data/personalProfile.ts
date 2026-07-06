@@ -1,9 +1,42 @@
 // ============================================================
-// PERSONAL PROFILE — Hardcoded defaults for the single user.
-// When sharing the app multi-user later, swap these to generic defaults
-// and let onboarding capture per-user data.
+// PROFILES
+//   GENERIC_PROFILE — cold-start default. Used to seed a new browser.
+//   PERSONAL_PROFILE — Gonzalo's dev seed. Loaded via Settings on demand.
+// A first-time visitor gets GENERIC and lands in the onboarding wizard.
 // ============================================================
 import type { PlannedDay, Profile, WeeklyPlan } from "../types";
+
+export const GENERIC_PROFILE: Profile = {
+  id: "me",
+  name: "Athlete",
+  units: "kg",
+  sex: "prefer_not_to_say",
+  experience: "intermediate",
+  focusAreas: [],
+  goals: [],
+  maxes: {},
+  defaultEquipment: "full_gym",
+  coreFocus: "protection",
+  activeConcerns: [],
+  chronicLumbarCare: false,
+  levels: {},
+  onboarded: false,
+};
+
+export const GENERIC_WEEKLY_PLAN: WeeklyPlan = {
+  id: "me",
+  // Sensible starter week — 3 strength, 2 cardio, 1 stretch, 1 rest.
+  // The user will overwrite this once they pick a focus block.
+  days: [
+    { category: "strength" },
+    { category: "cardio", templateId: "attia_zone2_45" },
+    { category: "hypertrophy" },
+    { category: "cardio" },
+    { category: "strength" },
+    { category: "stretching" },
+    null,
+  ] as PlannedDay[],
+};
 
 export const PERSONAL_PROFILE: Profile = {
   id: "me",

@@ -291,7 +291,18 @@ export default function PlanPage() {
             switch anytime.
           </p>
           <button
-            onClick={() => setShowPresets(true)}
+            onClick={() => {
+              setShowPresets(true);
+              // Presets are already rendered below in the "none" state — scroll
+              // them into view so the tap feels responsive. setTimeout(0) lets
+              // React commit any state change before we measure the layout.
+              setTimeout(() => {
+                const el = document.getElementById("focus-presets");
+                if (!el) return;
+                const y = el.getBoundingClientRect().top + window.scrollY - 12;
+                window.scrollTo(0, y);
+              }, 0);
+            }}
             className="mt-3 text-sm text-accent font-semibold"
           >
             Choose a block →
@@ -366,7 +377,7 @@ export default function PlanPage() {
       </section>
 
       {(blockState !== "active" || showPresets) && (
-        <section className="space-y-3 pt-2">
+        <section id="focus-presets" className="space-y-3 pt-2 scroll-mt-4">
           <h2 className="text-xs uppercase tracking-widest text-text-dim font-semibold">
             {blockState === "completed" ? "Pick your next block" : "Focus blocks"}
           </h2>

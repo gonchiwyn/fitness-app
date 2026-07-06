@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import clsx from "clsx";
-import { db, getProfile, saveProfile } from "@/lib/db";
+import { db, getProfile, loadPersonalSeed, resetToBlank, saveProfile } from "@/lib/db";
 import { format } from "date-fns";
 import {
   CORE_FOCUS_DESCRIPTIONS,
@@ -96,6 +96,18 @@ export default function SettingsPage() {
   const wipeProfile = async () => {
     if (!confirm("Reset your profile to defaults? Workout history will be kept.")) return;
     await db.profile.clear();
+    location.reload();
+  };
+
+  const wipeEverything = async () => {
+    if (!confirm("Reset to a blank slate? Deletes profile, plan, sessions, benchmarks. Cannot be undone.")) return;
+    await resetToBlank();
+    location.reload();
+  };
+
+  const loadGonzalo = async () => {
+    if (!confirm("Load Gonzalo's dev profile? Overwrites your current profile + weekly plan.")) return;
+    await loadPersonalSeed();
     location.reload();
   };
 
@@ -543,6 +555,25 @@ export default function SettingsPage() {
           className="w-full h-12 rounded-xl border border-danger/40 text-danger font-semibold hover:bg-danger/10"
         >
           Erase all workout history
+        </button>
+      </Section>
+
+      <Section title="Dev tools">
+        <p className="text-sm text-text-muted -mt-2">
+          Not shown to end-users in a real release. Kept here for testing
+          the cold-start experience and re-seeding your setup.
+        </p>
+        <button
+          onClick={loadGonzalo}
+          className="w-full h-12 rounded-xl border border-border text-text-muted font-medium"
+        >
+          Load Gonzalo&apos;s dev profile
+        </button>
+        <button
+          onClick={wipeEverything}
+          className="w-full h-12 rounded-xl border border-danger/40 text-danger font-semibold hover:bg-danger/10"
+        >
+          Reset to blank slate
         </button>
       </Section>
 

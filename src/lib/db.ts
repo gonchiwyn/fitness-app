@@ -1,7 +1,12 @@
 import Dexie, { type Table } from "dexie";
 import type { Benchmark, PlannedDay, Profile, Session, WeeklyPlan } from "./types";
 import { dateToPlanIndex, normalizePlannedDay } from "./types";
-import { PERSONAL_PROFILE, PERSONAL_WEEKLY_PLAN } from "./data/personalProfile";
+import {
+  GENERIC_PROFILE,
+  GENERIC_WEEKLY_PLAN,
+  PERSONAL_PROFILE,
+  PERSONAL_WEEKLY_PLAN,
+} from "./data/personalProfile";
 
 export class FitnessDB extends Dexie {
   sessions!: Table<Session, number>;
@@ -35,8 +40,22 @@ export async function getProfile(): Promise<Profile> {
   const existing = await db.profile.get("me");
   if (existing) return existing;
   // Personalized default — see lib/data/personalProfile.ts
+  await db.profile.put(GENERIC_PROFILE);
+  return GENERIC_PROFILE;
+}
+
+/** Overwrite everything and seed as Gonzalo. Dev-only convenience. */
+export async function loadPersonalSeed(): Promise<void> {
   await db.profile.put(PERSONAL_PROFILE);
-  return PERSONAL_PROFILE;
+  await db.weeklyPlan.put(PERSONAL_WEEKLY_PLAN);
+}
+
+/** Wipe local data back to cold-start. Next getProfile() reseeds GENERIC. */
+export async function resetToBlank(): Promise<void> {
+  await db.profile.clear();
+  await db.weeklyPlan.clear();
+  await db.sessions.clear();
+  await db.benchmarks.clear();
 }
 
 export async function saveProfile(p: Partial<Profile>): Promise<void> {
@@ -107,8 +126,8 @@ export async function getWeeklyPlan(): Promise<WeeklyPlan> {
     return { ...existing, days: existing.days.map(normalizePlannedDay) };
   }
   // Personalized default — see lib/data/personalProfile.ts
-  await db.weeklyPlan.put(PERSONAL_WEEKLY_PLAN);
-  return PERSONAL_WEEKLY_PLAN;
+  await db.weeklyPlan.put(GENERIC_WEEKLY_PLAN);
+  return GENERIC_WEEKLY_PLAN;
 }
 
 export async function saveWeeklyPlan(plan: WeeklyPlan): Promise<void> {
