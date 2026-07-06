@@ -7,6 +7,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import clsx from "clsx";
 import { cleanupStaleDrafts, db, getProfile, getWeeklyPlan } from "@/lib/db";
 import QuickLogModal from "@/components/QuickLogModal";
+import DayPreviewModal from "@/components/DayPreviewModal";
 import { templatesFor } from "@/lib/data/templates";
 import { recommendForToday, type Recommendation } from "@/lib/recommend";
 import {
@@ -23,6 +24,10 @@ import {
 export default function HomePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [logDate, setLogDate] = useState<string | null>(null);
+  const [previewDate, setPreviewDate] = useState<string | null>(null);
+  // Offset in weeks from the current week (0 = this week, +1 = next, -1 = last).
+  // Lets the user scan the block outlook without leaving Home.
+  const [weekOffset, setWeekOffset] = useState(0);
   const today = format(new Date(), "yyyy-MM-dd");
   const todayIdx = dateToPlanIndex(new Date());
 
@@ -75,7 +80,10 @@ export default function HomePage() {
           recommendation.templateId !== plannedToday.templateId))
   );
   const streak = computeStreak(recent ?? []);
-  const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+  const currentWeekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+  const weekStart = addDays(currentWeekStart, weekOffset * 7);
+  // "Today" pill only lights up when the strip is viewing the current week.
+  const displayedTodayIdx = weekOffset === 0 ? todayIdx : -1;
   // Map date → most recent finished session for that date
   const sessionsByDate = new Map<string, Session>();
   for (const s of recent ?? []) {
@@ -139,13 +147,18 @@ export default function HomePage() {
         <NoPlanCard />
       )}
 
-      {/* Week strip */}
+      {/* Week strip — navigable across weeks so the block outlook is visible */}
       <WeekStrip
         days={plan?.days ?? [null, null, null, null, null, null, null]}
         weekStart={weekStart}
-        todayIdx={todayIdx}
+        todayIdx={displayedTodayIdx}
+        weekOffset={weekOffset}
+        onPrevWeek={() => setWeekOffset((w) => w - 1)}
+        onNextWeek={() => setWeekOffset((w) => w + 1)}
+        onReturnToToday={() => setWeekOffset(0)}
         sessionsByDate={sessionsByDate}
         onLogPast={(date) => setLogDate(date)}
+        onPreviewFuture={(date) => setPreviewDate(date)}
       />
 
       {logDate && (
@@ -153,6 +166,15 @@ export default function HomePage() {
           date={logDate}
           onClose={() => setLogDate(null)}
           onLogged={() => setLogDate(null)}
+        />
+      )}
+
+      {previewDate && plan && profile && (
+        <DayPreviewModal
+          date={previewDate}
+          day={plan.days[dateToPlanIndex(new Date(previewDate + "T00:00:00"))]}
+          profile={profile}
+          onClose={() => setPreviewDate(null)}
         />
       )}
 
@@ -428,71 +450,125 @@ function WeekStrip({
   days,
   weekStart,
   todayIdx,
+  weekOffset,
+  onPrevWeek,
+  onNextWeek,
+  onReturnToToday,
   sessionsByDate,
   onLogPast,
+  onPreviewFuture,
 }: {
   days: PlannedDay[];
   weekStart: Date;
   todayIdx: number;
+  weekOffset: number;
+  onPrevWeek: () => void;
+  onNextWeek: () => void;
+  onReturnToToday: () => void;
   sessionsByDate: Map<string, Session>;
   onLogPast: (date: string) => void;
+  onPreviewFuture: (date: string) => void;
 }) {
+  const weekEnd = addDays(weekStart, 6);
+  const dateRange =
+    format(weekStart, "MMM") === format(weekEnd, "MMM")
+      ? `${format(weekStart, "MMM d")}–${format(weekEnd, "d")}`
+      : `${format(weekStart, "MMM d")} – ${format(weekEnd, "MMM d")}`;
+  const heading =
+    weekOffset === 0
+      ? "This week"
+      : weekOffset === 1
+      ? "Next week"
+      : weekOffset === -1
+      ? "Last week"
+      : weekOffset > 0
+      ? `In ${weekOffset} weeks`
+      : `${Math.abs(weekOffset)} weeks ago`;
+
   return (
     <section>
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-xs font-semibold uppercase tracking-widest text-text-dim">
-          This week
-        </h2>
-        <Link href="/plan" className="text-xs text-accent">Edit plan →</Link>
+        <div className="flex items-center gap-3">
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-text-dim">
+            {heading}
+          </h2>
+          <span className="text-[10px] text-text-dim tabular-nums">
+            {dateRange}
+          </span>
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onPrevWeek}
+            aria-label="Previous week"
+            className="w-7 h-7 rounded-lg border border-border text-text-muted flex items-center justify-center hover:border-accent/40"
+          >
+            ‹
+          </button>
+          {weekOffset !== 0 && (
+            <button
+              onClick={onReturnToToday}
+              className="px-2 h-7 rounded-lg border border-border text-[10px] uppercase tracking-widest text-text-muted hover:border-accent/40"
+            >
+              Today
+            </button>
+          )}
+          <button
+            onClick={onNextWeek}
+            aria-label="Next week"
+            className="w-7 h-7 rounded-lg border border-border text-text-muted flex items-center justify-center hover:border-accent/40"
+          >
+            ›
+          </button>
+        </div>
       </div>
       <div className="grid grid-cols-7 gap-1.5">
         {days.map((day, i) => {
           const date = addDays(weekStart, i);
           const dateStr = format(date, "yyyy-MM-dd");
           const isToday = i === todayIdx;
-          const isPast = i < todayIdx;
+          const todayStr = format(new Date(), "yyyy-MM-dd");
+          const isPast = dateStr < todayStr;
+          const isFuture = dateStr > todayStr;
           const session = sessionsByDate.get(dateStr);
 
-          // Prefer real session data over planned data when available
+          // Prefer real session data over planned data when available.
+          // Label is always the category — full template names wrap ugly on
+          // narrow chips. Template detail lives in the preview modal.
           const displayCategory = session?.category ?? day?.category;
-          const templateId = session?.modifiers?.templateId ?? day?.templateId;
-          const tpl = templateId && displayCategory
-            ? templatesFor(displayCategory).find((t) => t.id === templateId)
-            : null;
-          const label = tpl?.name ?? (displayCategory ? CATEGORY_LABELS[displayCategory] : null);
+          const label = displayCategory ? CATEGORY_LABELS[displayCategory] : null;
 
           const chipClasses = clsx(
-            "rounded-xl p-2 text-center border transition-colors block",
+            "rounded-xl px-1.5 py-2 text-center border transition-colors block min-h-[86px] flex flex-col",
             isToday ? "border-accent/40 bg-accent/10" : "border-border bg-bg-card",
-            isPast && !session && "hover:border-accent/30"
+            (isPast && !session) || isFuture ? "hover:border-accent/30" : ""
           );
 
           const inner = (
             <>
-              <div className="text-[10px] uppercase tracking-wider text-text-dim font-semibold">
+              <div className="text-[11px] uppercase tracking-wider text-text-dim font-semibold">
                 {DAY_LABELS_SHORT[i]}
               </div>
-              <div className="text-[9px] tabular-nums text-text-dim mt-0.5">
+              <div className="text-[10px] tabular-nums text-text-dim mt-0.5">
                 {format(date, "M/d")}
               </div>
-              <div className="mt-1.5 h-6 flex flex-col items-center justify-center">
+              <div className="mt-2 flex-1 flex flex-col items-center justify-center">
                 {session ? (
                   <>
-                    <span className="text-success text-sm leading-none">✓</span>
+                    <span className="text-accent text-base leading-none font-bold">✓</span>
                     {label && (
-                      <span className="text-[8px] text-text-muted leading-tight mt-0.5">
-                        {label.slice(0, 6)}
+                      <span className="text-[10px] text-text-muted leading-tight mt-1 break-words px-0.5">
+                        {label}
                       </span>
                     )}
                   </>
                 ) : label ? (
-                  <span className="text-[9px] text-text-muted leading-tight">
-                    {label.slice(0, 5)}
+                  <span className="text-[11px] text-text leading-tight break-words px-0.5">
+                    {label}
                   </span>
                 ) : isPast ? (
-                  <span className="text-[8px] text-accent leading-tight">+ Log</span>
+                  <span className="text-[10px] text-accent leading-tight">+ Log</span>
                 ) : (
-                  <span className="text-text-dim text-xs">—</span>
+                  <span className="text-text-dim text-sm">Rest</span>
                 )}
               </div>
             </>
@@ -516,7 +592,16 @@ function WeekStrip({
             );
           }
 
-          // Today or future → navigate to workout or plan
+          // Future planned day → tap opens preview modal (shows generated exercises for that date)
+          if (isFuture && day) {
+            return (
+              <button key={i} className={chipClasses} onClick={() => onPreviewFuture(dateStr)}>
+                {inner}
+              </button>
+            );
+          }
+
+          // Today or future rest day → navigate to workout or plan
           const href = day
             ? day.templateId
               ? `/workout/${day.category}?template=${day.templateId}`
@@ -530,7 +615,7 @@ function WeekStrip({
         })}
       </div>
       <p className="text-[10px] text-text-dim mt-2 leading-relaxed">
-        Tap a past day to log what you actually did — the recommendation engine uses it.
+        Tap a future day to preview it. Tap a past day to log what you did.
       </p>
     </section>
   );

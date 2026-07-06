@@ -1,4 +1,4 @@
-import { format } from "date-fns";
+import { format, getISOWeek } from "date-fns";
 import { EXERCISES } from "./data/exercises";
 import { isTemplateAtLevel, templatesFor, type Template } from "./data/templates";
 import { lastSessionForExercise } from "./db";
@@ -737,6 +737,66 @@ function applyBlockBias(
   return p;
 }
 
+// 4-week rotation of accessory schemes. Coaches don't run the same 3×12
+// every week — the volume varies to keep stimulus fresh. Index is derived from
+// the ISO week number so it's deterministic AND consistent across a program.
+// Schemes are tuned to sit inside the block's rep intent (Hypertrophy: 8–15,
+// Strength: 3–5 mains + moderate accessories, Cardio: capped volume).
+const ACCESSORY_SCHEME_CYCLES: Record<string, { sets: number; reps: string }[]> = {
+  hypertrophy: [
+    { sets: 3, reps: "12" },
+    { sets: 4, reps: "8-10" },
+    { sets: 3, reps: "15" },
+    { sets: 4, reps: "10" },
+  ],
+  strength: [
+    { sets: 3, reps: "8" },
+    { sets: 4, reps: "6-8" },
+    { sets: 3, reps: "10" },
+    { sets: 4, reps: "5-6" },
+  ],
+  cardio: [
+    { sets: 2, reps: "12" },
+    { sets: 2, reps: "15" },
+    { sets: 3, reps: "10" },
+    { sets: 2, reps: "10-12" },
+  ],
+  default: [
+    { sets: 3, reps: "10" },
+    { sets: 4, reps: "8" },
+    { sets: 3, reps: "12" },
+    { sets: 4, reps: "6-8" },
+  ],
+};
+
+function applyWeeklySchemeRotation(
+  p: Prescription,
+  seedDate: Date,
+  focusName: string | undefined,
+  isMainLift: boolean
+): Prescription {
+  // Only rotate schemes on accessories with numeric-ish rep prescriptions —
+  // never touch main lifts (progression anchor) or time/AMRAP prescriptions.
+  if (isMainLift) return p;
+  const trimmed = p.reps.trim();
+  const isNumeric = /^\d+$/.test(trimmed) || /^\d+\s*[-–]\s*\d+$/.test(trimmed);
+  if (!isNumeric) return p;
+
+  const cycleKey = pickCycleKey(focusName);
+  const cycle = ACCESSORY_SCHEME_CYCLES[cycleKey];
+  const week = getISOWeek(seedDate);
+  const scheme = cycle[week % cycle.length];
+  return { ...p, sets: scheme.sets, reps: scheme.reps };
+}
+
+function pickCycleKey(focusName: string | undefined): string {
+  const n = focusName?.toLowerCase() ?? "";
+  if (n.includes("hypertrophy") || n.includes("aesthetic")) return "hypertrophy";
+  if (n.includes("strength")) return "strength";
+  if (n.includes("cardio")) return "cardio";
+  return "default";
+}
+
 function applyIntensityToDuration(p: Prescription, intensity: Intensity): Prescription {
   if (intensity === "normal") return p;
   const factor = intensity === "easy" ? 0.75 : 1.2;
@@ -862,6 +922,16 @@ export async function generateWorkout(
       // 8-12; Strength peak to 3-5 w/ long rest; Cardio caps accessory volume;
       // Recovery caps everything. See applyBlockBias for the exact rules.
       p = applyBlockBias(p, profile.currentFocus?.name, LIFT_ID_SET.has(p.exerciseId));
+
+      // Week-to-week scheme rotation on accessories. Same Monday next week
+      // won't be an identical 3×12 — the sets/reps step through a 4-week
+      // cycle tuned to the block. Main lifts are never touched.
+      p = applyWeeklySchemeRotation(
+        p,
+        date,
+        profile.currentFocus?.name,
+        LIFT_ID_SET.has(p.exerciseId)
+      );
 
       // Scale time-based durations (cardio, stretching holds, warmup, etc.) — visible on
       // categories where load% doesn't apply. "45 min Z2" becomes 34 min easy / 54 min push.
