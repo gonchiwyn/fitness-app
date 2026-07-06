@@ -36,6 +36,28 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   sport: "Sport",
 };
 
+// Short labels for cramped surfaces (the 7-day week strip).
+// ≤4 chars — the chip content area is ~30px wide at 375px viewport.
+// Anything longer will get an ellipsis, which looks worse than a
+// well-chosen abbreviation.
+export const CATEGORY_SHORT: Record<Category, string> = {
+  crossfit: "XFit",
+  hyrox: "Hyrx",
+  surf: "Surf",
+  stretching: "Mob", // mobility
+  athlete: "Athl",
+  strength: "Strg",
+  hypertrophy: "Hypr",
+  burn: "Burn",
+  recovery: "Rcov",
+  beach: "Bch",
+  cardio: "Card",
+  core: "Core",
+  split: "Splt",
+  test: "Test",
+  sport: "Sprt",
+};
+
 export const CATEGORY_BLURBS: Record<Category, string> = {
   crossfit: "Mixed modal — strength + metcon",
   hyrox: "Run + functional stations",
