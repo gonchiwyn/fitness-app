@@ -120,8 +120,8 @@ export default function DayPreviewModal({
           <Link
             href={
               day.templateId
-                ? `/workout/${day.category}?template=${day.templateId}`
-                : `/workout/${day.category}`
+                ? `/workout/${day.category}?template=${day.templateId}&date=${date}`
+                : `/workout/${day.category}?date=${date}`
             }
             className="block text-center mt-4 text-accent font-semibold text-sm"
             onClick={onClose}

@@ -204,34 +204,6 @@ export default function HomePage() {
         </Link>
       </section>
 
-      {recent && recent.length > 0 && (
-        <section>
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-text-dim mb-3">
-            Recent
-          </h2>
-          <div className="space-y-2">
-            {recent.slice(0, 5).map((s) => (
-              <Link
-                key={s.id}
-                href={`/history#${s.id}`}
-                className="block bg-bg-card border border-border rounded-xl px-4 py-3 hover:border-border/60"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium">{s.name}</div>
-                    <div className="text-xs text-text-dim mt-0.5">
-                      {format(new Date(s.date), "EEE, MMM d")}
-                    </div>
-                  </div>
-                  <div className="text-xs text-text-dim">
-                    {s.finishedAt ? "✓" : "in progress"}
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
     </div>
   );
 }
@@ -606,10 +578,15 @@ function WeekStrip({
             );
           }
 
-          // Past + session logged → view in history
+          // Past + session logged → open the workout page for that day so
+          // you can review what you actually did (not the history summary).
           if (isPast && session) {
+            const tid = session.modifiers?.templateId;
+            const pastHref = tid
+              ? `/workout/${session.category}?template=${tid}&date=${dateStr}`
+              : `/workout/${session.category}?date=${dateStr}`;
             return (
-              <Link key={i} className={chipClasses} href={`/history#${session.id ?? ""}`}>
+              <Link key={i} className={chipClasses} href={pastHref}>
                 {inner}
               </Link>
             );

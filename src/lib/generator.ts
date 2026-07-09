@@ -408,6 +408,61 @@ function humanCoreFunction(fn: CoreFunction): string {
 // ============================================================
 // WARMUP
 // ============================================================
+// Day-specific movement prep. Picks 1-2 mobility exercises that mirror the
+// day's session — Push day gets thoracic/shoulder prep, Legs day gets
+// hip/ankle prep, Cardio gets hip flexor + easy movement. Chronic focus
+// (lumbar/scap/glutes) is still covered by the main warmup blocks; this is
+// the "what am I about to train" specificity layer.
+function dayPrepFor(
+  templateId: string | undefined,
+  category: Category,
+  available: Set<Equipment>
+): Prescription[] {
+  // Preferred exercise IDs per day type, in order. Missing IDs get skipped
+  // gracefully — the warmup falls back on the generic focus-area moves.
+  const pickFirst = (ids: string[], reps: string): Prescription | null => {
+    for (const id of ids) {
+      const ex = EXERCISES.find((e) => e.id === id);
+      if (ex && ex.equipment.some((eq) => available.has(eq))) {
+        return { exerciseId: id, sets: 1, reps };
+      }
+    }
+    return null;
+  };
+
+  const tid = templateId ?? "";
+  const out: Prescription[] = [];
+
+  const isUpperPush = /push|chest|shoulders|arms|upper/.test(tid);
+  const isUpperPull = /pull|back/.test(tid);
+  const isLower = /legs|lower|deadlift/.test(tid);
+  const isCardio = category === "cardio";
+
+  if (isUpperPush) {
+    const w = pickFirst(["wall_slide", "prone_ytw", "arm_circles", "band_pull_apart"], "10 reps");
+    const t = pickFirst(["cat_cow", "tspine_rotation", "childs_pose"], "8 reps");
+    if (w) out.push({ ...w, notes: "Day prep — shoulder + scap" });
+    if (t) out.push({ ...t, notes: "Day prep — thoracic mobility" });
+  } else if (isUpperPull) {
+    const s = pickFirst(["scap_pullup", "band_pull_apart", "prone_ytw", "wall_slide"], "10 reps");
+    const t = pickFirst(["tspine_rotation", "cat_cow"], "8 reps");
+    if (s) out.push({ ...s, notes: "Day prep — scap engagement" });
+    if (t) out.push({ ...t, notes: "Day prep — thoracic mobility" });
+  } else if (isLower) {
+    const h = pickFirst(["hip_90_90", "worlds_greatest_stretch", "leg_swings"], "6/side");
+    const a = pickFirst(["ankle_rocks", "goblet_squat_hold", "bodyweight_squat"], "10 reps");
+    if (h) out.push({ ...h, notes: "Day prep — hip mobility" });
+    if (a) out.push({ ...a, notes: "Day prep — ankle + squat pattern" });
+  } else if (isCardio) {
+    const hf = pickFirst(["hip_flexor_stretch", "worlds_greatest_stretch", "leg_swings"], "45s/side");
+    const easy = pickFirst(["easy_row", "easy_bike", "jumping_jacks"], "2 min easy");
+    if (hf) out.push({ ...hf, notes: "Day prep — open the hips" });
+    if (easy) out.push({ ...easy, notes: "Day prep — build up to Z2 pace" });
+  }
+
+  return out;
+}
+
 function buildWarmup(
   profile: Profile,
   category: Category,
@@ -459,6 +514,14 @@ function buildWarmup(
         reps: ex.pattern === "mobility" ? "45s" : "10 reps",
       });
     }
+  }
+
+  // Day-specific movement prep — mirrors the day's session so the warmup
+  // "matches" the workout, not just the chronic focus areas.
+  // Kept lightweight (1-2 moves) so we don't blow up the warmup length.
+  const dayPrep = dayPrepFor(modifiers.templateId, category, available);
+  if (time >= 25 && dayPrep.length > 0) {
+    prescriptions.push(...dayPrep);
   }
 
   // Personalized: ALWAYS include scapular activation + glute activation

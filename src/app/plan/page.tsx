@@ -321,7 +321,20 @@ export default function PlanPage() {
           </h2>
           {blockState === "active" && (
             <button
-              onClick={() => setShowPresets((v) => !v)}
+              onClick={() => {
+                const next = !showPresets;
+                setShowPresets(next);
+                if (next) {
+                  // Scroll to presets after React commits — same pattern as the
+                  // "Choose a block" button.
+                  setTimeout(() => {
+                    const el = document.getElementById("focus-presets");
+                    if (!el) return;
+                    const y = el.getBoundingClientRect().top + window.scrollY - 12;
+                    window.scrollTo(0, y);
+                  }, 0);
+                }
+              }}
               className="text-xs text-accent"
             >
               {showPresets ? "Hide" : "Change block"}

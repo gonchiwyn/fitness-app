@@ -74,6 +74,9 @@ export default function WorkoutForCategory({
   const router = useRouter();
   const searchParams = useSearchParams();
   const lockedTemplateId = searchParams.get("template") ?? undefined;
+  // Optional ?date=YYYY-MM-DD — when navigating from a preview / past day,
+  // we build (or open) the session for THAT date, not today's.
+  const dateParam = searchParams.get("date") ?? undefined;
 
   const cat = category as Category;
   const validCat = (CATEGORIES as readonly string[]).includes(cat);
@@ -95,13 +98,16 @@ export default function WorkoutForCategory({
   useEffect(() => {
     if (!validCat) return;
     (async () => {
-      const today = format(new Date(), "yyyy-MM-dd");
+      // Target date defaults to today; overridden by ?date= when navigating
+      // from a preview / past-day tap so the same session appears each time.
+      const targetDateStr = dateParam ?? format(new Date(), "yyyy-MM-dd");
+      const targetDate = new Date(targetDateStr + "T00:00:00");
       const p = await getProfile();
       setProfile(p);
 
       const existing = await db.sessions
         .where("date")
-        .equals(today)
+        .equals(targetDateStr)
         .filter((s) => s.category === cat && (!lockedTemplateId || s.workoutId.includes(lockedTemplateId)))
         .first();
 
@@ -114,13 +120,15 @@ export default function WorkoutForCategory({
       const initialModifiers: WorkoutModifiers = lockedTemplateId
         ? { templateId: lockedTemplateId }
         : {};
-      const workout = await generateWorkout(cat, p, undefined, initialModifiers);
+      // Pass targetDate as the seed so the workout for that day is stable
+      // (won't regenerate to something different next time it's opened).
+      const workout = await generateWorkout(cat, p, targetDate, initialModifiers);
       const fresh = workoutToSession(workout);
       const id = await db.sessions.add(fresh);
       setSession({ ...fresh, id });
       setLoading(false);
     })();
-  }, [cat, validCat, lockedTemplateId]);
+  }, [cat, validCat, lockedTemplateId, dateParam]);
 
   if (!validCat) {
     return (
