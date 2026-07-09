@@ -250,7 +250,7 @@ export default function WorkoutForCategory({
       {/* HEADER */}
       <header className="space-y-4 no-print">
         <div className="flex items-center justify-between">
-          <Link href="/workout" className="text-text-dim text-sm">← Categories</Link>
+          <Link href="/" className="text-text-dim text-sm">← Home</Link>
           <div className="flex items-center gap-2">
             <button
               onClick={() => {

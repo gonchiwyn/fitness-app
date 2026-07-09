@@ -4,11 +4,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import { generateWorkout } from "@/lib/generator";
+import { db } from "@/lib/db";
 import { useBodyScrollLock } from "@/lib/useBodyScrollLock";
 import {
   CATEGORY_LABELS,
   type PlannedDay,
   type Profile,
+  type Session,
   type Workout,
 } from "@/lib/types";
 
@@ -36,6 +38,27 @@ export default function DayPreviewModal({
     }
     let cancelled = false;
     (async () => {
+      // Prefer the actual saved session for this date — if the user opened
+      // the workout builder and made changes (swap, "Not today", etc.),
+      // those changes should show up in the preview next time.
+      const saved = await db.sessions
+        .where("date")
+        .equals(date)
+        .filter(
+          (s) =>
+            s.category === day.category &&
+            (!day.templateId || s.workoutId.includes(day.templateId))
+        )
+        .first();
+
+      if (saved) {
+        if (!cancelled) {
+          setWorkout(sessionToWorkoutShape(saved));
+          setLoading(false);
+        }
+        return;
+      }
+
       const modifiers = day.templateId ? { templateId: day.templateId } : {};
       const w = await generateWorkout(day.category, profile, dateObj, modifiers);
       if (!cancelled) {
@@ -132,6 +155,40 @@ export default function DayPreviewModal({
       </div>
     </div>
   );
+}
+
+// The preview renders `Workout` shape (blocks[].prescriptions[].sets/reps/etc).
+// A saved Session's prescriptions are richer (per-set logging), so we compress
+// them back into a preview-friendly Workout so any user edits (swaps, skips)
+// are reflected here.
+function sessionToWorkoutShape(s: Session): Workout {
+  return {
+    id: s.workoutId,
+    category: s.category,
+    name: s.name,
+    date: s.date,
+    estimatedDurationMin: 60,
+    seed: 0,
+    philosophy: s.philosophy,
+    influences: s.influences,
+    modifiers: s.modifiers,
+    phase: s.phase,
+    blocks: s.blocks.map((b, i) => ({
+      id: `preview-${i}`,
+      title: b.title,
+      scheme: b.scheme,
+      note: b.note,
+      prescriptions: b.prescriptions.map((p) => ({
+        exerciseId: p.exerciseId,
+        sets: p.prescribedSets,
+        reps: p.prescribedReps,
+        rpe: p.rpe,
+        rest: p.rest,
+        notes: p.notes,
+        loadHint: p.loadHint,
+      })),
+    })),
+  };
 }
 
 // Turn an exercise id like "incline_db_press" into "Incline DB Press".

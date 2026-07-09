@@ -1063,7 +1063,7 @@ export async function generateWorkout(
     if (coreBlock) blocks.push(coreBlock);
   }
 
-  if (["strength", "hypertrophy", "beach", "athlete"].includes(category) && targetMinutes >= 40) {
+  if (["strength", "hypertrophy", "beach", "athlete", "split"].includes(category) && targetMinutes >= 40) {
     blocks.push({
       id: `cooldown-${Date.now()}`,
       title: "Cooldown",

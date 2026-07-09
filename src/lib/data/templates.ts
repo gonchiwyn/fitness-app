@@ -672,6 +672,92 @@ export const TEMPLATES: Template[] = [
       },
     ],
   },
+  {
+    id: "nick_bare_z2_run",
+    category: "cardio",
+    name: "Z2 Run — 45 min",
+    description: "Nose-breathing steady run. Aerobic base for hybrid athletes.",
+    complexity: "starter",
+    philosophy:
+      "Nick Bare's take on Z2 running: keep HR in Zone 2 (~65-75% HRmax), nose-breathe if you can, run for time not distance. This is the volume that builds a hybrid athlete's engine — you leave feeling better, not worse.",
+    influences: ["patrick", "attia"],
+    blocks: [
+      {
+        title: "Steady Run",
+        scheme: "Continuous — HR-capped",
+        prescriptions: [
+          { exerciseId: "run", sets: 1, reps: "45 min Z2", notes: "If breathing goes ragged, slow down. Time on feet > pace." },
+        ],
+      },
+    ],
+  },
+  {
+    id: "nick_bare_long_run",
+    category: "cardio",
+    name: "Long Slow Distance",
+    description: "60-75 min steady. Weekend aerobic base.",
+    complexity: "comfortable",
+    philosophy:
+      "Nick Bare's long run: 60-75 min at conversational pace. Mitochondrial density, capillary growth, fat oxidation. Do it once a week. This is the workout that separates weekend athletes from actual endurance.",
+    influences: ["patrick", "attia", "galpin"],
+    blocks: [
+      {
+        title: "Long Run",
+        scheme: "Continuous Z2",
+        prescriptions: [
+          { exerciseId: "run", sets: 1, reps: "60-75 min Z2", notes: "Fuel with carbs after ~45 min if hungry. Nasal breathing as long as possible." },
+        ],
+      },
+    ],
+  },
+  {
+    id: "norwegian_singles_run",
+    category: "cardio",
+    name: "Norwegian Singles",
+    description: "Threshold-lite intervals — 5×5 min moderate.",
+    complexity: "pro",
+    philosophy:
+      "The Norwegian model: short bouts just under threshold (~80-85% HRmax) with equal easy rest. Builds threshold without the CNS cost of true VO2 work. Nick Bare uses variants of this for HYROX prep.",
+    influences: ["patrick", "attia"],
+    blocks: [
+      {
+        title: "Warmup",
+        scheme: "10 min ramp",
+        prescriptions: [{ exerciseId: "run", sets: 1, reps: "10 min easy ramp" }],
+      },
+      {
+        title: "Intervals",
+        scheme: "5 × (5 min threshold / 3 min easy)",
+        prescriptions: [
+          { exerciseId: "run", sets: 5, reps: "5 min @ ~85% HRmax / 3 min easy jog", notes: "Should feel controllable but you can't hold a conversation." },
+        ],
+      },
+      {
+        title: "Cooldown",
+        scheme: "5 min walk",
+        prescriptions: [{ exerciseId: "run", sets: 1, reps: "5 min easy walk" }],
+      },
+    ],
+  },
+  {
+    id: "attia_walk_zone2",
+    category: "cardio",
+    name: "Zone 2 Walk",
+    description: "Uphill walk. When the legs need a break from running.",
+    complexity: "starter",
+    philosophy:
+      "Rhonda Patrick and Attia both agree: brisk uphill walking hits Z2 easily and beats sitting. Great recovery-day cardio when running is too much. Grade or ruck weight to keep HR in Z2.",
+    influences: ["patrick", "attia"],
+    blocks: [
+      {
+        title: "Uphill Walk",
+        scheme: "Continuous — HR-capped",
+        prescriptions: [
+          { exerciseId: "run", sets: 1, reps: "45-60 min brisk walk / hike", notes: "Grade or ruck weight until HR sits in Z2. Nose breathing." },
+        ],
+      },
+    ],
+  },
   // ============ CORE (dedicated category) ============
   {
     id: "core_galpin_pillar",
