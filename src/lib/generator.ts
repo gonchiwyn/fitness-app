@@ -986,9 +986,18 @@ export async function generateWorkout(
       if (!p) continue;
       p = dedupeAgainstUsed(p, usedExerciseIds, available, rng);
 
-      // Apply periodization wave: adjust sets on tracked lifts (main compounds)
+      // Apply periodization wave. Main compounds follow phase.setAdjustment
+      // directly (Realization +1 set, Deload -1). Accessories run the opposite
+      // direction on Realization — cut a set so energy is preserved for the
+      // main-lift PR attempt — and match the Deload cut.
       if (phase && LIFT_ID_SET.has(p.exerciseId) && phase.setAdjustment !== 0) {
         p = { ...p, sets: Math.max(1, p.sets + phase.setAdjustment) };
+      } else if (phase && !LIFT_ID_SET.has(p.exerciseId)) {
+        const isRealization = phase.label === "Realization";
+        const isDeload = phase.label === "Deload";
+        if ((isRealization || isDeload) && p.sets > 2) {
+          p = { ...p, sets: p.sets - 1 };
+        }
       }
 
       // Intensity mode also adjusts volume — makes readiness feel real, not cosmetic.

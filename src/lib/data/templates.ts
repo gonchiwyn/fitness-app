@@ -138,7 +138,9 @@ export const TEMPLATES: Template[] = [
           },
           {
             exerciseId: "lateral_raise",
-            pool: ["lateral_raise", "face_pull", "band_pull_apart"],
+            // Push-day isolation — push family only (face_pull /
+            // band_pull_apart belong on Pull/Shoulders days).
+            pool: ["lateral_raise"],
             sets: 4,
             reps: "15",
             rest: "45s",
@@ -1211,7 +1213,9 @@ TEMPLATES.push(
         prescriptions: [
           {
             exerciseId: "lateral_raise",
-            pool: ["lateral_raise", "face_pull", "band_pull_apart"],
+            // Push-day isolation — kept push-family only. face_pull /
+            // band_pull_apart are pull-family and were removed.
+            pool: ["lateral_raise"],
             sets: 3,
             reps: "15",
             rest: "45s",
