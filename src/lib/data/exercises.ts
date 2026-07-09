@@ -203,6 +203,60 @@ export const EXERCISES: Exercise[] = [
   { id: "toe_touch_squat_reach", name: "Toe Touch → Squat → Reach (Box)", pattern: "mobility", muscles: ["full_body"], equipment: ["box"], weighted: false, warmupTarget: "general" },
   { id: "thoracic_extension_squat", name: "Thoracic Extension in Squat", pattern: "mobility", muscles: ["thoracic"], equipment: ["bodyweight"], weighted: false, warmupTarget: "shoulder" },
   { id: "goblet_squat_hold", name: "Goblet Squat Hold", pattern: "squat", muscles: ["quads", "core"], equipment: ["dumbbell"], weighted: true, warmupTarget: "general", cues: ["Maintain neutral spine", "30s hold"] },
+
+  // ============================================================
+  // LIBRARY EXPANSION — accessory variety across muscle groups.
+  // Filling thin spots so pools rotate meaningfully.
+  // ============================================================
+
+  // CHEST — was only 4 exercises
+  { id: "cable_fly", name: "Cable Fly", pattern: "push", muscles: ["chest"], equipment: ["machine"], weighted: true, cues: ["Slight elbow bend", "Squeeze at the middle"] },
+  { id: "pec_deck", name: "Pec Deck", pattern: "push", muscles: ["chest"], equipment: ["machine"], weighted: true },
+  { id: "incline_cable_fly", name: "Incline Cable Fly", pattern: "push", muscles: ["upper_chest", "chest"], equipment: ["machine"], weighted: true, cues: ["Angle cables from low to high"] },
+  { id: "decline_db_press", name: "Decline Dumbbell Press", pattern: "push", muscles: ["chest"], equipment: ["dumbbell"], weighted: true },
+  { id: "pushup", name: "Push-Up", pattern: "push", muscles: ["chest", "tris", "core"], equipment: ["bodyweight"], weighted: false },
+  { id: "diamond_pushup", name: "Diamond Push-Up", pattern: "push", muscles: ["chest", "tris"], equipment: ["bodyweight"], weighted: false, cues: ["Hands close, thumbs touch", "Elbows tuck back"] },
+  { id: "svend_press", name: "Svend Press", pattern: "push", muscles: ["chest"], equipment: ["dumbbell"], weighted: true, cues: ["Squeeze the plate", "Press straight out"] },
+
+  // SHOULDERS — side/front/rear delt variations
+  { id: "cable_lateral_raise", name: "Cable Lateral Raise", pattern: "push", muscles: ["side_delt"], equipment: ["machine"], weighted: true, cues: ["Lead with the elbow"] },
+  { id: "machine_lateral_raise", name: "Machine Lateral Raise", pattern: "push", muscles: ["side_delt"], equipment: ["machine"], weighted: true },
+  { id: "arnold_press", name: "Arnold Press", pattern: "push", muscles: ["shoulder", "chest"], equipment: ["dumbbell"], weighted: true, cues: ["Rotate palms outward as you press"] },
+  { id: "landmine_press", name: "Landmine Press", pattern: "push", muscles: ["shoulder", "chest"], equipment: ["barbell"], weighted: true },
+  { id: "front_raise", name: "Front Raise", pattern: "push", muscles: ["shoulder"], equipment: ["dumbbell"], weighted: true },
+  { id: "upright_row", name: "Upright Row", pattern: "pull", muscles: ["side_delt", "traps"], equipment: ["barbell", "dumbbell"], weighted: true, cues: ["Elbows lead", "Stop at chest height"] },
+
+  // REAR DELT — rear-delt work belongs on Pull/Shoulders days
+  { id: "reverse_pec_deck", name: "Reverse Pec Deck", pattern: "pull", muscles: ["rear_delt"], equipment: ["machine"], weighted: true },
+  { id: "bent_over_lateral_raise", name: "Bent-Over Lateral Raise", pattern: "pull", muscles: ["rear_delt"], equipment: ["dumbbell"], weighted: true, cues: ["Hinge at hip", "Squeeze at top"] },
+  { id: "cable_rear_delt_fly", name: "Cable Rear Delt Fly", pattern: "pull", muscles: ["rear_delt"], equipment: ["machine"], weighted: true },
+
+  // LATS — was only 4
+  { id: "straight_arm_pulldown", name: "Straight-Arm Pulldown", pattern: "pull", muscles: ["lats"], equipment: ["machine"], weighted: true, cues: ["Arms locked", "Pull down with the lats, not the biceps"] },
+  { id: "db_pullover", name: "Dumbbell Pullover", pattern: "pull", muscles: ["lats", "chest"], equipment: ["dumbbell"], weighted: true },
+  { id: "neutral_grip_pulldown", name: "Neutral-Grip Pulldown", pattern: "pull", muscles: ["lats", "back"], equipment: ["machine"], weighted: true },
+  { id: "chest_supported_row", name: "Chest-Supported Row", pattern: "pull", muscles: ["back", "lats", "rear_delt"], equipment: ["dumbbell"], weighted: true },
+  { id: "meadows_row", name: "Meadows Row", pattern: "pull", muscles: ["back", "lats"], equipment: ["barbell"], weighted: true },
+
+  // BICEPS — was only 5
+  { id: "barbell_curl", name: "Barbell Curl", pattern: "pull", muscles: ["biceps"], equipment: ["barbell"], weighted: true },
+  { id: "ez_bar_curl", name: "EZ-Bar Curl", pattern: "pull", muscles: ["biceps"], equipment: ["barbell"], weighted: true },
+  { id: "preacher_curl", name: "Preacher Curl", pattern: "pull", muscles: ["biceps"], equipment: ["dumbbell", "machine"], weighted: true, cues: ["Chest against pad", "Full stretch at bottom"] },
+  { id: "incline_db_curl", name: "Incline Dumbbell Curl", pattern: "pull", muscles: ["biceps"], equipment: ["dumbbell"], weighted: true, cues: ["Let the arms hang back — biceps in full stretch"] },
+  { id: "concentration_curl", name: "Concentration Curl", pattern: "pull", muscles: ["biceps"], equipment: ["dumbbell"], weighted: true },
+  { id: "cable_curl", name: "Cable Curl", pattern: "pull", muscles: ["biceps"], equipment: ["machine"], weighted: true },
+
+  // TRICEPS — was 7
+  { id: "overhead_tricep_extension", name: "Overhead Tricep Extension", pattern: "push", muscles: ["tris"], equipment: ["dumbbell"], weighted: true, cues: ["Elbows tucked", "Full stretch at bottom"] },
+  { id: "rope_pushdown", name: "Rope Pushdown", pattern: "push", muscles: ["tris"], equipment: ["machine"], weighted: true, cues: ["Flare rope at the bottom"] },
+  { id: "close_grip_bench", name: "Close-Grip Bench Press", pattern: "push", muscles: ["tris", "chest"], equipment: ["barbell"], weighted: true },
+  { id: "tricep_kickback", name: "Tricep Kickback", pattern: "push", muscles: ["tris"], equipment: ["dumbbell"], weighted: true },
+  { id: "jm_press", name: "JM Press", pattern: "push", muscles: ["tris"], equipment: ["barbell"], weighted: true, cues: ["Hybrid press/skullcrusher — elbows out and back"] },
+
+  // TRAPS / UPPER BACK
+  { id: "barbell_shrug", name: "Barbell Shrug", pattern: "pull", muscles: ["traps"], equipment: ["barbell"], weighted: true, cues: ["Straight up, not forward"] },
+  { id: "db_shrug", name: "Dumbbell Shrug", pattern: "pull", muscles: ["traps"], equipment: ["dumbbell"], weighted: true },
+  { id: "rack_pull", name: "Rack Pull", pattern: "hinge", muscles: ["back", "traps", "posterior_chain"], equipment: ["barbell"], weighted: true, cues: ["Shortened deadlift ROM — heavier loading"] },
 ];
 
 export const EXERCISES_BY_ID: Record<string, Exercise> = Object.fromEntries(

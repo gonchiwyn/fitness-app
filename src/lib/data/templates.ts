@@ -131,23 +131,22 @@ export const TEMPLATES: Template[] = [
         prescriptions: [
           {
             exerciseId: "db_bench",
-            pool: ["db_bench", "weighted_dip", "incline_db_press"],
+            pool: ["db_bench", "weighted_dip", "incline_db_press", "decline_db_press", "cable_fly", "pec_deck"],
             sets: 3,
             reps: "12",
             rest: "75s",
           },
           {
             exerciseId: "lateral_raise",
-            // Push-day isolation — push family only (face_pull /
-            // band_pull_apart belong on Pull/Shoulders days).
-            pool: ["lateral_raise"],
+            // Push-day isolation — push family only.
+            pool: ["lateral_raise", "cable_lateral_raise", "front_raise", "cable_fly", "pec_deck"],
             sets: 4,
             reps: "15",
             rest: "45s",
           },
           {
             exerciseId: "tricep_pushdown",
-            pool: ["tricep_pushdown", "skullcrusher"],
+            pool: ["tricep_pushdown", "skullcrusher", "overhead_tricep_extension", "rope_pushdown"],
             sets: 4,
             reps: "12",
             rest: "45s",
@@ -1213,16 +1212,15 @@ TEMPLATES.push(
         prescriptions: [
           {
             exerciseId: "lateral_raise",
-            // Push-day isolation — kept push-family only. face_pull /
-            // band_pull_apart are pull-family and were removed.
-            pool: ["lateral_raise"],
+            // Push-day isolation — push family only.
+            pool: ["lateral_raise", "cable_lateral_raise", "front_raise", "cable_fly", "pec_deck"],
             sets: 3,
             reps: "15",
             rest: "45s",
           },
           {
             exerciseId: "tricep_pushdown",
-            pool: ["tricep_pushdown", "skullcrusher"],
+            pool: ["tricep_pushdown", "skullcrusher", "overhead_tricep_extension", "rope_pushdown", "tricep_kickback"],
             sets: 3,
             reps: "12",
             rest: "45s",
@@ -1273,14 +1271,15 @@ TEMPLATES.push(
         prescriptions: [
           {
             exerciseId: "lat_pulldown",
-            pool: ["lat_pulldown", "face_pull", "band_pull_apart"],
+            // Pull isolation — lats + rear delts.
+            pool: ["lat_pulldown", "straight_arm_pulldown", "db_pullover", "face_pull", "reverse_pec_deck", "bent_over_lateral_raise"],
             sets: 3,
             reps: "12",
             rest: "60s",
           },
           {
             exerciseId: "db_curl",
-            pool: ["db_curl", "hammer_curl", "chinup"],
+            pool: ["db_curl", "hammer_curl", "barbell_curl", "ez_bar_curl", "incline_db_curl", "cable_curl", "preacher_curl"],
             sets: 3,
             reps: "12",
             rest: "45s",
@@ -1462,8 +1461,20 @@ TEMPLATES.push(
         title: "Biceps",
         scheme: "Superset 3×10-12",
         prescriptions: [
-          { exerciseId: "db_curl", sets: 3, reps: "12", rest: "45s" },
-          { exerciseId: "hammer_curl", sets: 3, reps: "12", rest: "45s" },
+          {
+            exerciseId: "db_curl",
+            pool: ["db_curl", "barbell_curl", "ez_bar_curl", "incline_db_curl", "preacher_curl"],
+            sets: 3,
+            reps: "12",
+            rest: "45s",
+          },
+          {
+            exerciseId: "hammer_curl",
+            pool: ["hammer_curl", "cable_curl", "concentration_curl"],
+            sets: 3,
+            reps: "12",
+            rest: "45s",
+          },
         ],
       },
       {
@@ -1471,8 +1482,20 @@ TEMPLATES.push(
         scheme: "3×10-12 straight sets",
         note: "Pushdown uses the cable, skullcrusher uses DBs — do one, then the other.",
         prescriptions: [
-          { exerciseId: "tricep_pushdown", sets: 3, reps: "12", rest: "45s" },
-          { exerciseId: "skullcrusher", sets: 3, reps: "12", rest: "45s" },
+          {
+            exerciseId: "tricep_pushdown",
+            pool: ["tricep_pushdown", "rope_pushdown", "close_grip_bench"],
+            sets: 3,
+            reps: "12",
+            rest: "45s",
+          },
+          {
+            exerciseId: "skullcrusher",
+            pool: ["skullcrusher", "overhead_tricep_extension", "tricep_kickback", "jm_press"],
+            sets: 3,
+            reps: "12",
+            rest: "45s",
+          },
         ],
       },
     ],
