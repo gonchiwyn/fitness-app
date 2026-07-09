@@ -36,9 +36,38 @@ export class FitnessDB extends Dexie {
 
 export const db = new FitnessDB();
 
+// If a saved focus block name matches a preset whose duration has since been
+// updated (e.g. PPL used to be 4 weeks, now defined as 6), bump the saved
+// duration silently so the Home indicator + phase model reflect the intent.
+// Only bumps upward — never shortens an in-flight block.
+const PRESET_DURATION: Record<string, number> = {
+  Hypertrophy: 6,
+  "Strength peak": 8,
+  "Cardio base": 8,
+  Athletic: 6,
+  Recovery: 1,
+  PPL: 6,
+  "Bro split": 6,
+  Longevity: 8,
+};
+
 export async function getProfile(): Promise<Profile> {
   const existing = await db.profile.get("me");
-  if (existing) return existing;
+  if (existing) {
+    const focus = existing.currentFocus;
+    if (focus?.name) {
+      const target = PRESET_DURATION[focus.name];
+      if (target && target > focus.durationWeeks) {
+        const upgraded: Profile = {
+          ...existing,
+          currentFocus: { ...focus, durationWeeks: target },
+        };
+        await db.profile.put(upgraded);
+        return upgraded;
+      }
+    }
+    return existing;
+  }
   // Personalized default — see lib/data/personalProfile.ts
   await db.profile.put(GENERIC_PROFILE);
   return GENERIC_PROFILE;
@@ -146,6 +175,25 @@ export async function setDayInPlan(dayIdx: number, day: PlannedDay): Promise<Wee
 export async function todaysPlannedDay(d: Date = new Date()): Promise<PlannedDay> {
   const plan = await getWeeklyPlan();
   return plan.days[dateToPlanIndex(d)] ?? null;
+}
+
+/**
+ * Last rating given for a category — used by the generator to nudge volume
+ * up or down. "Hard" last time → ease off this time; "Easy" → push a bit.
+ * Only looks at recent finished sessions to stay relevant.
+ */
+export async function lastRatingForCategory(
+  category: Session["category"]
+): Promise<Session["rating"] | undefined> {
+  const recent = await db.sessions
+    .orderBy("date")
+    .reverse()
+    .limit(50)
+    .toArray();
+  const match = recent.find(
+    (s) => s.category === category && s.finishedAt && s.rating
+  );
+  return match?.rating;
 }
 
 export async function lastSessionForExercise(exerciseId: string): Promise<{

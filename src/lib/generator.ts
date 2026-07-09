@@ -1,7 +1,7 @@
 import { format, getISOWeek } from "date-fns";
 import { EXERCISES } from "./data/exercises";
 import { isTemplateAtLevel, templatesFor, type Template } from "./data/templates";
-import { lastSessionForExercise } from "./db";
+import { lastRatingForCategory, lastSessionForExercise } from "./db";
 import {
   CATEGORY_DURATION,
   CATEGORY_LABELS,
@@ -439,22 +439,22 @@ function dayPrepFor(
   const isCardio = category === "cardio";
 
   if (isUpperPush) {
-    const w = pickFirst(["wall_slide", "prone_ytw", "arm_circles", "band_pull_apart"], "10 reps");
-    const t = pickFirst(["cat_cow", "tspine_rotation", "childs_pose"], "8 reps");
+    const w = pickFirst(["wall_slide", "prone_ytw", "band_pull_apart"], "10 reps");
+    const t = pickFirst(["thoracic_opener", "cat_cow"], "8 reps");
     if (w) out.push({ ...w, notes: "Day prep — shoulder + scap" });
     if (t) out.push({ ...t, notes: "Day prep — thoracic mobility" });
   } else if (isUpperPull) {
-    const s = pickFirst(["scap_pullup", "band_pull_apart", "prone_ytw", "wall_slide"], "10 reps");
-    const t = pickFirst(["tspine_rotation", "cat_cow"], "8 reps");
+    const s = pickFirst(["scap_pushup", "band_pull_apart", "prone_ytw", "wall_slide"], "10 reps");
+    const t = pickFirst(["thoracic_opener", "cat_cow"], "8 reps");
     if (s) out.push({ ...s, notes: "Day prep — scap engagement" });
     if (t) out.push({ ...t, notes: "Day prep — thoracic mobility" });
   } else if (isLower) {
-    const h = pickFirst(["hip_90_90", "worlds_greatest_stretch", "leg_swings"], "6/side");
-    const a = pickFirst(["ankle_rocks", "goblet_squat_hold", "bodyweight_squat"], "10 reps");
+    const h = pickFirst(["ninety_ninety", "world_greatest_stretch", "hip_cars"], "6/side");
+    const a = pickFirst(["goblet_squat_hold", "thoracic_extension_squat", "ankle_bound"], "10 reps");
     if (h) out.push({ ...h, notes: "Day prep — hip mobility" });
-    if (a) out.push({ ...a, notes: "Day prep — ankle + squat pattern" });
+    if (a) out.push({ ...a, notes: "Day prep — squat pattern + ankle" });
   } else if (isCardio) {
-    const hf = pickFirst(["hip_flexor_stretch", "worlds_greatest_stretch", "leg_swings"], "45s/side");
+    const hf = pickFirst(["couch_stretch", "world_greatest_stretch", "hip_cars"], "45s/side");
     const easy = pickFirst(["easy_row", "easy_bike", "jumping_jacks"], "2 min easy");
     if (hf) out.push({ ...hf, notes: "Day prep — open the hips" });
     if (easy) out.push({ ...easy, notes: "Day prep — build up to Z2 pace" });
@@ -893,6 +893,13 @@ export async function generateWorkout(
   const intensity = modifiers.intensity ?? defaultIntensity;
   const targetMinutes = modifiers.timeMinutes ?? CATEGORY_DURATION[category];
 
+  // Last rating for this category — small nudge on accessory volume so the
+  // coach reads the room. "Hard" last week → -1 set on accessories today.
+  // "Easy" → +1. Ignored if user's readiness override differs (they've
+  // already told us how they feel today).
+  const lastRating =
+    intensity === "normal" ? await lastRatingForCategory(category) : undefined;
+
   // Wave phase — computed automatically from the active focus block.
   // Galpin's frame: Accumulation → Intensification → Realization → Deload
   // spread across the block duration. No profile toggle — this is how
@@ -990,6 +997,16 @@ export async function generateWorkout(
         p = { ...p, sets: p.sets + 1 };
       } else if (intensity === "easy" && !LIFT_ID_SET.has(p.exerciseId) && p.sets > 2) {
         p = { ...p, sets: p.sets - 1 };
+      }
+
+      // Feedback from the last rated session of this category. Only nudges
+      // accessories, so main lifts stay a stable progression anchor.
+      if (lastRating && !LIFT_ID_SET.has(p.exerciseId)) {
+        if (lastRating === "hard" && p.sets > 2) {
+          p = { ...p, sets: p.sets - 1 };
+        } else if (lastRating === "easy" && p.sets < 5) {
+          p = { ...p, sets: p.sets + 1 };
+        }
       }
 
       // Focus block bias — the coach thinks in blocks. Hypertrophy shifts reps to

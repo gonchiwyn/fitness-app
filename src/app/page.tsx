@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { format, startOfWeek, addDays, differenceInCalendarDays } from "date-fns";
 import { useLiveQuery } from "dexie-react-hooks";
 import clsx from "clsx";
-import { cleanupStaleDrafts, db, getProfile, getWeeklyPlan } from "@/lib/db";
+import { cleanupStaleDrafts, db, getProfile, getWeeklyPlan, saveProfile } from "@/lib/db";
 import QuickLogModal from "@/components/QuickLogModal";
 import DayPreviewModal from "@/components/DayPreviewModal";
 import { templatesFor } from "@/lib/data/templates";
@@ -128,7 +128,20 @@ export default function HomePage() {
       )}
 
       {profile?.currentFocus && (
-        <FocusIndicator focus={profile.currentFocus} />
+        (() => {
+          const focus = profile.currentFocus;
+          const daysIn = Math.max(
+            0,
+            differenceInCalendarDays(new Date(), new Date(focus.startedAt))
+          );
+          const weekNum = Math.floor(daysIn / 7) + 1;
+          const isDone = weekNum > focus.durationWeeks;
+          return isDone ? (
+            <BlockCompleteCard focus={focus} sessions={recent ?? []} />
+          ) : (
+            <FocusIndicator focus={focus} />
+          );
+        })()
       )}
 
       {/* TODAY's primary CTA */}
@@ -258,6 +271,59 @@ function FocusIndicator({
         />
       </div>
     </Link>
+  );
+}
+
+function BlockCompleteCard({
+  focus,
+  sessions,
+}: {
+  focus: NonNullable<Profile["currentFocus"]>;
+  sessions: Session[];
+}) {
+  // Count finished sessions during the block's window.
+  const start = focus.startedAt;
+  const totalWeeks = focus.durationWeeks;
+  const done = sessions.filter(
+    (s) => s.finishedAt && s.date >= start
+  ).length;
+  const targetSessionsPerWeek = 5;
+  const targetTotal = totalWeeks * targetSessionsPerWeek;
+
+  const clear = async () => {
+    if (!confirm(`Close out the ${focus.name} block? You'll pick a new focus.`)) return;
+    await saveProfile({ currentFocus: undefined });
+    // Home rerenders on live query; nothing else needed.
+    location.reload();
+  };
+
+  return (
+    <section className="bg-gradient-to-br from-accent/25 to-accent/5 border border-accent/40 rounded-2xl p-5 space-y-3">
+      <div>
+        <div className="text-[10px] uppercase tracking-widest text-accent font-semibold">
+          Block complete
+        </div>
+        <div className="text-2xl font-bold mt-1">{focus.name} done.</div>
+      </div>
+      <p className="text-sm text-text-muted">
+        {totalWeeks} weeks · {done} of ~{targetTotal} planned sessions logged.
+        Nice work. Pick your next focus to keep the coach thinking in blocks.
+      </p>
+      <div className="flex gap-2 pt-1">
+        <Link
+          href="/plan"
+          className="flex-1 text-center bg-accent text-black font-semibold rounded-xl px-4 py-3 text-sm"
+        >
+          Pick next block →
+        </Link>
+        <button
+          onClick={clear}
+          className="px-4 py-3 rounded-xl border border-border text-text-muted text-sm"
+        >
+          Later
+        </button>
+      </div>
+    </section>
   );
 }
 

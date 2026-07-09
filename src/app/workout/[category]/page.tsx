@@ -210,6 +210,20 @@ export default function WorkoutForCategory({
     regenerateWithModifiers({ ...(session.modifiers ?? {}), intensity });
   };
 
+  // "Not today" — drop this specific exercise from THIS session only. The
+  // template stays intact for future days; we just don't do it now (tender
+  // joint, tired, whatever the reason).
+  const skipExercise = (blockIdx: number, prescIdx: number) => {
+    update((s) => {
+      const blocks = [...s.blocks];
+      const block = { ...blocks[blockIdx] };
+      block.prescriptions = block.prescriptions.filter((_, i) => i !== prescIdx);
+      // Drop blocks that end up empty so the UI doesn't render a stub.
+      blocks[blockIdx] = block;
+      return { ...s, blocks: blocks.filter((b) => b.prescriptions.length > 0) };
+    });
+  };
+
   const swapExercise = (blockIdx: number, prescIdx: number, newExerciseId: string) => {
     update((s) => {
       const blocks = [...s.blocks];
@@ -371,6 +385,7 @@ export default function WorkoutForCategory({
                 })
               }
               onSwap={(pi, newId) => swapExercise(bi, pi, newId)}
+              onSkip={(pi) => skipExercise(bi, pi)}
             />
           ));
         })()}
@@ -542,6 +557,7 @@ function BlockCard({
   onChangeCoreFocus,
   onUpdate,
   onSwap,
+  onSkip,
 }: {
   block: LoggedBlock;
   units: "kg" | "lb";
@@ -552,6 +568,7 @@ function BlockCard({
   onChangeCoreFocus: () => void;
   onUpdate: (b: LoggedBlock) => void;
   onSwap: (prescIdx: number, newExerciseId: string) => void;
+  onSkip: (prescIdx: number) => void;
 }) {
   const isWarmup = block.title === "Warmup";
   const isCooldown = block.title === "Cooldown";
@@ -646,6 +663,7 @@ function BlockCard({
                 availableEquipment={availableEquipment}
                 usedInSession={usedInSession}
                 onSwap={(newId) => onSwap(pi, newId)}
+                onSkip={() => onSkip(pi)}
               />
             ))}
           </div>
@@ -666,6 +684,7 @@ function ExerciseCard({
   availableEquipment,
   usedInSession,
   onSwap,
+  onSkip,
 }: {
   prescription: LoggedPrescription;
   blockMode: BlockMode;
@@ -678,6 +697,7 @@ function ExerciseCard({
   availableEquipment: Set<string>;
   usedInSession: Set<string>;
   onSwap: (newExerciseId: string) => void;
+  onSkip: () => void;
 }) {
   const [showSwaps, setShowSwaps] = useState(false);
   const [showHowTo, setShowHowTo] = useState(false);
@@ -729,14 +749,31 @@ function ExerciseCard({
             <div className="text-xl font-bold leading-tight">{exercise.name}</div>
           </div>
         </div>
-        {!isWarmup && !isCooldown && swapIds.length > 0 && (
-          <button
-            onClick={() => setShowSwaps((s) => !s)}
-            className="text-[10px] text-text-dim hover:text-accent shrink-0 px-2 py-1 rounded border border-border no-print"
-            aria-label="Swap exercise"
-          >
-            ⇄
-          </button>
+        {!isWarmup && !isCooldown && (
+          <div className="flex items-center gap-1 shrink-0 no-print">
+            {swapIds.length > 0 && (
+              <button
+                onClick={() => setShowSwaps((s) => !s)}
+                className="text-[10px] text-text-dim hover:text-accent px-2 py-1 rounded border border-border"
+                aria-label="Swap exercise"
+                title="Swap exercise"
+              >
+                ⇄
+              </button>
+            )}
+            <button
+              onClick={() => {
+                if (confirm(`Skip ${getExercise(prescription.exerciseId).name} today?`)) {
+                  onSkip();
+                }
+              }}
+              className="text-[10px] text-text-dim hover:text-accent px-2 py-1 rounded border border-border"
+              aria-label="Not today — skip this exercise"
+              title="Not today"
+            >
+              Not today
+            </button>
+          </div>
         )}
       </div>
 
