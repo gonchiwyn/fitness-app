@@ -477,32 +477,40 @@ function PhaseOutline({
     phases.push({ label, short, desc });
   }
   const currentIdx = Math.min(currentWeek - 1, phases.length - 1);
-  const currentPhase = phases[currentIdx];
+  const [selectedIdx, setSelectedIdx] = useState(currentIdx);
+  const selectedPhase = phases[selectedIdx];
+  const isCurrent = selectedIdx === currentIdx;
 
   return (
     <div className="pt-2 space-y-2">
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(0,1fr))] gap-1" style={{ gridTemplateColumns: `repeat(${durationWeeks}, minmax(0, 1fr))` }}>
+      <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${durationWeeks}, minmax(0, 1fr))` }}>
         {phases.map((p, i) => (
-          <div
+          <button
             key={i}
+            onClick={() => setSelectedIdx(i)}
             className={clsx(
-              "text-center py-1 rounded text-[10px] font-semibold tabular-nums",
+              "text-center py-1 rounded text-[10px] font-semibold tabular-nums transition-colors",
+              i === selectedIdx
+                ? "ring-1 ring-accent"
+                : "",
               i === currentIdx
                 ? "bg-accent text-black"
                 : i < currentIdx
-                ? "bg-accent/25 text-text-muted"
-                : "bg-bg text-text-dim"
+                ? "bg-accent/25 text-text-muted hover:bg-accent/40"
+                : "bg-bg text-text-dim hover:bg-bg-elevated"
             )}
-            title={`Week ${i + 1} · ${p.label} — ${p.desc}`}
           >
             {i + 1}
             <div className="text-[8px] font-normal opacity-80">{p.short}</div>
-          </div>
+          </button>
         ))}
       </div>
       <p className="text-[11px] text-text-muted leading-snug">
-        <span className="text-accent font-semibold">{currentPhase.label}:</span>{" "}
-        {currentPhase.desc}
+        <span className="text-accent font-semibold">
+          Week {selectedIdx + 1} · {selectedPhase.label}
+          {isCurrent && " (now)"}:
+        </span>{" "}
+        {selectedPhase.desc}
       </p>
     </div>
   );
