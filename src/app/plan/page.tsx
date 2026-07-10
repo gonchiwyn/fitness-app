@@ -255,6 +255,11 @@ export default function PlanPage() {
           <div className="h-1 bg-border rounded-full overflow-hidden">
             <div className="h-full bg-accent" style={{ width: `${progressPct}%` }} />
           </div>
+          <PhaseOutline
+            durationWeeks={focus.durationWeeks}
+            startedAt={focus.startedAt}
+            currentWeek={weekNum}
+          />
           <div className="flex items-center justify-between text-xs text-text-dim">
             <span>Started {format(new Date(focus.startedAt), "MMM d")}</span>
             <button onClick={endBlock} className="text-text-muted underline">
@@ -435,6 +440,70 @@ export default function PlanPage() {
           onClose={() => setEditingDay(null)}
         />
       )}
+    </div>
+  );
+}
+
+function PhaseOutline({
+  durationWeeks,
+  startedAt,
+  currentWeek,
+}: {
+  durationWeeks: number;
+  startedAt: string;
+  currentWeek: number;
+}) {
+  // Compute the phase label for every week using the same rules as
+  // getBlockPhase — a small compact strip so the whole block is legible.
+  const phases: { label: string; short: string; desc: string }[] = [];
+  for (let w = 1; w <= durationWeeks; w++) {
+    const weeksLeft = durationWeeks - w;
+    let label = "Accumulation";
+    let short = "Acc";
+    let desc = "Build volume tolerance — moderate loads, more sets.";
+    if (durationWeeks <= 1 || weeksLeft === 0) {
+      label = "Deload";
+      short = "Del";
+      desc = "Recovery week — cut intensity ~15%, drop a set. CNS reset.";
+    } else if (weeksLeft === 1 && durationWeeks >= 3) {
+      label = "Realization";
+      short = "Real";
+      desc = "Peak week — heaviest loads, main lift +1 set, accessories back off. Chase PRs.";
+    } else if (w > Math.ceil(durationWeeks / 3)) {
+      label = "Intensification";
+      short = "Int";
+      desc = "Load creeps up ~5%, reps drop slightly. Push harder, moderate volume.";
+    }
+    phases.push({ label, short, desc });
+  }
+  const currentIdx = Math.min(currentWeek - 1, phases.length - 1);
+  const currentPhase = phases[currentIdx];
+
+  return (
+    <div className="pt-2 space-y-2">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(0,1fr))] gap-1" style={{ gridTemplateColumns: `repeat(${durationWeeks}, minmax(0, 1fr))` }}>
+        {phases.map((p, i) => (
+          <div
+            key={i}
+            className={clsx(
+              "text-center py-1 rounded text-[10px] font-semibold tabular-nums",
+              i === currentIdx
+                ? "bg-accent text-black"
+                : i < currentIdx
+                ? "bg-accent/25 text-text-muted"
+                : "bg-bg text-text-dim"
+            )}
+            title={`Week ${i + 1} · ${p.label} — ${p.desc}`}
+          >
+            {i + 1}
+            <div className="text-[8px] font-normal opacity-80">{p.short}</div>
+          </div>
+        ))}
+      </div>
+      <p className="text-[11px] text-text-muted leading-snug">
+        <span className="text-accent font-semibold">{currentPhase.label}:</span>{" "}
+        {currentPhase.desc}
+      </p>
     </div>
   );
 }

@@ -406,6 +406,9 @@ export type WorkoutModifiers = {
   intensity?: Intensity;
   rehab?: RehabZone;
   templateId?: string;
+  // One-off override for this session's core block. Doesn't touch the
+  // profile default — next session picks up profile.coreFocus again.
+  coreFocus?: CoreFocus;
 };
 
 // ============================================================

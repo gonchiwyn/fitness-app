@@ -267,36 +267,43 @@ function ConsistencyCalendar({ sessions }: { sessions: Session[] }) {
             </div>
           ))}
           {rows.map((row, ri) => {
-            const monthLabel =
-              ri === 0 || row.weekStart.getDate() <= 7 ? format(row.weekStart, "MMM") : "";
+            // Row label: month if it changed on any day of this row.
+            const rowMonth = format(row.weekStart, "MMM");
+            const prevMonth = ri > 0 ? format(rows[ri - 1].weekStart, "MMM") : "";
+            const monthLabel = ri === 0 || rowMonth !== prevMonth ? rowMonth : "";
             return (
               <div key={ri} className="contents">
-                <div className="text-[9px] text-text-dim tabular-nums text-right pr-1">
+                <div className="text-[10px] text-text-dim tabular-nums text-right pr-1 self-center">
                   {monthLabel}
                 </div>
                 {row.days.map((session, di) => {
                   const date = addDays(row.weekStart, di);
                   const inFuture = date > today;
                   const dateStr = format(date, "yyyy-MM-dd");
+                  const dayNum = date.getDate();
                   const cat = session?.category;
-                  const cellClass = session && cat
+                  const filled = !!(session && cat);
+                  const cellClass = filled
                     ? CATEGORY_COLOR[cat] ?? "bg-accent"
-                    : "bg-bg border border-border";
+                    : "bg-bg-card border border-border";
                   const title = session
                     ? `${session.name}${session.focusName ? ` · ${session.focusName}` : ""} · ${format(date, "EEE MMM d")}`
-                    : dateStr;
+                    : format(date, "EEE, MMM d");
                   return (
                     <Link
                       key={di}
                       href={session?.id ? `/history#${session.id}` : "#"}
                       title={title}
                       className={clsx(
-                        "aspect-square rounded transition-opacity",
+                        "aspect-square rounded transition-opacity flex items-center justify-center text-[10px] tabular-nums font-medium",
                         inFuture && "opacity-20",
                         cellClass,
+                        filled ? "text-black" : "text-text-dim",
                         !session && "pointer-events-none"
                       )}
-                    />
+                    >
+                      {dayNum}
+                    </Link>
                   );
                 })}
               </div>

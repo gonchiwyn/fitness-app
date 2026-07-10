@@ -1056,7 +1056,8 @@ export async function generateWorkout(
 
   // Auto-inject Core block (Galpin 3-part rotation + optional aesthetic)
   // Skip if the template already provides one — don't double-up.
-  const coreFocus = profile.coreFocus ?? "protection";
+  // Per-session core override wins; otherwise the profile default.
+  const coreFocus = modifiers.coreFocus ?? profile.coreFocus ?? "protection";
   const templateAlreadyHasCore = blocks.some((b) => b.title === "Core");
   if (targetMinutes >= 30 && !templateAlreadyHasCore) {
     const coreBlock = buildCoreBlock(coreFocus, category, available, rng, date);

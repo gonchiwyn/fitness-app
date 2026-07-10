@@ -15,6 +15,7 @@ import {
   CATEGORY_LABELS,
   CORE_FOCUS_LABELS,
   EQUIPMENT_PRESET_INCLUDES,
+  getBlockPhase,
   EXERCISE_TO_BENCHMARK,
   INTENSITY_LABELS,
   type Category,
@@ -64,6 +65,40 @@ const MODE_LABELS: Record<BlockMode, string> = {
   for_time: "FOR TIME",
   straight: "STRAIGHT SETS",
 };
+
+// Rebuild the block scheme header from the actual prescriptions so it can't
+// drift from the individual set×rep rows. Keeps the "SUPERSET"/"CIRCUIT"
+// qualifier if the template had one.
+function computeSchemeHeader(block: LoggedBlock): string {
+  const staticScheme = (block as { scheme?: string }).scheme ?? "";
+  const qualifiers = [
+    { key: "superset", label: "Superset" },
+    { key: "circuit", label: "Circuit" },
+    { key: "amrap", label: "AMRAP" },
+    { key: "emom", label: "EMOM" },
+    { key: "for time", label: "For Time" },
+  ];
+  const q = qualifiers.find((x) => staticScheme.toLowerCase().includes(x.key));
+  const prefix = q ? `${q.label} · ` : "";
+
+  const rest = block.prescriptions[0]?.rest;
+  const restSuffix = rest ? ` — rest ${rest}` : "";
+
+  if (block.prescriptions.length === 0) return staticScheme;
+  // If all prescriptions share the same sets and reps, use a single summary.
+  const first = block.prescriptions[0];
+  const allSame = block.prescriptions.every(
+    (p) => p.prescribedSets === first.prescribedSets && p.prescribedReps === first.prescribedReps
+  );
+  if (allSame) {
+    return `${prefix}${first.prescribedSets} × ${first.prescribedReps}${restSuffix}`;
+  }
+  // Otherwise return the range across the block.
+  const reps = block.prescriptions.map((p) => String(p.prescribedReps));
+  const sets = block.prescriptions.map((p) => p.prescribedSets);
+  const setsSummary = sets.every((s) => s === sets[0]) ? `${sets[0]}` : `${Math.min(...sets)}-${Math.max(...sets)}`;
+  return `${prefix}${setsSummary} × ${[...new Set(reps)].join("/")}${restSuffix}`;
+}
 
 export default function WorkoutForCategory({
   params,
@@ -331,14 +366,25 @@ export default function WorkoutForCategory({
       </header>
 
       {/* PHILOSOPHY */}
-      {session.phase && (
-        <div className="bg-bg-card border-l-2 border-accent rounded-r-xl px-4 py-3 no-print">
-          <div className="text-[10px] uppercase tracking-widest text-accent font-semibold mb-1">
-            Cycle · Week {session.phase.weekInCycle} of 4 · {session.phase.label}
+      {(() => {
+        // Prefer the LIVE focus block phase over the phase stamped on the
+        // session (which may be stale — e.g. block duration was later
+        // upgraded from 4 → 6 weeks).
+        const focus = profile.currentFocus;
+        const livePhase =
+          focus?.startedAt && focus.durationWeeks
+            ? getBlockPhase(focus.startedAt, focus.durationWeeks, new Date())
+            : session.phase;
+        const totalWeeks = focus?.durationWeeks ?? 4;
+        return livePhase ? (
+          <div className="bg-bg-card border-l-2 border-accent rounded-r-xl px-4 py-3 no-print">
+            <div className="text-[10px] uppercase tracking-widest text-accent font-semibold mb-1">
+              Cycle · Week {livePhase.weekInCycle} of {totalWeeks} · {livePhase.label}
+            </div>
+            <p className="text-sm text-text-muted leading-relaxed">{livePhase.description}</p>
           </div>
-          <p className="text-sm text-text-muted leading-relaxed">{session.phase.description}</p>
-        </div>
-      )}
+        ) : null;
+      })()}
 
       {session.philosophy && (
         <div className="bg-bg-card border-l-2 border-accent rounded-r-xl px-4 py-3 no-print">
@@ -412,10 +458,12 @@ export default function WorkoutForCategory({
           current={profile.coreFocus ?? "protection"}
           onPick={async (focus) => {
             setCorePickerOpen(false);
-            await saveProfile({ coreFocus: focus });
-            setProfile({ ...profile, coreFocus: focus });
-            // Regenerate the current workout so the new core block appears
-            regenerateWithModifiers(session.modifiers ?? {});
+            // Session-only override — regenerate with the new core focus but
+            // do NOT save to profile. Next session picks up the default again.
+            regenerateWithModifiers({
+              ...(session.modifiers ?? {}),
+              coreFocus: focus,
+            });
           }}
           onClose={() => setCorePickerOpen(false)}
         />
@@ -579,7 +627,10 @@ function BlockCard({
   const effectivelyCollapsed = collapsed && !forceExpanded;
 
   // Block scheme detection (only used for visible grouping label)
-  const scheme = (block as { scheme?: string }).scheme ?? "";
+  // Compute the scheme header from the actual prescriptions instead of the
+  // static template string — block bias / week rotation / phase change the
+  // sets and reps and the old "3×12-15" summary drifts out of sync.
+  const scheme = computeSchemeHeader(block);
   const mode = detectBlockMode(scheme, block.prescriptions.length);
   const isGrouped = mode !== "straight" && block.prescriptions.length > 1;
 
