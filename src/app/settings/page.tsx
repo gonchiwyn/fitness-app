@@ -152,6 +152,155 @@ export default function SettingsPage() {
         </div>
       </Link>
 
+      <Section title="Strength maxes">
+        <p className="text-sm text-text-muted -mt-2">
+          Weight × reps. We estimate 1RM (Epley) and prescribe loads as a % of that.
+        </p>
+        <div className="space-y-2">
+          {TRACKED_LIFTS.map(({ id, label }) => {
+            const cur = profile.maxes?.[id];
+            const oneRm = cur?.weight && cur?.reps
+              ? Math.round(cur.weight * (1 + cur.reps / 30) * 10) / 10
+              : null;
+            return (
+              <div key={id} className="bg-bg-card border border-border rounded-xl p-4">
+                <div className="text-sm font-medium mb-2 flex items-center justify-between">
+                  <span>{label}</span>
+                  {oneRm !== null && (
+                    <span className="text-xs text-accent font-mono">
+                      1RM ≈ {oneRm}{profile.units}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <NumField
+                    value={cur?.weight}
+                    onChange={(v) => setMax(id, v, cur?.reps)}
+                    placeholder={profile.units}
+                    step={2.5}
+                  />
+                  <span className="text-text-dim">×</span>
+                  <NumField
+                    value={cur?.reps}
+                    onChange={(v) => setMax(id, cur?.weight, v)}
+                    placeholder="reps"
+                    step={1}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Section>
+
+      <Section title="Running benchmark">
+        <p className="text-sm text-text-muted -mt-2">
+          A recent solid effort. Used to set Zone 2 and VO2 max paces.
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Distance (km)">
+            <NumField
+              value={profile.runBenchmark?.distanceKm}
+              onChange={(v) => setRunBenchmark({ distanceKm: v ?? 0 })}
+              placeholder="10"
+              step={0.5}
+            />
+          </Field>
+          <Field label="Time (minutes)">
+            <NumField
+              value={profile.runBenchmark?.timeMinutes}
+              onChange={(v) => setRunBenchmark({ timeMinutes: v ?? 0 })}
+              placeholder="50"
+              step={0.5}
+            />
+          </Field>
+        </div>
+      </Section>
+
+      <Section title="Current concerns">
+        <p className="text-sm text-text-muted -mt-2">
+          Only tick what&apos;s <em>currently</em> bothering you. Ticking triggers swaps
+          (e.g. bench → incline DB). Untick when it heals.
+        </p>
+        <div className="space-y-2">
+          {(["shoulder", "knee", "elbow", "hip", "neck", "lower_back"] as RehabZone[]).map((zone) => {
+            const active = (profile.activeConcerns ?? []).includes(zone);
+            return (
+              <button
+                key={zone}
+                onClick={() => {
+                  const cur = new Set(profile.activeConcerns ?? []);
+                  if (cur.has(zone)) cur.delete(zone);
+                  else cur.add(zone);
+                  update({ activeConcerns: Array.from(cur) });
+                }}
+                className={clsx(
+                  "w-full text-left p-3 rounded-xl border transition-colors flex items-center justify-between",
+                  active ? "bg-accent/10 border-accent/40" : "bg-bg-card border-border"
+                )}
+              >
+                <span className="font-medium">{REHAB_ZONE_LABELS[zone]}</span>
+                <Check active={active} />
+              </button>
+            );
+          })}
+        </div>
+      </Section>
+
+      <Section title="Core focus">
+        <p className="text-sm text-text-muted -mt-2">
+          Auto-injects a Core block at the end of every workout (except Stretching/Recovery/Cardio).
+        </p>
+        <div className="space-y-2">
+          {(["off", "protection", "aesthetic", "both"] as CoreFocus[]).map((c) => {
+            const active = (profile.coreFocus ?? "protection") === c;
+            return (
+              <button
+                key={c}
+                onClick={() => update({ coreFocus: c })}
+                className={clsx(
+                  "w-full text-left p-4 rounded-xl border transition-colors",
+                  active ? "bg-accent/10 border-accent/40" : "bg-bg-card border-border"
+                )}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium">{CORE_FOCUS_LABELS[c]}</div>
+                    <div className="text-xs text-text-dim mt-0.5">{CORE_FOCUS_DESCRIPTIONS[c]}</div>
+                  </div>
+                  <Check active={active} />
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </Section>
+
+      <Section title="Chronic lumbar care">
+        <p className="text-sm text-text-muted -mt-2">
+          Always-on gentle care without blanket swaps: caps intensity on
+          hinge/squat lifts at ~78% 1RM and adds glute activation to warmup.
+          Doesn&apos;t remove exercises — trusts you to lift smart.
+        </p>
+        <button
+          onClick={() => update({ chronicLumbarCare: !profile.chronicLumbarCare })}
+          className={clsx(
+            "w-full text-left p-4 rounded-xl border transition-colors flex items-center justify-between",
+            profile.chronicLumbarCare ? "bg-accent/10 border-accent/40" : "bg-bg-card border-border"
+          )}
+        >
+          <div>
+            <div className="font-medium">{profile.chronicLumbarCare ? "On" : "Off"}</div>
+            <div className="text-xs text-text-dim mt-0.5">Tap to {profile.chronicLumbarCare ? "disable" : "enable"}</div>
+          </div>
+          <Check active={profile.chronicLumbarCare ?? false} />
+        </button>
+      </Section>
+
+      <CollapsibleSection
+        title="Personal record"
+        hint="Basics, goals, history — set once, rarely changes."
+      >
       <Section title="Basics">
         <Field label="Name">
           <input
@@ -239,92 +388,9 @@ export default function SettingsPage() {
         </div>
       </Section>
 
-      <Section title="Periodization">
-        <p className="text-sm text-text-muted -mt-2">
-          4-week wave loading on strength lifts: Base → Build → Peak → Deload. Load and set targets shift each week. Applies to Strength / Hypertrophy / Split / Athlete.
-        </p>
-        {(() => {
-          const enabled = profile.periodizationEnabled ?? false;
-          const start = profile.programStartDate;
-          const phase = enabled && start ? getCurrentCyclePhase(start) : null;
-          return (
-            <>
-              <button
-                onClick={() => {
-                  if (enabled) {
-                    update({ periodizationEnabled: false });
-                  } else {
-                    const today = format(new Date(), "yyyy-MM-dd");
-                    update({ periodizationEnabled: true, programStartDate: profile.programStartDate ?? today });
-                  }
-                }}
-                className={clsx(
-                  "w-full text-left p-4 rounded-xl border transition-colors flex items-center justify-between",
-                  enabled ? "bg-accent/10 border-accent/40" : "bg-bg-card border-border"
-                )}
-              >
-                <div>
-                  <div className="font-medium">{enabled ? "On" : "Off"}</div>
-                  <div className="text-xs text-text-dim mt-0.5">
-                    {enabled ? "Tap to disable" : "Tap to start today"}
-                  </div>
-                </div>
-                <Check active={enabled} />
-              </button>
-              {phase && (
-                <div className="bg-bg-card border-l-2 border-accent rounded-r-xl px-4 py-3 mt-2">
-                  <div className="text-[10px] uppercase tracking-widest text-accent font-semibold">
-                    Current: Week {phase.weekInCycle} of 4 · {phase.label}
-                  </div>
-                  <p className="text-xs text-text-muted mt-1">{phase.description}</p>
-                </div>
-              )}
-              {enabled && (
-                <button
-                  onClick={() => {
-                    const today = format(new Date(), "yyyy-MM-dd");
-                    if (confirm("Restart cycle from today?")) {
-                      update({ programStartDate: today });
-                    }
-                  }}
-                  className="w-full text-xs text-text-dim py-2 mt-1"
-                >
-                  ↻ Restart cycle from today
-                </button>
-              )}
-            </>
-          );
-        })()}
-      </Section>
-
-      <Section title="Core focus">
-        <p className="text-sm text-text-muted -mt-2">
-          Auto-injects a Core block at the end of every workout (except Stretching/Recovery/Cardio).
-        </p>
-        <div className="space-y-2">
-          {(["off", "protection", "aesthetic", "both"] as CoreFocus[]).map((c) => {
-            const active = (profile.coreFocus ?? "protection") === c;
-            return (
-              <button
-                key={c}
-                onClick={() => update({ coreFocus: c })}
-                className={clsx(
-                  "w-full text-left p-4 rounded-xl border transition-colors",
-                  active ? "bg-accent/10 border-accent/40" : "bg-bg-card border-border"
-                )}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium">{CORE_FOCUS_LABELS[c]}</div>
-                    <div className="text-xs text-text-dim mt-0.5">{CORE_FOCUS_DESCRIPTIONS[c]}</div>
-                  </div>
-                  <Check active={active} />
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </Section>
+      {/* Periodization section removed — phase model is always-on via the
+          active focus block. profile.periodizationEnabled + programStartDate
+          kept as fallback for anyone in the middle of the old wave. */}
 
       <Section title="Warmup focus">
         <p className="text-sm text-text-muted -mt-2">Always included at the start of every workout.</p>
@@ -399,57 +465,6 @@ export default function SettingsPage() {
         </Field>
       </Section>
 
-      <Section title="Current concerns">
-        <p className="text-sm text-text-muted -mt-2">
-          Only tick what&apos;s <em>currently</em> bothering you. Ticking triggers swaps
-          (e.g. bench → incline DB). Untick when it heals.
-        </p>
-        <div className="space-y-2">
-          {(["shoulder", "knee", "elbow", "hip", "neck", "lower_back"] as RehabZone[]).map((zone) => {
-            const active = (profile.activeConcerns ?? []).includes(zone);
-            return (
-              <button
-                key={zone}
-                onClick={() => {
-                  const cur = new Set(profile.activeConcerns ?? []);
-                  if (cur.has(zone)) cur.delete(zone);
-                  else cur.add(zone);
-                  update({ activeConcerns: Array.from(cur) });
-                }}
-                className={clsx(
-                  "w-full text-left p-3 rounded-xl border transition-colors flex items-center justify-between",
-                  active ? "bg-accent/10 border-accent/40" : "bg-bg-card border-border"
-                )}
-              >
-                <span className="font-medium">{REHAB_ZONE_LABELS[zone]}</span>
-                <Check active={active} />
-              </button>
-            );
-          })}
-        </div>
-      </Section>
-
-      <Section title="Chronic lumbar care">
-        <p className="text-sm text-text-muted -mt-2">
-          Always-on gentle care without blanket swaps: caps intensity on
-          hinge/squat lifts at ~78% 1RM and adds glute activation to warmup.
-          Doesn&apos;t remove exercises — trusts you to lift smart.
-        </p>
-        <button
-          onClick={() => update({ chronicLumbarCare: !profile.chronicLumbarCare })}
-          className={clsx(
-            "w-full text-left p-4 rounded-xl border transition-colors flex items-center justify-between",
-            profile.chronicLumbarCare ? "bg-accent/10 border-accent/40" : "bg-bg-card border-border"
-          )}
-        >
-          <div>
-            <div className="font-medium">{profile.chronicLumbarCare ? "On" : "Off"}</div>
-            <div className="text-xs text-text-dim mt-0.5">Tap to {profile.chronicLumbarCare ? "disable" : "enable"}</div>
-          </div>
-          <Check active={profile.chronicLumbarCare ?? false} />
-        </button>
-      </Section>
-
       <Section title="History & context">
         <p className="text-sm text-text-muted -mt-2">
           Free text — informational only. Doesn&apos;t drive swaps (that&apos;s Current concerns above).
@@ -475,70 +490,7 @@ export default function SettingsPage() {
         </Field>
       </Section>
 
-      <Section title="Strength maxes">
-        <p className="text-sm text-text-muted -mt-2">
-          Weight × reps. We estimate 1RM (Epley) and prescribe loads as a % of that.
-        </p>
-        <div className="space-y-2">
-          {TRACKED_LIFTS.map(({ id, label }) => {
-            const cur = profile.maxes?.[id];
-            const oneRm = cur?.weight && cur?.reps
-              ? Math.round(cur.weight * (1 + cur.reps / 30) * 10) / 10
-              : null;
-            return (
-              <div key={id} className="bg-bg-card border border-border rounded-xl p-4">
-                <div className="text-sm font-medium mb-2 flex items-center justify-between">
-                  <span>{label}</span>
-                  {oneRm !== null && (
-                    <span className="text-xs text-accent font-mono">
-                      1RM ≈ {oneRm}{profile.units}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <NumField
-                    value={cur?.weight}
-                    onChange={(v) => setMax(id, v, cur?.reps)}
-                    placeholder={profile.units}
-                    step={2.5}
-                  />
-                  <span className="text-text-dim">×</span>
-                  <NumField
-                    value={cur?.reps}
-                    onChange={(v) => setMax(id, cur?.weight, v)}
-                    placeholder="reps"
-                    step={1}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </Section>
-
-      <Section title="Running benchmark">
-        <p className="text-sm text-text-muted -mt-2">
-          A recent solid effort. Used to set Zone 2 and VO2 max paces.
-        </p>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Distance (km)">
-            <NumField
-              value={profile.runBenchmark?.distanceKm}
-              onChange={(v) => setRunBenchmark({ distanceKm: v ?? 0 })}
-              placeholder="10"
-              step={0.5}
-            />
-          </Field>
-          <Field label="Time (minutes)">
-            <NumField
-              value={profile.runBenchmark?.timeMinutes}
-              onChange={(v) => setRunBenchmark({ timeMinutes: v ?? 0 })}
-              placeholder="50"
-              step={0.5}
-            />
-          </Field>
-        </div>
-      </Section>
+      </CollapsibleSection>
 
       <Section title="Data">
         <p className="text-sm text-text-muted -mt-2">
@@ -589,6 +541,39 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     <section className="space-y-3">
       <h2 className="text-xs uppercase tracking-widest text-text-dim font-semibold">{title}</h2>
       {children}
+    </section>
+  );
+}
+
+// Static fields you don't touch often (basics, history, goals text). Closed
+// by default so the Settings page foregrounds the controls you actually use.
+function CollapsibleSection({
+  title,
+  hint,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <section className="space-y-3">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-baseline justify-between text-left"
+      >
+        <div>
+          <h2 className="text-xs uppercase tracking-widest text-text-dim font-semibold">
+            {title}
+          </h2>
+          {hint && !open && (
+            <p className="text-[11px] text-text-dim mt-0.5">{hint}</p>
+          )}
+        </div>
+        <span className="text-text-dim text-xs">{open ? "Hide" : "Show"}</span>
+      </button>
+      {open && <div className="space-y-3">{children}</div>}
     </section>
   );
 }
