@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { format, startOfWeek, addDays, differenceInCalendarDays } from "date-fns";
 import { useLiveQuery } from "dexie-react-hooks";
 import clsx from "clsx";
 import { cleanupStaleDrafts, db, getProfile, getWeeklyPlan, saveProfile } from "@/lib/db";
 import QuickLogModal from "@/components/QuickLogModal";
 import DayPreviewModal from "@/components/DayPreviewModal";
+import WeeklyReviewModal from "@/components/WeeklyReviewModal";
 import { templatesFor } from "@/lib/data/templates";
 import { recommendForToday, type Recommendation } from "@/lib/recommend";
 import {
@@ -27,6 +28,7 @@ export default function HomePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [logDate, setLogDate] = useState<string | null>(null);
   const [previewDate, setPreviewDate] = useState<string | null>(null);
+  const [reviewOpen, setReviewOpen] = useState(false);
   // Offset in weeks from the current week (0 = this week, +1 = next, -1 = last).
   // Lets the user scan the block outlook without leaving Home.
   const [weekOffset, setWeekOffset] = useState(0);
@@ -64,6 +66,26 @@ export default function HomePage() {
     if (!p) return null;
     return { ...p, days: p.days.map(normalizePlannedDay) };
   }, []);
+
+  // Weekly review: prompt on Sunday (or later) if no review exists for the
+  // week that just ended. The week runs Mon-Sun; end date is this Sunday.
+  const thisSunday = useMemo(() => {
+    const d = new Date();
+    const day = d.getDay(); // 0=Sun ... 6=Sat
+    const daysToSunday = day === 0 ? 0 : 7 - day;
+    d.setDate(d.getDate() + daysToSunday);
+    return format(d, "yyyy-MM-dd");
+  }, []);
+  const showReviewPrompt = useLiveQuery(async () => {
+    const t = new Date();
+    // Only after Sunday morning — Saturday is still training
+    if (t.getDay() !== 0 && t.getDay() < 6) return false;
+    const existing = await db.weeklyReviews
+      .where("weekEndDate")
+      .equals(thisSunday)
+      .first();
+    return !existing;
+  }, [thisSunday]);
 
   const plannedToday: PlannedDay = plan?.days[todayIdx] ?? null;
   // Always compute — used as primary CTA if no plan, or as secondary hint if plan disagrees
@@ -131,6 +153,21 @@ export default function HomePage() {
         </Link>
       )}
 
+      {showReviewPrompt && (
+        <button
+          onClick={() => setReviewOpen(true)}
+          className="w-full text-left block bg-gradient-to-br from-accent/25 to-accent/5 border border-accent/40 rounded-2xl p-4"
+        >
+          <div className="text-xs uppercase tracking-widest text-accent font-semibold">
+            Weekly review →
+          </div>
+          <div className="text-sm text-text-muted mt-1.5 leading-snug">
+            How did the week go? 7 quick chip-based questions. Your answers
+            tune next week&apos;s workouts. 2 min.
+          </div>
+        </button>
+      )}
+
       {profile?.currentFocus && (
         (() => {
           const focus = profile.currentFocus;
@@ -194,6 +231,19 @@ export default function HomePage() {
           day={plan.days[dateToPlanIndex(new Date(previewDate + "T00:00:00"))]}
           profile={profile}
           onClose={() => setPreviewDate(null)}
+        />
+      )}
+
+      {reviewOpen && profile && (
+        <WeeklyReviewModal
+          weekEndDate={thisSunday}
+          profile={profile}
+          onClose={() => setReviewOpen(false)}
+          onSaved={() => {
+            setReviewOpen(false);
+            // Refresh profile since bodyFlags may have toggled activeConcerns.
+            getProfile().then(setProfile);
+          }}
         />
       )}
 

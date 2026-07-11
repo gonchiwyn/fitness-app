@@ -1,5 +1,5 @@
 import Dexie, { type Table } from "dexie";
-import type { Benchmark, PlannedDay, Profile, Session, WeeklyPlan } from "./types";
+import type { Benchmark, PlannedDay, Profile, Session, WeeklyPlan, WeeklyReview } from "./types";
 import { dateToPlanIndex, normalizePlannedDay } from "./types";
 import {
   GENERIC_PROFILE,
@@ -13,6 +13,7 @@ export class FitnessDB extends Dexie {
   profile!: Table<Profile, "me">;
   weeklyPlan!: Table<WeeklyPlan, "me">;
   benchmarks!: Table<Benchmark, number>;
+  weeklyReviews!: Table<WeeklyReview, number>;
 
   constructor() {
     super("fitness-app");
@@ -30,6 +31,13 @@ export class FitnessDB extends Dexie {
       profile: "id",
       weeklyPlan: "id",
       benchmarks: "++id, date, type",
+    });
+    this.version(4).stores({
+      sessions: "++id, date, category, workoutId",
+      profile: "id",
+      weeklyPlan: "id",
+      benchmarks: "++id, date, type",
+      weeklyReviews: "++id, weekEndDate",
     });
   }
 }
@@ -85,6 +93,7 @@ export async function resetToBlank(): Promise<void> {
   await db.weeklyPlan.clear();
   await db.sessions.clear();
   await db.benchmarks.clear();
+  await db.weeklyReviews.clear();
 }
 
 export async function saveProfile(p: Partial<Profile>): Promise<void> {
@@ -182,6 +191,20 @@ export async function todaysPlannedDay(d: Date = new Date()): Promise<PlannedDay
  * up or down. "Hard" last time → ease off this time; "Easy" → push a bit.
  * Only looks at recent finished sessions to stay relevant.
  */
+export async function saveWeeklyReview(r: WeeklyReview): Promise<number> {
+  return db.weeklyReviews.add(r);
+}
+
+export async function lastWeeklyReview(): Promise<WeeklyReview | undefined> {
+  const all = await db.weeklyReviews.orderBy("weekEndDate").reverse().limit(1).toArray();
+  return all[0];
+}
+
+export async function weeklyReviewFor(weekEndDate: string): Promise<WeeklyReview | undefined> {
+  return db.weeklyReviews.where("weekEndDate").equals(weekEndDate).first();
+}
+
+/** Wipes reset also purges weekly reviews. */
 export async function lastRatingForCategory(
   category: Session["category"]
 ): Promise<Session["rating"] | undefined> {

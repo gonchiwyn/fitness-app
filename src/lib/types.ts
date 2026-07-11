@@ -280,6 +280,23 @@ export type Session = {
   blocks: LoggedBlock[];
 };
 
+// End-of-week self-report. Every field maps to a specific generator
+// adjustment — no open-ended text because nothing would consume it.
+export type WeeklyReview = {
+  id?: number;
+  weekEndDate: string; // yyyy-MM-dd of the Sunday it covers
+  focusName?: string;
+  weekInBlock?: number;
+  energy: 1 | 2 | 3 | 4 | 5; // 1 = drained, 5 = charged
+  sleep: "poor" | "ok" | "good";
+  hardExerciseIds: string[];
+  easyExerciseIds: string[];
+  liftProgression: { liftId: LiftId; result: "beat" | "hit" | "missed" }[];
+  bodyFlags: RehabZone[]; // areas nagging this week
+  motivation: "low" | "normal" | "high";
+  createdAt: number;
+};
+
 export type Sex = "male" | "female" | "other" | "prefer_not_to_say";
 export type Experience = "beginner" | "intermediate" | "advanced";
 

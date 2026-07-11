@@ -1,7 +1,7 @@
 import { format, getISOWeek } from "date-fns";
 import { EXERCISES } from "./data/exercises";
 import { isTemplateAtLevel, templatesFor, type Template } from "./data/templates";
-import { lastRatingForCategory, lastSessionForExercise } from "./db";
+import { lastRatingForCategory, lastSessionForExercise, lastWeeklyReview } from "./db";
 import {
   CATEGORY_DURATION,
   CATEGORY_LABELS,
@@ -958,6 +958,19 @@ export async function generateWorkout(
   const lastRating =
     intensity === "normal" ? await lastRatingForCategory(category) : undefined;
 
+  // Most recent Weekly Review — the coach's structured read on the whole
+  // week. Its answers ripple into individual sessions:
+  //  · low energy / poor sleep → less accessory volume
+  //  · exercises flagged Hard → -1 set on match
+  //  · exercises flagged Easy → +1 set on match
+  //  · beat/missed lift progression → the load anchor shifts
+  const review = await lastWeeklyReview();
+  const reviewFresh =
+    review &&
+    (Date.now() - new Date(review.weekEndDate + "T00:00:00").getTime()) <
+      14 * 86400000;
+  const activeReview = reviewFresh ? review : undefined;
+
   // Wave phase — computed automatically from the active focus block.
   // Galpin's frame: Accumulation → Intensification → Realization → Deload
   // spread across the block duration. No profile toggle — this is how
@@ -1073,6 +1086,46 @@ export async function generateWorkout(
           p = { ...p, sets: p.sets - 1 };
         } else if (lastRating === "easy" && p.sets < 5) {
           p = { ...p, sets: p.sets + 1 };
+        }
+      }
+
+      // Weekly review shapes the next week's sessions. Bias toward what the
+      // athlete told us: less if drained/tired, more if flagged Easy, less
+      // if flagged Hard. Main lifts feel the progression edits.
+      if (activeReview) {
+        // Energy: 1 (drained) → -1 set on accessories; 5 (charged) → +1
+        if (!LIFT_ID_SET.has(p.exerciseId)) {
+          if (activeReview.energy <= 2 && p.sets > 2) {
+            p = { ...p, sets: p.sets - 1 };
+          } else if (activeReview.energy >= 4 && p.sets < 5) {
+            p = { ...p, sets: p.sets + 1 };
+          }
+          // Sleep quality — poor sleep = extra cut on accessories
+          if (activeReview.sleep === "poor" && p.sets > 2) {
+            p = { ...p, sets: p.sets - 1 };
+          }
+          // Per-exercise flags — the most direct signal
+          if (activeReview.hardExerciseIds.includes(p.exerciseId) && p.sets > 2) {
+            p = { ...p, sets: p.sets - 1 };
+          } else if (
+            activeReview.easyExerciseIds.includes(p.exerciseId) &&
+            p.sets < 5
+          ) {
+            p = { ...p, sets: p.sets + 1 };
+          }
+        }
+        // Main-lift progression: "beat" → nudge target reps down a hair to
+        // encourage heavier attempts; "missed" → hold steady (don't bury them).
+        const exId = p.exerciseId;
+        if (LIFT_ID_SET.has(exId)) {
+          const prog = activeReview.liftProgression.find((x) => x.liftId === exId);
+          if (prog?.result === "beat") {
+            // Signal: keep the sets, but drop lower end of rep range if it's
+            // a range like "6-8" → "6".
+            const trimmed = p.reps.trim();
+            const range = trimmed.match(/^(\d+)\s*[-–]\s*(\d+)$/);
+            if (range) p = { ...p, reps: range[1] };
+          }
         }
       }
 
