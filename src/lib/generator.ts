@@ -455,12 +455,63 @@ function dayPrepFor(
     if (a) out.push({ ...a, notes: "Day prep — squat pattern + ankle" });
   } else if (isCardio) {
     const hf = pickFirst(["couch_stretch", "world_greatest_stretch", "hip_cars"], "45s/side");
-    const easy = pickFirst(["easy_row", "easy_bike", "jumping_jacks"], "2 min easy");
+    const easy = pickFirst(["easy_row", "easy_bike"], "2 min easy");
     if (hf) out.push({ ...hf, notes: "Day prep — open the hips" });
     if (easy) out.push({ ...easy, notes: "Day prep — build up to Z2 pace" });
   }
 
   return out;
+}
+
+// Cooldown that reflects the day's session. Push day gets pec + shoulder;
+// Pull gets lat + bicep; Legs gets quad + hip flexor; Cardio gets calf +
+// standing hamstring. Couch stretch (hip flexor) is a default anchor —
+// carries the chronic focus everyone benefits from.
+function cooldownFor(
+  templateId: string | undefined,
+  category: Category
+): Prescription[] {
+  const tid = templateId ?? "";
+  const isUpperPush = /push|chest|shoulders|arms|upper/.test(tid);
+  const isUpperPull = /pull|back/.test(tid);
+  const isLower = /legs|lower|deadlift/.test(tid);
+  const isCardio = category === "cardio";
+
+  // Default fallback if nothing matches — the previous static cooldown.
+  const base: Prescription[] = [
+    { exerciseId: "child_pose", sets: 1, reps: "60s" },
+    { exerciseId: "couch_stretch", sets: 1, reps: "45s/side" },
+    { exerciseId: "thread_needle", sets: 1, reps: "30s/side" },
+  ];
+
+  if (isUpperPush) {
+    return [
+      { exerciseId: "child_pose", sets: 1, reps: "60s", notes: "Chest opener" },
+      { exerciseId: "thread_needle", sets: 1, reps: "30s/side", notes: "Thoracic mobility after pressing" },
+      { exerciseId: "wall_slide", sets: 1, reps: "10 slow reps", notes: "Reset the scap after volume" },
+    ];
+  }
+  if (isUpperPull) {
+    return [
+      { exerciseId: "child_pose", sets: 1, reps: "60s", notes: "Lat lengthen" },
+      { exerciseId: "thoracic_opener", sets: 1, reps: "8/side", notes: "Open the mid-back after rowing" },
+      { exerciseId: "couch_stretch", sets: 1, reps: "45s/side", notes: "Chronic hip flexor priority" },
+    ];
+  }
+  if (isLower) {
+    return [
+      { exerciseId: "couch_stretch", sets: 1, reps: "60s/side", notes: "Quad + hip flexor after squats" },
+      { exerciseId: "pigeon", sets: 1, reps: "45s/side", notes: "Glute + external hip" },
+      { exerciseId: "world_greatest_stretch", sets: 1, reps: "5 slow/side", notes: "Full-body reset" },
+    ];
+  }
+  if (isCardio) {
+    return [
+      { exerciseId: "couch_stretch", sets: 1, reps: "45s/side", notes: "Open the hip flexors after running" },
+      { exerciseId: "pigeon", sets: 1, reps: "45s/side", notes: "Glute recovery" },
+    ];
+  }
+  return base;
 }
 
 function buildWarmup(
@@ -481,7 +532,14 @@ function buildWarmup(
 
   const prescriptions: Prescription[] = [];
 
-  const heartRaiserCandidates = ["easy_row", "easy_bike", "jumping_jacks", "jump_rope_continuous"]
+  // Steady-state modalities only for Z2/cardio warmup — jumping jacks +
+  // burpees don't belong in aerobic prep.
+  const isSteadyCardio = category === "cardio" || category === "recovery" || category === "stretching";
+  const heartRaiserCandidates = (
+    isSteadyCardio
+      ? ["easy_row", "easy_bike", "run"]
+      : ["easy_row", "easy_bike", "jumping_jacks", "jump_rope_continuous"]
+  )
     .map((id) => EXERCISES.find((e) => e.id === id))
     .filter((e): e is NonNullable<typeof e> => !!e && e.equipment.some((eq) => available.has(eq)));
   if (heartRaiserCandidates.length > 0) {
@@ -1065,15 +1123,15 @@ export async function generateWorkout(
   }
 
   if (["strength", "hypertrophy", "beach", "athlete", "split"].includes(category) && targetMinutes >= 40) {
+    // Cooldown that mirrors the day trained — pecs after Push, quads/hips
+    // after Legs, lats after Pull. Chronic focus (couch stretch for hip
+    // flexors) stays as an anchor since it applies every day.
+    const cooldownPrescriptions = cooldownFor(modifiers.templateId, category);
     blocks.push({
       id: `cooldown-${Date.now()}`,
       title: "Cooldown",
       scheme: "~5 min",
-      prescriptions: [
-        { exerciseId: "child_pose", sets: 1, reps: "60s" },
-        { exerciseId: "couch_stretch", sets: 1, reps: "45s/side" },
-        { exerciseId: "thread_needle", sets: 1, reps: "30s/side" },
-      ].filter((p) => {
+      prescriptions: cooldownPrescriptions.filter((p) => {
         const ex = EXERCISES.find((e) => e.id === p.exerciseId);
         return ex && ex.equipment.some((eq) => available.has(eq));
       }),

@@ -73,14 +73,18 @@ export default function HomePage() {
 
   // Recommendation disagrees with the plan if the categories differ,
   // or the plan is a specific template the user already did this week.
-  const planDisagreesWithRec = Boolean(
-    plannedToday &&
-      recommendation &&
-      (recommendation.category !== plannedToday.category ||
-        (recommendation.templateId &&
-          plannedToday.templateId &&
-          recommendation.templateId !== plannedToday.templateId))
-  );
+  // We also suppress the disagreement banner entirely when a focus block is
+  // active — the block IS the plan, second-guessing it is coach whiplash.
+  const planDisagreesWithRec =
+    !profile?.currentFocus &&
+    Boolean(
+      plannedToday &&
+        recommendation &&
+        (recommendation.category !== plannedToday.category ||
+          (recommendation.templateId &&
+            plannedToday.templateId &&
+            recommendation.templateId !== plannedToday.templateId))
+    );
   const streak = computeStreak(recent ?? []);
   const currentWeekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
   const weekStart = addDays(currentWeekStart, weekOffset * 7);

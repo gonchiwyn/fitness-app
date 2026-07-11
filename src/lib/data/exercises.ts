@@ -253,6 +253,21 @@ export const EXERCISES: Exercise[] = [
   { id: "tricep_kickback", name: "Tricep Kickback", pattern: "push", muscles: ["tris"], equipment: ["dumbbell"], weighted: true },
   { id: "jm_press", name: "JM Press", pattern: "push", muscles: ["tris"], equipment: ["barbell"], weighted: true, cues: ["Hybrid press/skullcrusher — elbows out and back"] },
 
+  // GLUTES / POSTERIOR-CHAIN BUILDERS — beginner-friendly stepping-stones
+  // toward the harder movements (hip thrust, nordic curl) without loading
+  // the lower back. Use these when the back needs to be respected.
+  { id: "single_leg_glute_bridge", name: "Single-Leg Glute Bridge", pattern: "hinge", muscles: ["glutes", "hamstrings"], equipment: ["mat"], weighted: false, cues: ["Squeeze the working glute at the top", "Keep pelvis level"] },
+  { id: "banded_glute_bridge", name: "Banded Glute Bridge", pattern: "hinge", muscles: ["glutes"], equipment: ["band", "mat"], weighted: false, cues: ["Push knees out against the band throughout"] },
+  { id: "cable_kickback", name: "Cable Kickback", pattern: "hinge", muscles: ["glutes"], equipment: ["machine"], weighted: true, cues: ["Squeeze glute at top, don't hyperextend the lower back"] },
+  { id: "lateral_band_walk", name: "Lateral Band Walk", pattern: "hinge", muscles: ["glutes", "hip"], equipment: ["band"], weighted: false, cues: ["Stay low in a mini squat", "Small steady steps"] },
+  { id: "monster_walk", name: "Monster Walk", pattern: "hinge", muscles: ["glutes", "hip"], equipment: ["band"], weighted: false, cues: ["Wide slow steps forward and back", "Knees out"] },
+  { id: "single_leg_rdl_bw", name: "Single-Leg RDL (BW)", pattern: "hinge", muscles: ["glutes", "hamstrings"], equipment: ["bodyweight"], weighted: false, cues: ["Hinge until torso parallel", "Hips square to floor"], howTo: "Balance on one leg. Hinge at the hip, letting the other leg extend behind you and torso lower toward parallel with the floor. Keep the standing knee soft, hips square. Return to standing by squeezing the glute. Bodyweight version before adding load." },
+  { id: "reverse_hyper", name: "Reverse Hyperextension", pattern: "hinge", muscles: ["glutes", "posterior_chain", "lower_back"], equipment: ["machine"], weighted: false, cues: ["Slow and controlled — this is a rehab-friendly loader"] },
+  { id: "back_extension_45", name: "45° Back Extension", pattern: "hinge", muscles: ["posterior_chain", "glutes"], equipment: ["machine"], weighted: false, cues: ["Round then extend the spine — hip drive at the top"] },
+  { id: "good_morning_light", name: "Good Morning (Light)", pattern: "hinge", muscles: ["hamstrings", "glutes"], equipment: ["barbell"], weighted: true, cues: ["Empty bar or ~30% BW", "Hips push back, knees soft"] },
+  { id: "step_up_bw", name: "Step-Up (Bodyweight)", pattern: "squat", muscles: ["glutes", "quads"], equipment: ["box"], weighted: false, cues: ["Drive through the whole foot", "Don't push off the trail leg"] },
+  { id: "curtsy_lunge", name: "Curtsy Lunge", pattern: "squat", muscles: ["glutes", "quads"], equipment: ["bodyweight"], weighted: false, cues: ["Step diagonally behind, drop the back knee"] },
+
   // TRAPS / UPPER BACK
   { id: "barbell_shrug", name: "Barbell Shrug", pattern: "pull", muscles: ["traps"], equipment: ["barbell"], weighted: true, cues: ["Straight up, not forward"] },
   { id: "db_shrug", name: "Dumbbell Shrug", pattern: "pull", muscles: ["traps"], equipment: ["dumbbell"], weighted: true },

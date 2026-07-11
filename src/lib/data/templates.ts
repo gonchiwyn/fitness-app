@@ -77,7 +77,15 @@ export const TEMPLATES: Template[] = [
         title: "Accessory",
         scheme: "3 rounds",
         prescriptions: [
-          { exerciseId: "hip_thrust", sets: 3, reps: "10", rest: "75s" },
+          {
+            exerciseId: "single_leg_glute_bridge",
+            // Back-friendly glute builders — stepping stones to hip thrust
+            // that don't compress the spine.
+            pool: ["single_leg_glute_bridge", "banded_glute_bridge", "cable_kickback", "step_up_bw", "back_extension_45"],
+            sets: 3,
+            reps: "10/side",
+            rest: "75s",
+          },
           { exerciseId: "calf_raise", sets: 4, reps: "12", rest: "45s" },
         ],
       },
@@ -951,7 +959,7 @@ TEMPLATES.push(
         title: "Knee Health for Speed",
         scheme: "3 rounds",
         prescriptions: [
-          { exerciseId: "nordic_leg_curl", sets: 3, reps: "8", rpe: 9, rest: "90s" },
+          { exerciseId: "single_leg_rdl_bw", sets: 3, reps: "8/side", rpe: 7, rest: "90s", notes: "Back-friendly hamstring build — progress to weighted single-leg RDL, then Nordic." },
           { exerciseId: "single_leg_squat_counter", sets: 3, reps: "6/side", rest: "60s" },
         ],
       },
@@ -1003,7 +1011,7 @@ TEMPLATES.push(
         scheme: "3 rounds",
         prescriptions: [
           { exerciseId: "single_leg_squat_counter", sets: 3, reps: "6/side", rest: "60s" },
-          { exerciseId: "nordic_leg_curl", sets: 3, reps: "8", rpe: 9, rest: "60s" },
+          { exerciseId: "single_leg_rdl_bw", sets: 3, reps: "8/side", rpe: 7, rest: "60s", notes: "Back-friendly hamstring build" },
           { exerciseId: "ankle_strengthening_series", sets: 3, reps: "8/side" },
         ],
       },
@@ -1394,7 +1402,7 @@ TEMPLATES.push(
         prescriptions: [
           {
             exerciseId: "romanian_deadlift",
-            pool: ["romanian_deadlift", "single_leg_rdl", "hip_thrust"],
+            pool: ["romanian_deadlift", "single_leg_rdl", "single_leg_rdl_bw", "good_morning_light", "back_extension_45"],
             sets: 4,
             reps: "8",
             rpe: 8,
@@ -1402,7 +1410,7 @@ TEMPLATES.push(
           },
           {
             exerciseId: "leg_curl",
-            pool: ["leg_curl", "nordic_leg_curl", "glute_bridge"],
+            pool: ["leg_curl", "glute_bridge", "single_leg_glute_bridge", "banded_glute_bridge", "cable_kickback", "reverse_hyper"],
             sets: 3,
             reps: "12",
             rest: "75s",
