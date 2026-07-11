@@ -44,7 +44,6 @@ export default function WeeklyReviewModal({
     Record<LiftId, "beat" | "hit" | "missed" | undefined>
   >({} as Record<LiftId, "beat" | "hit" | "missed" | undefined>);
   const [bodyFlags, setBodyFlags] = useState<RehabZone[]>([]);
-  const [motivation, setMotivation] = useState<"low" | "normal" | "high">("normal");
   const [saving, setSaving] = useState(false);
   const [thisWeekExercises, setThisWeekExercises] = useState<string[] | null>(null);
   const [thisWeekLifts, setThisWeekLifts] = useState<LiftId[] | null>(null);
@@ -113,7 +112,6 @@ export default function WeeklyReviewModal({
       easyExerciseIds: easyIds,
       liftProgression: progressionArr,
       bodyFlags,
-      motivation,
       createdAt: Date.now(),
     };
     await saveWeeklyReview(review);
@@ -314,27 +312,6 @@ export default function WeeklyReviewModal({
                 )}
               >
                 {o.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 7. Motivation */}
-        <div className="space-y-2">
-          <div className="text-sm font-semibold">Motivation for next week</div>
-          <div className="grid grid-cols-3 gap-2">
-            {(["low", "normal", "high"] as const).map((v) => (
-              <button
-                key={v}
-                onClick={() => setMotivation(v)}
-                className={clsx(
-                  "text-center py-2 rounded-lg border text-sm font-semibold capitalize",
-                  motivation === v
-                    ? "bg-accent text-black border-accent"
-                    : "bg-bg-card border-border text-text-muted"
-                )}
-              >
-                {v}
               </button>
             ))}
           </div>

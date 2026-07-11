@@ -293,7 +293,6 @@ export type WeeklyReview = {
   easyExerciseIds: string[];
   liftProgression: { liftId: LiftId; result: "beat" | "hit" | "missed" }[];
   bodyFlags: RehabZone[]; // areas nagging this week
-  motivation: "low" | "normal" | "high";
   createdAt: number;
 };
 

@@ -162,7 +162,7 @@ export default function HomePage() {
             Weekly review →
           </div>
           <div className="text-sm text-text-muted mt-1.5 leading-snug">
-            How did the week go? 7 quick chip-based questions. Your answers
+            How did the week go? A few quick chip questions. Your answers
             tune next week&apos;s workouts. 2 min.
           </div>
         </button>
