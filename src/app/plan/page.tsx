@@ -143,16 +143,20 @@ export default function PlanPage() {
       ],
     },
     {
-      label: "PPL classic (Push/Pull/Legs + Z2)",
+      label: "PPL classic (Push/Pull balanced + Z2)",
       focusName: "PPL",
       durationWeeks: 6,
+      // Push and Pull symmetric (2× each). Legs at 1× because it recovers
+      // slower and benefits more from a single hard session than two
+      // moderate ones. Under-pulling → shoulder / posture issues; that
+      // rules out the old "2 Push / 1 Pull / 2 Legs" pattern.
       days: [
         { category: "split", templateId: "split_push" },
         { category: "split", templateId: "split_pull" },
-        { category: "split", templateId: "split_legs" },
         { category: "cardio", templateId: "attia_zone2_45" },
-        { category: "split", templateId: "split_push" },
         { category: "split", templateId: "split_legs" },
+        { category: "split", templateId: "split_push" },
+        { category: "split", templateId: "split_pull" },
         { category: "cardio", templateId: "attia_zone2_45" },
       ],
     },
