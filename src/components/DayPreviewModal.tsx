@@ -39,17 +39,17 @@ export default function DayPreviewModal({
     let cancelled = false;
     (async () => {
       // Prefer the actual saved session for this date — if the user opened
-      // the workout builder and made changes (swap, "Not today", etc.),
-      // those changes should show up in the preview next time.
-      const saved = await db.sessions
+      // the workout builder and made changes (swap, "Not today", template
+      // switch), those changes should show up in the preview next time.
+      // Match by date + category only; a template switch changes the
+      // workoutId so filtering by templateId would miss modified sessions.
+      const candidates = await db.sessions
         .where("date")
         .equals(date)
-        .filter(
-          (s) =>
-            s.category === day.category &&
-            (!day.templateId || s.workoutId.includes(day.templateId))
-        )
-        .first();
+        .filter((s) => s.category === day.category)
+        .toArray();
+      // Prefer the most-recently-modified session (highest id).
+      const saved = candidates.sort((a, b) => (b.id ?? 0) - (a.id ?? 0))[0];
 
       if (saved) {
         if (!cancelled) {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import clsx from "clsx";
 import { isTemplateAtLevel, templatesFor } from "@/lib/data/templates";
 import { getProfile, saveProfile } from "@/lib/db";
@@ -18,12 +19,17 @@ export default function TemplatePicker({
   onPickRandom,
   onPickTemplate,
   onClose,
+  switchCategoryHref,
 }: {
   category: Category;
   currentTemplateId?: string;
   onPickRandom: () => void;
   onPickTemplate: (templateId: string) => void;
   onClose: () => void;
+  // If provided, shows a "change day type" link at the bottom of the picker
+  // that navigates elsewhere (usually /plan). Used from the workout page so
+  // the user can flip category (Legs → Cardio) without leaving the flow.
+  switchCategoryHref?: string;
 }) {
   useBodyScrollLock(true);
   const templates = templatesFor(category);
@@ -141,6 +147,16 @@ export default function TemplatePicker({
             </div>
           )}
         </div>
+
+        {switchCategoryHref && (
+          <Link
+            href={switchCategoryHref}
+            onClick={onClose}
+            className="block text-center text-xs text-accent mt-4 pt-3 border-t border-border/50"
+          >
+            Or change day type (Legs / Cardio / Push…) →
+          </Link>
+        )}
       </div>
     </div>
   );

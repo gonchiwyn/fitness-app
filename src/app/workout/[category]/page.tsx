@@ -450,6 +450,7 @@ export default function WorkoutForCategory({
             regenerateWithModifiers({ ...(session.modifiers ?? {}), templateId: id });
           }}
           onClose={() => setPickerOpen(false)}
+          switchCategoryHref="/plan"
         />
       )}
 
