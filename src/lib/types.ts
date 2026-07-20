@@ -280,6 +280,16 @@ export type Session = {
   blocks: LoggedBlock[];
 };
 
+// Per-week override on top of the base WeeklyPlan. Lets the user say
+// "just for THIS week Saturday is Pull" without changing the recurring
+// pattern for future weeks.
+export type WeekOverride = {
+  id?: number;
+  weekStartDate: string; // yyyy-MM-dd of the Monday
+  days: PlannedDay[];
+  updatedAt: number;
+};
+
 // End-of-week self-report. Every field maps to a specific generator
 // adjustment — no open-ended text because nothing would consume it.
 export type WeeklyReview = {

@@ -67,6 +67,30 @@ export default function HomePage() {
     return { ...p, days: p.days.map(normalizePlannedDay) };
   }, []);
 
+  // Days for the currently-displayed week: override wins over the base plan.
+  // Recomputes when weekOffset changes or overrides are updated.
+  const displayedWeekStart = useMemo(() => {
+    const d = startOfWeek(new Date(), { weekStartsOn: 1 });
+    d.setDate(d.getDate() + weekOffset * 7);
+    return format(d, "yyyy-MM-dd");
+  }, [weekOffset]);
+  const displayedWeekDays = useLiveQuery(async () => {
+    const override = await db.weekOverrides
+      .where("weekStartDate")
+      .equals(displayedWeekStart)
+      .first();
+    if (override) return override.days.map(normalizePlannedDay);
+    const p = await db.weeklyPlan.get("me");
+    return p ? p.days.map(normalizePlannedDay) : null;
+  }, [displayedWeekStart]);
+  const displayedIsOverride = useLiveQuery(async () => {
+    const o = await db.weekOverrides
+      .where("weekStartDate")
+      .equals(displayedWeekStart)
+      .first();
+    return !!o;
+  }, [displayedWeekStart]);
+
   // Weekly review: prompt on Sunday (or later) if no review exists for the
   // week that just ended. The week runs Mon-Sun; end date is this Sunday.
   const thisSunday = useMemo(() => {
@@ -205,7 +229,7 @@ export default function HomePage() {
 
       {/* Week strip — navigable across weeks so the block outlook is visible */}
       <WeekStrip
-        days={plan?.days ?? [null, null, null, null, null, null, null]}
+        days={displayedWeekDays ?? plan?.days ?? [null, null, null, null, null, null, null]}
         weekStart={weekStart}
         todayIdx={displayedTodayIdx}
         weekOffset={weekOffset}
@@ -215,6 +239,7 @@ export default function HomePage() {
         sessionsByDate={sessionsByDate}
         onLogPast={(date) => setLogDate(date)}
         onPreviewFuture={(date) => setPreviewDate(date)}
+        isOverride={displayedIsOverride ?? false}
       />
 
       {logDate && (
@@ -567,6 +592,7 @@ function WeekStrip({
   sessionsByDate,
   onLogPast,
   onPreviewFuture,
+  isOverride,
 }: {
   days: PlannedDay[];
   weekStart: Date;
@@ -578,6 +604,7 @@ function WeekStrip({
   sessionsByDate: Map<string, Session>;
   onLogPast: (date: string) => void;
   onPreviewFuture: (date: string) => void;
+  isOverride: boolean;
 }) {
   const weekEnd = addDays(weekStart, 6);
   const dateRange =
@@ -605,6 +632,14 @@ function WeekStrip({
           <span className="text-[10px] text-text-dim tabular-nums">
             {dateRange}
           </span>
+          {isOverride && (
+            <span
+              className="text-[9px] uppercase tracking-widest text-accent bg-accent/15 px-1.5 py-0.5 rounded"
+              title="This week deviates from your base plan — only affects this week."
+            >
+              Edited
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1">
           <button

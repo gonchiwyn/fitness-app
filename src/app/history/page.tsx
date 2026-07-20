@@ -6,7 +6,7 @@ import Link from "next/link";
 import clsx from "clsx";
 import { db, deleteSession } from "@/lib/db";
 import { getExercise } from "@/lib/data/exercises";
-import { CATEGORY_LABELS, DAY_LABELS_SHORT, type Category, type Session } from "@/lib/types";
+import { CATEGORY_LABELS, DAY_LABELS_SHORT, type Category, type Session, type WeeklyReview } from "@/lib/types";
 
 export default function HistoryPage() {
   // Filter out drafts (previews that were never started)
@@ -85,7 +85,7 @@ export default function HistoryPage() {
 
       <ConsistencyCalendar sessions={sessions} />
 
-
+      <WeeklyReviewsSection />
 
       {topCategories.length > 0 && (
         <section>
@@ -223,6 +223,63 @@ const CATEGORY_COLOR: Partial<Record<Category, string>> = {
   beach: "bg-accent",
   surf: "bg-sky-400",
 };
+
+function WeeklyReviewsSection() {
+  const reviews = useLiveQuery(async () => {
+    return db.weeklyReviews.orderBy("weekEndDate").reverse().limit(6).toArray();
+  }, []);
+
+  if (!reviews || reviews.length === 0) return null;
+
+  const energyLabel = (n: number) =>
+    ["Drained", "Low", "OK", "Good", "Charged"][n - 1] ?? String(n);
+
+  return (
+    <section>
+      <div className="flex items-baseline justify-between mb-2">
+        <h2 className="text-xs uppercase tracking-widest text-text-dim font-semibold">
+          Weekly reviews
+        </h2>
+        <span className="text-[10px] text-text-dim">{reviews.length} logged</span>
+      </div>
+      <div className="space-y-2">
+        {reviews.map((r: WeeklyReview) => {
+          const week = format(parseISO(r.weekEndDate), "MMM d");
+          const summary = [
+            `Energy: ${energyLabel(r.energy)}`,
+            `Sleep: ${r.sleep}`,
+            r.hardExerciseIds.length > 0 && `${r.hardExerciseIds.length} hard`,
+            r.easyExerciseIds.length > 0 && `${r.easyExerciseIds.length} easy`,
+            r.bodyFlags.length > 0 && `flags: ${r.bodyFlags.join(", ")}`,
+          ]
+            .filter(Boolean)
+            .join(" · ");
+          return (
+            <div
+              key={r.id}
+              className="bg-bg-card border border-border rounded-xl px-4 py-3"
+            >
+              <div className="flex items-baseline justify-between gap-2">
+                <div className="text-sm font-medium">
+                  Week ending {week}
+                  {r.focusName && (
+                    <span className="text-text-dim font-normal ml-2 text-xs">
+                      · {r.focusName}
+                      {r.weekInBlock ? ` wk ${r.weekInBlock}` : ""}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="text-xs text-text-dim mt-1 leading-relaxed">
+                {summary}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
 
 function ConsistencyCalendar({ sessions }: { sessions: Session[] }) {
   // 12 weeks, ending with current week. Rows = weeks (oldest → newest), cols = Mon–Sun.

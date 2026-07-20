@@ -65,8 +65,13 @@ export default function WeeklyReviewModal({
       const done = sessions.filter((s: Session) => s.finishedAt);
       const ids = new Set<string>();
       const liftSet = new Set<LiftId>();
+      // Only look at MAIN work blocks — a hollow hold in the warmup or a
+      // child pose in cooldown shouldn't show up in "was this too hard?"
+      const isSkipBlock = (title: string) =>
+        /warmup|cooldown|cool.?down|core/i.test(title);
       for (const s of done) {
         for (const b of s.blocks) {
+          if (isSkipBlock(b.title)) continue;
           for (const p of b.prescriptions) {
             ids.add(p.exerciseId);
             const tracked = TRACKED_LIFTS.find((l) => l.id === p.exerciseId);

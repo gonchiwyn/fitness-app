@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import clsx from "clsx";
-import { differenceInCalendarDays, format } from "date-fns";
+import { differenceInCalendarDays, format, startOfWeek } from "date-fns";
 import {
   db,
   getProfile,
   getWeeklyPlan,
   saveProfile,
   saveWeeklyPlan,
+  saveWeekOverride,
 } from "@/lib/db";
 import { templatesFor } from "@/lib/data/templates";
 import { useBodyScrollLock } from "@/lib/useBodyScrollLock";
@@ -31,10 +32,32 @@ export default function PlanPage() {
   const [showPresets, setShowPresets] = useState(false);
   const todayIdx = dateToPlanIndex(new Date());
 
+  const [viewMode, setViewMode] = useState<"this-week" | "base">("this-week");
+  const [hasOverride, setHasOverride] = useState(false);
+
+  const loadPlan = async () => {
+    const base = await getWeeklyPlan();
+    const weekStart = format(
+      startOfWeek(new Date(), { weekStartsOn: 1 }),
+      "yyyy-MM-dd"
+    );
+    const override = await db.weekOverrides
+      .where("weekStartDate")
+      .equals(weekStart)
+      .first();
+    setHasOverride(!!override);
+    if (viewMode === "this-week" && override) {
+      setPlan({ ...base, days: override.days });
+    } else {
+      setPlan(base);
+    }
+  };
+
   useEffect(() => {
-    getWeeklyPlan().then(setPlan);
+    loadPlan();
     getProfile().then(setProfile);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode]);
 
   if (!plan) {
     return (
@@ -44,11 +67,29 @@ export default function PlanPage() {
     );
   }
 
-  const setDay = async (dayIdx: number, day: PlannedDay) => {
-    const next: WeeklyPlan = { ...plan, days: [...plan.days] };
-    next.days[dayIdx] = day;
-    setPlan(next);
-    await saveWeeklyPlan(next);
+  const setDay = async (
+    dayIdx: number,
+    day: PlannedDay,
+    scope: "this-week" | "every-week"
+  ) => {
+    const nextDays = [...plan.days];
+    nextDays[dayIdx] = day;
+    if (scope === "every-week") {
+      const next: WeeklyPlan = { ...plan, days: nextDays };
+      setPlan(next);
+      await saveWeeklyPlan(next);
+    } else {
+      // "Just this week" — save as an override for the current week only.
+      const weekStart = format(
+        startOfWeek(new Date(), { weekStartsOn: 1 }),
+        "yyyy-MM-dd"
+      );
+      await saveWeekOverride(weekStart, nextDays);
+      // Reflect the override immediately in the current view.
+      setPlan({ ...plan, days: nextDays });
+      setViewMode("this-week");
+      setHasOverride(true);
+    }
     setEditingDay(null);
   };
 
@@ -440,7 +481,7 @@ export default function PlanPage() {
         <DayPicker
           day={editingDay}
           current={plan.days[editingDay]}
-          onPick={(d) => setDay(editingDay, d)}
+          onPick={(d, scope) => setDay(editingDay, d, scope)}
           onClose={() => setEditingDay(null)}
         />
       )}
@@ -528,7 +569,7 @@ function DayPicker({
 }: {
   day: number;
   current: PlannedDay;
-  onPick: (d: PlannedDay) => void;
+  onPick: (d: PlannedDay, scope: "this-week" | "every-week") => void;
   onClose: () => void;
 }) {
   useBodyScrollLock(true);
@@ -539,6 +580,8 @@ function DayPicker({
   const [pickedCategory, setPickedCategory] = useState<Category | null>(
     current?.category ?? null
   );
+  // "this-week" is the safer default — permanent changes deserve intent.
+  const [scope, setScope] = useState<"this-week" | "every-week">("this-week");
 
   const templates = pickedCategory ? templatesFor(pickedCategory) : [];
 
@@ -551,7 +594,7 @@ function DayPicker({
         className="bg-bg-elevated border border-border rounded-2xl p-5 max-w-md w-full max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-bold">
             {DAY_LABELS_LONG[day]}
             {stage === "template" && pickedCategory && (
@@ -565,10 +608,38 @@ function DayPicker({
           </button>
         </div>
 
+        {/* Scope toggle — "just this week" is safe default, "every week"
+            changes the recurring pattern. Prevents small edits from
+            accidentally rewriting the whole itinerary. */}
+        <div className="mb-4 grid grid-cols-2 gap-1.5 p-1 bg-bg-card border border-border rounded-xl">
+          <button
+            onClick={() => setScope("this-week")}
+            className={clsx(
+              "py-2 rounded-lg text-xs font-semibold transition-colors",
+              scope === "this-week"
+                ? "bg-accent text-black"
+                : "text-text-muted"
+            )}
+          >
+            Just this week
+          </button>
+          <button
+            onClick={() => setScope("every-week")}
+            className={clsx(
+              "py-2 rounded-lg text-xs font-semibold transition-colors",
+              scope === "every-week"
+                ? "bg-accent text-black"
+                : "text-text-muted"
+            )}
+          >
+            Every week
+          </button>
+        </div>
+
         {stage === "category" && (
           <div className="space-y-1.5">
             <button
-              onClick={() => onPick(null)}
+              onClick={() => onPick(null, scope)}
               className={clsx(
                 "w-full text-left p-3 rounded-xl border transition-colors",
                 current === null
@@ -615,7 +686,7 @@ function DayPicker({
 
             <div className="space-y-1.5">
               <button
-                onClick={() => onPick({ category: pickedCategory })}
+                onClick={() => onPick({ category: pickedCategory }, scope)}
                 className={clsx(
                   "w-full text-left p-3 rounded-xl border transition-colors",
                   current?.category === pickedCategory && !current?.templateId
@@ -640,7 +711,7 @@ function DayPicker({
                 return (
                   <button
                     key={t.id}
-                    onClick={() => onPick({ category: pickedCategory, templateId: t.id })}
+                    onClick={() => onPick({ category: pickedCategory, templateId: t.id }, scope)}
                     className={clsx(
                       "w-full text-left p-3 rounded-xl border transition-colors",
                       isLocked

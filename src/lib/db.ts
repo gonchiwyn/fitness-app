@@ -1,5 +1,5 @@
 import Dexie, { type Table } from "dexie";
-import type { Benchmark, PlannedDay, Profile, Session, WeeklyPlan, WeeklyReview } from "./types";
+import type { Benchmark, PlannedDay, Profile, Session, WeeklyPlan, WeeklyReview, WeekOverride } from "./types";
 import { dateToPlanIndex, normalizePlannedDay } from "./types";
 import {
   GENERIC_PROFILE,
@@ -14,6 +14,7 @@ export class FitnessDB extends Dexie {
   weeklyPlan!: Table<WeeklyPlan, "me">;
   benchmarks!: Table<Benchmark, number>;
   weeklyReviews!: Table<WeeklyReview, number>;
+  weekOverrides!: Table<WeekOverride, number>;
 
   constructor() {
     super("fitness-app");
@@ -38,6 +39,14 @@ export class FitnessDB extends Dexie {
       weeklyPlan: "id",
       benchmarks: "++id, date, type",
       weeklyReviews: "++id, weekEndDate",
+    });
+    this.version(5).stores({
+      sessions: "++id, date, category, workoutId",
+      profile: "id",
+      weeklyPlan: "id",
+      benchmarks: "++id, date, type",
+      weeklyReviews: "++id, weekEndDate",
+      weekOverrides: "++id, &weekStartDate",
     });
   }
 }
@@ -94,6 +103,7 @@ export async function resetToBlank(): Promise<void> {
   await db.sessions.clear();
   await db.benchmarks.clear();
   await db.weeklyReviews.clear();
+  await db.weekOverrides.clear();
 }
 
 export async function saveProfile(p: Partial<Profile>): Promise<void> {
@@ -191,6 +201,43 @@ export async function todaysPlannedDay(d: Date = new Date()): Promise<PlannedDay
  * up or down. "Hard" last time → ease off this time; "Easy" → push a bit.
  * Only looks at recent finished sessions to stay relevant.
  */
+/**
+ * Return the days for a specific week — override if present, else base.
+ * The base repeats every week; overrides let a single week deviate without
+ * dragging the change into future weeks.
+ */
+export async function getWeekDaysFor(weekStartDate: string): Promise<PlannedDay[]> {
+  const override = await db.weekOverrides
+    .where("weekStartDate")
+    .equals(weekStartDate)
+    .first();
+  if (override) return override.days;
+  const base = await getWeeklyPlan();
+  return base.days;
+}
+
+/** Save (or clear) an override for a specific week. */
+export async function saveWeekOverride(
+  weekStartDate: string,
+  days: PlannedDay[]
+): Promise<void> {
+  const existing = await db.weekOverrides
+    .where("weekStartDate")
+    .equals(weekStartDate)
+    .first();
+  const record: WeekOverride = {
+    ...(existing?.id ? { id: existing.id } : {}),
+    weekStartDate,
+    days,
+    updatedAt: Date.now(),
+  };
+  await db.weekOverrides.put(record);
+}
+
+export async function clearWeekOverride(weekStartDate: string): Promise<void> {
+  await db.weekOverrides.where("weekStartDate").equals(weekStartDate).delete();
+}
+
 export async function saveWeeklyReview(r: WeeklyReview): Promise<number> {
   return db.weeklyReviews.add(r);
 }
