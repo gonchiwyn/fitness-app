@@ -1,7 +1,17 @@
 "use client";
 
 import { useLiveQuery } from "dexie-react-hooks";
-import { addDays, format, parseISO, startOfWeek } from "date-fns";
+import { useState } from "react";
+import {
+  addDays,
+  addMonths,
+  endOfMonth,
+  format,
+  isSameMonth,
+  parseISO,
+  startOfMonth,
+  startOfWeek,
+} from "date-fns";
 import Link from "next/link";
 import clsx from "clsx";
 import { db, deleteSession } from "@/lib/db";
@@ -282,10 +292,9 @@ function WeeklyReviewsSection() {
 }
 
 function ConsistencyCalendar({ sessions }: { sessions: Session[] }) {
-  // 12 weeks, ending with current week. Rows = weeks (oldest → newest), cols = Mon–Sun.
-  const WEEKS = 12;
+  // Single-month grid with prev/next nav. Current month by default.
   const today = new Date();
-  const currentWeekStart = startOfWeek(today, { weekStartsOn: 1 });
+  const [viewMonth, setViewMonth] = useState<Date>(startOfMonth(today));
 
   const byDate = new Map<string, Session>();
   for (const s of sessions) {
@@ -293,79 +302,106 @@ function ConsistencyCalendar({ sessions }: { sessions: Session[] }) {
     if (!byDate.has(s.date)) byDate.set(s.date, s);
   }
 
-  const rows: { weekStart: Date; days: (Session | null)[] }[] = [];
-  for (let w = WEEKS - 1; w >= 0; w--) {
-    const weekStart = addDays(currentWeekStart, -w * 7);
-    const days: (Session | null)[] = [];
+  // Build the grid: start on the Monday of the week containing day 1,
+  // continue through the Sunday of the week containing the last day.
+  const monthStart = startOfMonth(viewMonth);
+  const monthEnd = endOfMonth(viewMonth);
+  const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+  const rows: Date[][] = [];
+  let cursor = gridStart;
+  while (cursor <= monthEnd || rows.length < 5) {
+    const week: Date[] = [];
     for (let d = 0; d < 7; d++) {
-      const date = addDays(weekStart, d);
-      const key = format(date, "yyyy-MM-dd");
-      days.push(byDate.get(key) ?? null);
+      week.push(addDays(cursor, d));
     }
-    rows.push({ weekStart, days });
+    rows.push(week);
+    cursor = addDays(cursor, 7);
+    // Safety cap — a month never spans more than 6 weeks in the grid.
+    if (rows.length >= 6) break;
   }
+
+  const monthSessions = sessions.filter(
+    (s) => s.finishedAt && isSameMonth(parseISO(s.date), viewMonth)
+  );
+
+  const canGoPrev = true;
+  const canGoNext = viewMonth < startOfMonth(today);
 
   return (
     <section>
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-3">
         <h2 className="text-xs uppercase tracking-widest text-text-dim font-semibold">
-          Last {WEEKS} weeks
+          {monthSessions.length} session{monthSessions.length === 1 ? "" : "s"} this month
         </h2>
-        <span className="text-[10px] text-text-dim">
-          {sessions.filter((s) => s.finishedAt).length} sessions total
-        </span>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setViewMonth((m) => addMonths(m, -1))}
+            disabled={!canGoPrev}
+            aria-label="Previous month"
+            className="w-7 h-7 rounded-lg border border-border text-text-muted flex items-center justify-center hover:border-accent/40 disabled:opacity-30"
+          >
+            ‹
+          </button>
+          <div className="text-sm font-semibold tabular-nums min-w-[110px] text-center">
+            {format(viewMonth, "MMMM yyyy")}
+          </div>
+          <button
+            onClick={() => setViewMonth((m) => addMonths(m, 1))}
+            disabled={!canGoNext}
+            aria-label="Next month"
+            className="w-7 h-7 rounded-lg border border-border text-text-muted flex items-center justify-center hover:border-accent/40 disabled:opacity-30"
+          >
+            ›
+          </button>
+        </div>
       </div>
       <div className="bg-bg-card border border-border rounded-2xl p-3">
-        <div className="grid grid-cols-[auto_repeat(7,1fr)] gap-1 items-center">
-          <div />
+        <div className="grid grid-cols-7 gap-1">
           {DAY_LABELS_SHORT.map((d) => (
-            <div key={d} className="text-[8px] uppercase tracking-widest text-text-dim text-center">
+            <div
+              key={d}
+              className="text-[9px] uppercase tracking-widest text-text-dim text-center pb-1"
+            >
               {d[0]}
             </div>
           ))}
-          {rows.map((row, ri) => {
-            // Row label: month if it changed on any day of this row.
-            const rowMonth = format(row.weekStart, "MMM");
-            const prevMonth = ri > 0 ? format(rows[ri - 1].weekStart, "MMM") : "";
-            const monthLabel = ri === 0 || rowMonth !== prevMonth ? rowMonth : "";
-            return (
-              <div key={ri} className="contents">
-                <div className="text-[10px] text-text-dim tabular-nums text-right pr-1 self-center">
-                  {monthLabel}
-                </div>
-                {row.days.map((session, di) => {
-                  const date = addDays(row.weekStart, di);
-                  const inFuture = date > today;
-                  const dateStr = format(date, "yyyy-MM-dd");
-                  const dayNum = date.getDate();
-                  const cat = session?.category;
-                  const filled = !!(session && cat);
-                  const cellClass = filled
-                    ? CATEGORY_COLOR[cat] ?? "bg-accent"
-                    : "bg-bg-card border border-border";
-                  const title = session
-                    ? `${session.name}${session.focusName ? ` · ${session.focusName}` : ""} · ${format(date, "EEE MMM d")}`
-                    : format(date, "EEE, MMM d");
-                  return (
-                    <Link
-                      key={di}
-                      href={session?.id ? `/history#${session.id}` : "#"}
-                      title={title}
-                      className={clsx(
-                        "aspect-square rounded transition-opacity flex items-center justify-center text-[10px] tabular-nums font-medium",
-                        inFuture && "opacity-20",
-                        cellClass,
-                        filled ? "text-black" : "text-text-dim",
-                        !session && "pointer-events-none"
-                      )}
-                    >
-                      {dayNum}
-                    </Link>
-                  );
-                })}
-              </div>
-            );
-          })}
+          {rows.flatMap((week, ri) =>
+            week.map((date, di) => {
+              const inMonth = isSameMonth(date, viewMonth);
+              const isToday =
+                format(date, "yyyy-MM-dd") === format(today, "yyyy-MM-dd");
+              const inFuture = date > today;
+              const dateStr = format(date, "yyyy-MM-dd");
+              const dayNum = date.getDate();
+              const session = byDate.get(dateStr);
+              const cat = session?.category;
+              const filled = !!(session && cat);
+              const cellClass = filled
+                ? CATEGORY_COLOR[cat] ?? "bg-accent"
+                : "bg-bg border border-border";
+              const title = session
+                ? `${session.name}${session.focusName ? ` · ${session.focusName}` : ""} · ${format(date, "EEE MMM d")}`
+                : format(date, "EEE, MMM d");
+              return (
+                <Link
+                  key={`${ri}-${di}`}
+                  href={session?.id ? `/history#${session.id}` : "#"}
+                  title={title}
+                  className={clsx(
+                    "aspect-square rounded-lg flex items-center justify-center text-xs tabular-nums font-medium transition-opacity",
+                    !inMonth && "opacity-25",
+                    inFuture && !isToday && "opacity-20",
+                    cellClass,
+                    filled ? "text-black" : "text-text-dim",
+                    isToday && "ring-1 ring-accent",
+                    !session && "pointer-events-none"
+                  )}
+                >
+                  {dayNum}
+                </Link>
+              );
+            })
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mt-3 pt-3 border-t border-border/50">
           <span className="text-[9px] text-text-dim uppercase tracking-widest">Legend</span>
