@@ -233,6 +233,115 @@ export const TEMPLATES: Template[] = [
     ],
   },
 
+  // -------- MENNO HENSELMANS AUTOREGULATED (Galpin lab study) --------
+  // ABAB weekly split — same day repeats twice per week. Autoregulation:
+  // reps 2+ above range → next set +2.5% load; reps 2+ below → -10%.
+  // Technique failure counts as failure. Coaching-principles.md § Autoregulation.
+  {
+    id: "menno_hyp_a",
+    category: "hypertrophy",
+    name: "Menno Hyp — Day A",
+    description: "Posterior chain + push. Autoregulated per set.",
+    complexity: "pro",
+    philosophy:
+      "Menno Henselmans' autoregulated hypertrophy protocol, validated in Galpin's lab study. Every set is as many reps as possible in the target range. Hit +2 above the top? Add 2.5% load next set. Fall -2 below the bottom? Cut 10%. Technique failure counts. Grow with volume, not ego.",
+    influences: ["galpin"],
+    blocks: [
+      {
+        title: "Main Compound",
+        scheme: "4×8-12 — rest 3 min",
+        prescriptions: [
+          { exerciseId: "romanian_deadlift", sets: 4, reps: "8-12", rpe: 9, rest: "3 min", notes: "Autoreg: +2 reps over top → +2.5% next set" },
+        ],
+      },
+      {
+        title: "Quad Isolation",
+        scheme: "5×8-12 — rest 3 min",
+        prescriptions: [
+          { exerciseId: "leg_extension", sets: 5, reps: "8-12", rpe: 9, rest: "3 min" },
+        ],
+      },
+      {
+        title: "Chest",
+        scheme: "4×6-10 — rest 3 min",
+        prescriptions: [
+          { exerciseId: "bench_press", sets: 4, reps: "6-10", rpe: 8, rest: "3 min" },
+        ],
+      },
+      {
+        title: "Back",
+        scheme: "4×8-12 — rest 3 min",
+        prescriptions: [
+          { exerciseId: "neutral_grip_pulldown", sets: 4, reps: "8-12", rpe: 8, rest: "3 min" },
+        ],
+      },
+      {
+        title: "Calves + Delts",
+        scheme: "Rest 2 min",
+        prescriptions: [
+          { exerciseId: "calf_raise", sets: 5, reps: "8-12", rest: "2 min" },
+          { exerciseId: "cable_lateral_raise", sets: 3, reps: "8-12", rest: "2 min" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "menno_hyp_b",
+    category: "hypertrophy",
+    name: "Menno Hyp — Day B",
+    description: "Squat + pull + press. Autoregulated per set.",
+    complexity: "pro",
+    philosophy:
+      "Menno's B day. Same autoregulation rules — as many reps as possible per set within the target range, adjust load per set based on the response. Repeat A on Mon+Thu, B on Tue+Fri.",
+    influences: ["galpin"],
+    blocks: [
+      {
+        title: "Main Compound",
+        scheme: "4×5-8 — rest 3 min",
+        note: "Lower rep range on the squat because the systemic fatigue of high-rep squats is disproportionate.",
+        prescriptions: [
+          { exerciseId: "back_squat", sets: 4, reps: "5-8", rpe: 9, rest: "3 min", notes: "Autoreg: +2 reps over top → +2.5% next set" },
+        ],
+      },
+      {
+        title: "Hamstrings",
+        scheme: "5×8-12 — rest 3 min",
+        prescriptions: [
+          { exerciseId: "leg_curl", sets: 5, reps: "8-12", rpe: 8, rest: "3 min" },
+        ],
+      },
+      {
+        title: "Overhead Press",
+        scheme: "3×6-10 — rest 3 min",
+        prescriptions: [
+          { exerciseId: "overhead_press", sets: 3, reps: "6-10", rpe: 8, rest: "3 min" },
+        ],
+      },
+      {
+        title: "Row",
+        scheme: "3×8-12 — rest 3 min",
+        prescriptions: [
+          { exerciseId: "seated_row", sets: 3, reps: "8-12", rpe: 8, rest: "3 min" },
+        ],
+      },
+      {
+        title: "Chest Isolation",
+        scheme: "5×6-10 — rest 3 min",
+        prescriptions: [
+          { exerciseId: "cable_fly", sets: 5, reps: "6-10", rest: "3 min" },
+        ],
+      },
+      {
+        title: "Arms",
+        scheme: "Rest 2 min",
+        prescriptions: [
+          { exerciseId: "tricep_pushdown", sets: 2, reps: "8-12", rest: "2 min" },
+          { exerciseId: "db_curl", sets: 2, reps: "8-12", rest: "2 min" },
+        ],
+      },
+    ],
+  },
+
   // ============ CROSSFIT ============
   {
     id: "cf_amrap",

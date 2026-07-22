@@ -59,6 +59,7 @@ export const db = new FitnessDB();
 // Only bumps upward — never shortens an in-flight block.
 const PRESET_DURATION: Record<string, number> = {
   Hypertrophy: 6,
+  "Menno Hypertrophy": 8,
   "Strength peak": 8,
   "Cardio base": 8,
   Athletic: 6,

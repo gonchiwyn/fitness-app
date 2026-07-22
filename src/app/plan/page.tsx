@@ -128,6 +128,23 @@ export default function PlanPage() {
       ],
     },
     {
+      // Galpin's lab-validated Menno Henselmans autoregulated hypertrophy
+      // program. ABAB weekly split — same day twice per week. Autoregulation:
+      // reps 2+ above range → +2.5% load; 2+ below → -10%. 8-week protocol.
+      label: "Menno autoregulated hypertrophy (Galpin lab)",
+      focusName: "Menno Hypertrophy",
+      durationWeeks: 8,
+      days: [
+        { category: "hypertrophy", templateId: "menno_hyp_a" },
+        { category: "hypertrophy", templateId: "menno_hyp_b" },
+        { category: "cardio", templateId: "attia_zone2_45" },
+        { category: "hypertrophy", templateId: "menno_hyp_a" },
+        { category: "hypertrophy", templateId: "menno_hyp_b" },
+        { category: "cardio", templateId: "attia_zone2_45" },
+        null,
+      ],
+    },
+    {
       label: "Strength peak (heavy compounds + Z2)",
       focusName: "Strength peak",
       durationWeeks: 8,

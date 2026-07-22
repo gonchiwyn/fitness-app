@@ -13,6 +13,99 @@ Sources so far:
 - Peter Attia — MED 3.0 framework (Zone 2 dose-response, VO2 max mortality curve, joint bulletproofing)
 - Nick Bare — Hybrid athlete Z2 + strength template
 - Rhonda Patrick — VO2 max mortality signal, recovery / sauna
+- Menno Henselmans — Autoregulated hypertrophy program (used in Galpin's lab study)
+- Travis Mash — Velocity Based Training + block periodization for strength/power athletes
+- Vladimir Issurin — Original block periodization framework (Accumulation → Transmutation → Realization)
+
+---
+
+## The three goals — strength vs hypertrophy vs power
+
+They overlap but are not the same. Programming that maximizes one leaves gains on the table for the others.
+
+**Strength** (max force production, 1RM territory)
+- Reps: 3–5 (as low as 1 for true peak). Fatigue kills quality → rep count stays low.
+- Intensity: 85%+ 1RM.
+- Rest: 3–5 min minimum. Losing force production between sets = wasted reps.
+- Frequency: same muscle can be trained daily (low local fatigue, low soreness).
+- Order: main lift FIRST, always. Order is critical.
+- Progression: overload with **INTENSITY**. Volume is secondary.
+
+**Hypertrophy** (muscle size)
+- Reps: 8–12 default. But 5–30 works IF trained to same effort. Higher-rep sets need more effort.
+- Intensity: 70–80% 1RM (for 8–12 range). Can go as low as 30% if reps are ≥25.
+- Rest: 30s–5min all work equally. Shorter = fatigue accumulates, longer = more quality per set.
+- Frequency: don't hit same muscle *hard* multiple days in a row (need recovery).
+- Order: less critical. Exercise order can be swapped without huge impact.
+- Progression: overload with **VOLUME**. Weight is secondary — hold weight consistent, chase more reps or sets.
+
+**Power** (force × velocity)
+- Reps: 2–5 per set (rarely more). MUST move at high velocity.
+- Intensity: exercise-dependent. Upper-body isolation ~30–50% 1RM, big compounds ~50–60%, Olympic lifts 80–95%.
+- Rest: 2–5 min. Fatigue kills velocity → wasted reps.
+- Frequency: same as strength — can train daily.
+- Order: power FIRST in a session. Fatigue destroys power output.
+- Progression: overload with **INTENSITY** (velocity target or load).
+
+## The 7 modifiable variables (CO-VIFRP, Lee Brown)
+
+Every training decision changes one of these:
+- **C**hoice — which exercise?
+- **O**rder — first, second, third?
+- **V**olume — reps × sets across the week
+- **I**ntensity — % of 1RM
+- **F**requency — days per week per muscle group
+- **R**est — between sets
+- **P**rogression — how does it get harder over time?
+
+## Autoregulation
+
+**Menno's hypertrophy protocol** (ABAB weekly split, 8 weeks, used in Galpin's lab):
+- Repeat the same day twice per week (A on Mon+Thu, B on Tue+Fri).
+- Every set: as many reps as possible within target range.
+- If reps landed 2+ **above** the top of the range → next set adds 2.5% load.
+- If reps landed 2+ **below** the bottom of the range → next set drops 10% load.
+- Technique failure counts as failure — form breakdown ends the set, not the bar rack.
+- Rule of thumb: aim for 5–10 lb increments in practice (can't hit exact 2.5%).
+
+**Travis Mash's Velocity Based Training** (strength/power):
+- Instead of rep counting, measure bar speed on each rep.
+- Too slow → back off (fatigue is compromising the quality of the training).
+- Too fast → load up (you're under-training the target).
+- Pairs well with block periodization.
+
+## Progressive overload — what to sacrifice
+
+- **Hypertrophy:** volume is sacred. Never drop volume to add load. If you can't add reps at current weight, hold; if you can, chase more.
+- **Strength/power:** intensity is sacred. Never drop intensity to add volume. If you can't move at target load/velocity, hold; volume is secondary.
+
+## Block periodization (Issurin / Mash) — 12-week structure
+
+- **Accumulation (4 wk):** high volume, low intensity, general movement patterns. Build the bank account.
+- **Transmutation (4 wk):** volume ↓, intensity ↑, specificity ↑. Convert generic gains into targeted output.
+- **Realization (4 wk):** volume ↓↓, intensity ↑↑, specificity ↑↑. Peak week + taper.
+
+Our current block-phase wave (Acc → Int → Real → Deload) is aligned with this framework. Our "Intensification" is Issurin's "Transmutation" under a different name.
+
+## Session structure principles
+
+- **Power first, strength second, hypertrophy/accessories last.** Never put fatiguing accessories before a max-effort compound.
+- Multi-goal sessions are OK (and encouraged for athletes). A single day can have a small dose of speed, strength, hypertrophy AND muscular endurance — as long as the emphasis is clearly on one and the others are 1–2 sets to "keep it stimulated."
+- Long dynamic warmups matched to the day's demands (sprint days → hamstrings/feet/ankles; strength days → hips/T-spine/scap).
+- **Structural balance across the program (not per day):**
+  - Bilateral ↔ unilateral
+  - Upper ↔ lower
+  - Frontal ↔ sagittal ↔ transverse plane
+  - No slot getting 80% while another gets 10% — the point is symmetry across weeks, not exact 50/50 sets.
+
+## Muscle mass is an organ
+
+Not just aesthetics. Skeletal muscle is the largest organ in the body. Strong/powerful muscle predicts:
+- Locomotion quality (stairs, hills, carrying groceries → % of max leg strength)
+- Fall resistance and injury prevention with age
+- Grip strength → strong predictor of all-cause longevity and brain health
+
+Even people who "don't care about aesthetics" need enough muscle for daily function — Galpin's stair-climbing analogy: if walking a flight of stairs requires ~70–80% of your max leg strength, you'll be exhausted daily.
 
 ---
 
