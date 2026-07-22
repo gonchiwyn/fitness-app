@@ -53,9 +53,12 @@ export default function HomePage() {
   );
 
   const recent = useLiveQuery(
-    // Exclude drafts entirely from history-style listings
+    // Exclude drafts entirely from history-style listings. Query the full
+    // set then filter — a wide `.limit()` before filtering lets draft
+    // previews (which can pile up) push real sessions out of view and
+    // reset the day streak. We only want finished/started work here.
     async () => {
-      const all = await db.sessions.orderBy("date").reverse().limit(60).toArray();
+      const all = await db.sessions.orderBy("date").reverse().toArray();
       return all.filter((s) => s.startedAt || s.finishedAt).slice(0, 30);
     },
     []

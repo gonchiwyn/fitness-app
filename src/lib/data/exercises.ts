@@ -268,6 +268,11 @@ export const EXERCISES: Exercise[] = [
   { id: "step_up_bw", name: "Step-Up (Bodyweight)", pattern: "squat", muscles: ["glutes", "quads"], equipment: ["box"], weighted: false, cues: ["Drive through the whole foot", "Don't push off the trail leg"] },
   { id: "curtsy_lunge", name: "Curtsy Lunge", pattern: "squat", muscles: ["glutes", "quads"], equipment: ["bodyweight"], weighted: false, cues: ["Step diagonally behind, drop the back knee"] },
 
+  // TISSUE TOLERANCE (Galpin) — low-level Achilles / ankle loading. Used in
+  // running-day warmups to build joint tolerance before adding volume.
+  { id: "pogo_hop", name: "Pogo Hops", pattern: "conditioning", muscles: ["calves"], equipment: ["bodyweight"], weighted: false, warmupTarget: "general", cues: ["Stiff ankles, minimal knee bend, quick ground contacts", "20-30 reps or 20-30 seconds"] },
+  { id: "double_leg_pogo", name: "Rudimentary Pogo (Double Leg)", pattern: "conditioning", muscles: ["calves"], equipment: ["bodyweight"], weighted: false, warmupTarget: "general", cues: ["Very small hops", "Stay tall and springy — this is tissue tolerance work, not conditioning"] },
+
   // TRAPS / UPPER BACK
   { id: "barbell_shrug", name: "Barbell Shrug", pattern: "pull", muscles: ["traps"], equipment: ["barbell"], weighted: true, cues: ["Straight up, not forward"] },
   { id: "db_shrug", name: "Dumbbell Shrug", pattern: "pull", muscles: ["traps"], equipment: ["dumbbell"], weighted: true },

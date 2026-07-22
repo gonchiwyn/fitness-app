@@ -766,6 +766,39 @@ export const TEMPLATES: Template[] = [
       },
     ],
   },
+  {
+    id: "galpin_repeat_peak_power",
+    category: "cardio",
+    name: "Repeat Peak Power",
+    description: "5-7s all-out × 60s rest × 8-10 rounds. Galpin's under-used protocol.",
+    complexity: "pro",
+    philosophy:
+      "Galpin flags this as one of the most under-used training methods. 5-7 seconds all-out gets you to peak power; 60 seconds of rest is enough to repeat it. Trains repeated maximum output — the exact quality most sports (and life) actually demand — without the fatigue accumulation of longer HIIT bouts. Work:rest ratio 1:5 to 1:12.",
+    influences: ["galpin"],
+    blocks: [
+      {
+        title: "Warmup",
+        scheme: "10 min progressive",
+        prescriptions: [
+          { exerciseId: "easy_bike", sets: 1, reps: "10 min ramp", notes: "Include ankle rolls + hip openers" },
+        ],
+      },
+      {
+        title: "Peak Power Repeats",
+        scheme: "8-10 × (5-7s all-out / 60s rest)",
+        prescriptions: [
+          { exerciseId: "easy_bike", sets: 10, reps: "5-7s all-out / 60s rest", notes: "Airbike or fan bike ideal. Actually go all-out — if you can hold a pace, you're not doing it." },
+        ],
+      },
+      {
+        title: "Cooldown",
+        scheme: "5 min easy",
+        prescriptions: [
+          { exerciseId: "easy_bike", sets: 1, reps: "5 min easy spin" },
+        ],
+      },
+    ],
+  },
   // ============ CORE (dedicated category) ============
   {
     id: "core_galpin_pillar",

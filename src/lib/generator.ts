@@ -551,6 +551,27 @@ function buildWarmup(
     });
   }
 
+  // Galpin's tissue-tolerance protocol — for run-based cardio days, a short
+  // dose of Pogo hops builds Achilles / ankle tolerance to running volume.
+  // 2-3 minutes of low-level springy hops. Not for conditioning, for joints.
+  const templatePicksRun = modifiers.templateId?.includes("run") ||
+    modifiers.templateId?.includes("nick_bare") ||
+    modifiers.templateId?.includes("norwegian");
+  if (isSteadyCardio && templatePicksRun) {
+    const pogoAvailable = EXERCISES.find(
+      (e) => e.id === "pogo_hop" && e.equipment.some((eq) => available.has(eq))
+    );
+    if (pogoAvailable) {
+      prescriptions.push({
+        exerciseId: "pogo_hop",
+        sets: 2,
+        reps: "20 sec",
+        rest: "30s",
+        notes: "Tissue tolerance for running — not conditioning. Springy and light.",
+      });
+    }
+  }
+
   // Time scaling: under 40 min, 1 mobility per target; under 30, only main focus areas
   const time = modifiers.timeMinutes ?? CATEGORY_DURATION[category];
   const perTarget = time < 40 ? 1 : 2;
@@ -1228,14 +1249,38 @@ function buildWorkoutName(category: Category, templateName: string, m: WorkoutMo
 // ============================================================
 // SWAP — alternatives for a given exercise
 // ============================================================
+// Steady-state cardio only — the Z2 approved list per Attia/Nick Bare/Galpin.
+// When swapping inside a cardio / recovery / stretching session the
+// alternatives MUST be from this set — never burpees, jumping jacks, etc.
+const STEADY_CARDIO_IDS = [
+  "easy_bike",
+  "easy_row",
+  "run",
+  "ski_erg",
+];
+
 export function findSwapAlternatives(
   exerciseId: string,
   available: Set<Equipment>,
   count = 3,
-  usedExerciseIds: Set<string> = new Set()
+  usedExerciseIds: Set<string> = new Set(),
+  category?: Category
 ): string[] {
   const target = EXERCISES.find((e) => e.id === exerciseId);
   if (!target) return [];
+
+  // Category gate — steady-state days only offer steady-state alternatives.
+  const isSteadyDay =
+    category === "cardio" || category === "recovery" || category === "stretching";
+  if (isSteadyDay) {
+    return STEADY_CARDIO_IDS.filter(
+      (id) =>
+        id !== exerciseId &&
+        !usedExerciseIds.has(id) &&
+        EXERCISES.find((e) => e.id === id)?.equipment.some((eq) => available.has(eq))
+    ).slice(0, count);
+  }
+
   return EXERCISES.filter(
     (e) =>
       e.id !== exerciseId &&

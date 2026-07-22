@@ -140,11 +140,20 @@ export default function WorkoutForCategory({
       const p = await getProfile();
       setProfile(p);
 
-      const existing = await db.sessions
+      // Prefer finished sessions over drafts so a Home "I did this ✓"
+      // (retroactive session with finishedAt set) wins over any leftover
+      // draft the workout builder may have created earlier.
+      const candidates = await db.sessions
         .where("date")
         .equals(targetDateStr)
-        .filter((s) => s.category === cat && (!lockedTemplateId || s.workoutId.includes(lockedTemplateId)))
-        .first();
+        .filter(
+          (s) => s.category === cat && (!lockedTemplateId || s.workoutId.includes(lockedTemplateId))
+        )
+        .toArray();
+      const existing =
+        candidates.find((s) => s.finishedAt) ??
+        candidates.find((s) => s.startedAt) ??
+        candidates[0];
 
       if (existing) {
         setSession(existing);
@@ -778,7 +787,8 @@ function ExerciseCard({
     prescription.exerciseId,
     availableEquipment as Set<never>,
     4,
-    usedInSession
+    usedInSession,
+    category
   );
 
   // Letter labels for supersets: A1, A2 / B1, B2
