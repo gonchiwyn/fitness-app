@@ -521,13 +521,27 @@ function buildWarmup(
   rng: () => number,
   available: Set<Equipment>
 ): Block {
-  const targets = profile.focusAreas.length
+  const baseTargets: string[] = profile.focusAreas.length
     ? [...profile.focusAreas]
-    : (["lower_back", "hip", "shoulder"] as const);
+    : ["lower_back", "hip", "shoulder"];
+
+  // Bias focus areas to what the session actually trains — otherwise every
+  // Push day gets hip mobility and every Legs day gets wall slides, which
+  // is noise. Lumbar/lower_back is always kept (chronic care).
+  const tid = modifiers.templateId ?? "";
+  const isUpperPush = /push|chest|shoulders|arms|upper/.test(tid);
+  const isUpperPull = /pull|back/.test(tid);
+  const isLower = /legs|lower|deadlift/.test(tid);
+  let targets: string[] = baseTargets;
+  if (isUpperPush || isUpperPull) {
+    targets = baseTargets.filter((t) => t !== "hip");
+  } else if (isLower || category === "cardio" || category === "recovery") {
+    targets = baseTargets.filter((t) => t !== "shoulder");
+  }
 
   // If a rehab zone is set, push it to the front to ensure coverage
-  if (modifiers.rehab && !targets.includes(modifiers.rehab as never)) {
-    (targets as unknown[]).unshift(modifiers.rehab);
+  if (modifiers.rehab && !targets.includes(modifiers.rehab)) {
+    targets.unshift(modifiers.rehab);
   }
 
   const prescriptions: Prescription[] = [];
@@ -603,9 +617,11 @@ function buildWarmup(
     prescriptions.push(...dayPrep);
   }
 
-  // Personalized: ALWAYS include scapular activation + glute activation
-  // (psoas dominance + L-scap weakness — daily priming non-negotiable)
-  if (time >= 30) {
+  // Personalized activation. Scapular activation is a priority on
+  // upper-body days (psoas dominance + L-scap weakness); glute activation
+  // is a priority on lower-body/cardio days. Cross-mixing (scap on Legs
+  // day, glute on Push day) is noise and stretches the warmup for no gain.
+  if (time >= 30 && (isUpperPush || isUpperPull)) {
     const scapPool = ["band_pull_apart", "ws_trx", "prone_ytw", "face_pull"]
       .map((id) => EXERCISES.find((e) => e.id === id))
       .filter((e): e is NonNullable<typeof e> => !!e && e.equipment.some((eq) => available.has(eq)));
@@ -617,7 +633,9 @@ function buildWarmup(
         notes: "Scap activation — daily priming for left side",
       });
     }
+  }
 
+  if (time >= 30 && (isLower || category === "cardio" || category === "recovery")) {
     const glutePool = ["glute_bridge", "glute_clam_side_plank", "unilateral_standing_hip_abduction"]
       .map((id) => EXERCISES.find((e) => e.id === id))
       .filter((e): e is NonNullable<typeof e> => !!e && e.equipment.some((eq) => available.has(eq)));
@@ -1281,13 +1299,51 @@ export function findSwapAlternatives(
     ).slice(0, count);
   }
 
-  return EXERCISES.filter(
+  // Smart swap: same pattern + shared primary muscle, NOT a warmup/mobility
+  // exercise. Rank by muscle overlap descending — a bench press swap should
+  // show incline press before pushup, not the other way around.
+  //
+  // Muscle-taxonomy bridge: some exercises use compound tags ("posterior_chain")
+  // and others use component tags ("hamstrings", "glutes"). expandMuscles()
+  // rewrites either form into a superset so the shared-muscle check catches
+  // both — otherwise a Romanian DL wouldn't swap to a Deadlift.
+  const expandMuscles = (ms: string[]): Set<string> => {
+    const out = new Set(ms);
+    if (ms.includes("posterior_chain")) {
+      out.add("hamstrings");
+      out.add("glutes");
+      out.add("back");
+    }
+    if (ms.includes("hamstrings") || ms.includes("glutes")) {
+      out.add("posterior_chain");
+    }
+    return out;
+  };
+  const targetMuscles = expandMuscles([...target.muscles]);
+  const shares = (e: (typeof EXERCISES)[number]) => {
+    const em = expandMuscles([...e.muscles]);
+    let n = 0;
+    for (const m of em) if (targetMuscles.has(m)) n++;
+    return n;
+  };
+
+  const candidates = EXERCISES.filter(
     (e) =>
       e.id !== exerciseId &&
       !usedExerciseIds.has(e.id) &&
       e.pattern === target.pattern &&
+      !e.warmupTarget &&
+      shares(e) > 0 &&
       e.equipment.some((eq) => available.has(eq))
-  )
+  );
+
+  const score = (e: (typeof EXERCISES)[number]) => {
+    const weightedBonus = target.weighted && e.weighted ? 0.5 : 0;
+    return shares(e) + weightedBonus;
+  };
+
+  return candidates
+    .sort((a, b) => score(b) - score(a))
     .slice(0, count)
     .map((e) => e.id);
 }

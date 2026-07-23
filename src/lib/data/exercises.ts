@@ -277,6 +277,42 @@ export const EXERCISES: Exercise[] = [
   { id: "barbell_shrug", name: "Barbell Shrug", pattern: "pull", muscles: ["traps"], equipment: ["barbell"], weighted: true, cues: ["Straight up, not forward"] },
   { id: "db_shrug", name: "Dumbbell Shrug", pattern: "pull", muscles: ["traps"], equipment: ["dumbbell"], weighted: true },
   { id: "rack_pull", name: "Rack Pull", pattern: "hinge", muscles: ["back", "traps", "posterior_chain"], equipment: ["barbell"], weighted: true, cues: ["Shortened deadlift ROM — heavier loading"] },
+
+  // ============================================================
+  // GURU PASS — additions recommended by Menno / Israetel / Galpin
+  // ============================================================
+
+  // LEGS — machine-driven quad + hamstring builders
+  { id: "hack_squat", name: "Hack Squat", pattern: "squat", muscles: ["quads", "glutes"], equipment: ["machine"], weighted: true, cues: ["Feet mid-platform for quad bias", "Full depth"] },
+  { id: "sissy_squat", name: "Sissy Squat", pattern: "squat", muscles: ["quads"], equipment: ["bodyweight"], weighted: false, cues: ["Knees travel forward, torso stays upright", "Deep quad stretch"], howTo: "Rise on the balls of your feet and lean back, letting the knees travel forward over the toes. Torso stays inline with the thighs — the entire body tilts as one lever. Use a support if needed. Extreme quad stretch — the queen of quad isolation." },
+  { id: "belt_squat", name: "Belt Squat", pattern: "squat", muscles: ["quads", "glutes"], equipment: ["machine"], weighted: true, cues: ["Great when spine needs a break — load hangs from the hips"] },
+  { id: "seated_calf_raise", name: "Seated Calf Raise", pattern: "push", muscles: ["calves"], equipment: ["machine"], weighted: true, cues: ["Bent knee biases the soleus"] },
+  { id: "standing_calf_raise", name: "Standing Calf Raise (Machine)", pattern: "push", muscles: ["calves"], equipment: ["machine"], weighted: true, cues: ["Straight leg biases the gastrocnemius"] },
+
+  // BACK — thickness variants missing before
+  { id: "t_bar_row", name: "T-Bar Row", pattern: "pull", muscles: ["back", "lats", "traps"], equipment: ["barbell"], weighted: true, cues: ["Chest supported if available", "Pull to lower ribs"] },
+  { id: "seal_row", name: "Seal Row", pattern: "pull", muscles: ["back", "lats", "rear_delt"], equipment: ["barbell"], weighted: true, cues: ["Lie prone on a bench — removes all lower-back input", "Row like it's the only muscle you have"] },
+  { id: "one_arm_lat_pulldown", name: "One-Arm Lat Pulldown", pattern: "pull", muscles: ["lats"], equipment: ["machine"], weighted: true, cues: ["Full stretch overhead, elbow into hip"] },
+  { id: "landmine_row", name: "Landmine Row", pattern: "pull", muscles: ["back", "lats"], equipment: ["barbell"], weighted: true, cues: ["Straddle the bar, row to chest"] },
+  { id: "kroc_row", name: "Kroc Row (Heavy DB)", pattern: "pull", muscles: ["back", "lats", "traps"], equipment: ["dumbbell"], weighted: true, cues: ["Body English allowed — chase heavy loads"] },
+
+  // GLUTES / POSTERIOR — Menno / Bret Contreras staples
+  { id: "cable_pull_through", name: "Cable Pull-Through", pattern: "hinge", muscles: ["glutes", "hamstrings"], equipment: ["machine"], weighted: true, cues: ["Face away from stack, hinge and drive hips forward", "Squeeze glutes hard at lockout"] },
+  { id: "kas_glute_bridge", name: "Kas Glute Bridge", pattern: "hinge", muscles: ["glutes"], equipment: ["barbell"], weighted: true, cues: ["Short ROM, constant tension on the glute"], howTo: "Set up like a hip thrust but reduce ROM. Only push the last 4-6 inches — the glutes never fully unload at the bottom. Ideal for lumbar-safe glute work: shorter lever, tension-dominant." },
+
+  // ARMS — Menno / Israetel extras
+  { id: "reverse_curl", name: "Reverse Curl", pattern: "pull", muscles: ["biceps", "forearms"], equipment: ["barbell", "dumbbell"], weighted: true, cues: ["Palms down — brachialis + forearms"] },
+  { id: "spider_curl", name: "Spider Curl", pattern: "pull", muscles: ["biceps"], equipment: ["dumbbell", "barbell"], weighted: true, cues: ["Chest on incline bench, arms hang vertical", "No shoulder flexion — pure biceps"] },
+  { id: "cable_overhead_extension", name: "Cable Overhead Tricep Extension", pattern: "push", muscles: ["tris"], equipment: ["machine"], weighted: true, cues: ["Constant tension on the long head at full stretch"] },
+
+  // SHOULDERS — cable Y raise + high-cable rear delt row
+  { id: "cable_y_raise", name: "Cable Y-Raise", pattern: "push", muscles: ["shoulder", "rear_delt"], equipment: ["machine"], weighted: true, cues: ["Y shape overhead — hits front + side + rear delt sweep"] },
+  { id: "high_cable_row", name: "High-Cable Row (Rear Delt Bias)", pattern: "pull", muscles: ["rear_delt", "back"], equipment: ["machine"], weighted: true, cues: ["Pull to face level, elbows high — rear delt fibers direct line"] },
+  { id: "snatch_grip_high_pull", name: "Snatch-Grip High Pull", pattern: "pull", muscles: ["traps", "back"], equipment: ["barbell"], weighted: true, cues: ["Wide grip, explosive pull to chest", "Traps get worked as a byproduct of the pull"] },
+
+  // CHEST — dip machine + landmine chest press
+  { id: "dip_machine", name: "Machine Dip", pattern: "push", muscles: ["chest", "tris"], equipment: ["machine"], weighted: true, cues: ["Lean forward for chest bias, upright for triceps"] },
+  { id: "landmine_chest_press", name: "Landmine Chest Press", pattern: "push", muscles: ["chest", "shoulder"], equipment: ["barbell"], weighted: true, cues: ["One arm at a time — shoulder-friendly angle"] },
 ];
 
 export const EXERCISES_BY_ID: Record<string, Exercise> = Object.fromEntries(

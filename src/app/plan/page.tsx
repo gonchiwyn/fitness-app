@@ -628,6 +628,9 @@ function DayPicker({
         {/* Scope toggle — "just this week" is safe default, "every week"
             changes the recurring pattern. Prevents small edits from
             accidentally rewriting the whole itinerary. */}
+        <div className="mb-1 text-[10px] uppercase tracking-wider text-text-dim">
+          Apply change to
+        </div>
         <div className="mb-4 grid grid-cols-2 gap-1.5 p-1 bg-bg-card border border-border rounded-xl">
           <button
             onClick={() => setScope("this-week")}
@@ -649,7 +652,7 @@ function DayPicker({
                 : "text-text-muted"
             )}
           >
-            Every week
+            Every week (recurring)
           </button>
         </div>
 
