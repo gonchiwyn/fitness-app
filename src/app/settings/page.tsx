@@ -111,6 +111,65 @@ export default function SettingsPage() {
     location.reload();
   };
 
+  // Export everything as a single JSON. On mobile PWAs, the Web Share API
+  // hands the payload to the OS share sheet (AirDrop, Notes, email) so you
+  // can move it off the phone. Falls back to clipboard + download.
+  const exportData = async () => {
+    const [sessions, weeklyPlan, benchmarks, weeklyReviews, weekOverrides, profileRow] =
+      await Promise.all([
+        db.sessions.toArray(),
+        db.weeklyPlan.toArray(),
+        db.benchmarks.toArray(),
+        db.weeklyReviews.toArray(),
+        db.weekOverrides.toArray(),
+        db.profile.toArray(),
+      ]);
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      profile: profileRow[0],
+      sessions: sessions.filter((s) => s.finishedAt),
+      weeklyPlan: weeklyPlan[0],
+      weekOverrides,
+      benchmarks,
+      weeklyReviews,
+    };
+    const text = JSON.stringify(payload, null, 2);
+    const stamp = new Date().toISOString().slice(0, 10);
+    const filename = `outwork-export-${stamp}.json`;
+
+    // Web Share on iOS Safari can send a File to AirDrop / Mail / Notes.
+    try {
+      const file = new File([text], filename, { type: "application/json" });
+      const nav = navigator as Navigator & {
+        canShare?: (data: { files: File[] }) => boolean;
+      };
+      if (nav.canShare?.({ files: [file] })) {
+        await nav.share({ files: [file], title: "Outwork export" });
+        return;
+      }
+    } catch {
+      // fall through to clipboard/download
+    }
+
+    // Clipboard fallback (works on desktop + iOS Safari on user gesture).
+    try {
+      await navigator.clipboard.writeText(text);
+      alert(`${payload.sessions.length} sessions + profile copied to clipboard.`);
+      return;
+    } catch {
+      // fall through to download
+    }
+
+    // Last resort — trigger a download.
+    const blob = new Blob([text], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   if (!profile) {
     return (
       <div className="max-w-3xl mx-auto px-5 py-10 text-text-muted text-center">
@@ -514,6 +573,16 @@ export default function SettingsPage() {
         <p className="text-sm text-text-muted -mt-2">
           Not shown to end-users in a real release. Kept here for testing
           the cold-start experience and re-seeding your setup.
+        </p>
+        <button
+          onClick={exportData}
+          className="w-full h-12 rounded-xl border border-accent/40 text-accent font-semibold hover:bg-accent/10"
+        >
+          Export all data (JSON)
+        </button>
+        <p className="text-xs text-text-dim -mt-1">
+          Share sheet on phone (AirDrop / Notes / email); clipboard on desktop.
+          For pulling training history off-device.
         </p>
         <button
           onClick={loadGonzalo}
