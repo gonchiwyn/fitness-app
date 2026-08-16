@@ -313,6 +313,56 @@ export const EXERCISES: Exercise[] = [
   // CHEST — dip machine + landmine chest press
   { id: "dip_machine", name: "Machine Dip", pattern: "push", muscles: ["chest", "tris"], equipment: ["machine"], weighted: true, cues: ["Lean forward for chest bias, upright for triceps"] },
   { id: "landmine_chest_press", name: "Landmine Chest Press", pattern: "push", muscles: ["chest", "shoulder"], equipment: ["barbell"], weighted: true, cues: ["One arm at a time — shoulder-friendly angle"] },
+
+  // ============================================================
+  // SURF PREP — surf coach conditioning (Cris Mills / XPT / Kolbe)
+  // ============================================================
+
+  // Pop-up scaled variant (foot-injury friendly, no jump)
+  { id: "pop_up_no_jump", name: "Pop-Up — No Jump", pattern: "plyometric", muscles: ["full_body"], equipment: ["mat"], weighted: false, cues: ["Slide the front foot forward, don't jump it"], howTo: "Same as a pop-up but slide the front foot forward instead of hopping it into place. Zero landing impact. Rehearses the sequence so when the foot is fully cleared you already own the pattern." },
+
+  // Pop-up on BOSU (proprioception under fatigue)
+  { id: "bosu_pop_up", name: "Pop-Up on BOSU", pattern: "plyometric", muscles: ["full_body", "core"], equipment: ["mat"], weighted: false, cues: ["Land on the dome and STICK it", "Ankles reactive, not stiff"], howTo: "Perform a pop-up but land in surf stance on top of a BOSU (dome-side up). Trains ankle/foot proprioception under fatigue — the exact system surfing hammers. Start after regular pop-ups so you're fresh at the skill. If no BOSU, use a folded towel to introduce a slight unstable surface." },
+
+  // Paddle-position back-extension endurance
+  { id: "prone_back_extension_hold", name: "Prone Back-Extension Hold", pattern: "core", muscles: ["lower_back", "posterior_chain"], equipment: ["mat"], weighted: false, cues: ["Lift chest 15cm, chin tucked", "Breathe normally throughout the hold"], howTo: "Lie prone (like on a surfboard). Lift chest and thighs slightly off the floor into a shallow Superman. Hold. This is the paddle position — training endurance here means you don't fatigue after 30 minutes in the water. Start 20-30s, build to 60s." },
+
+  // Neck extension endurance (paddle look-up)
+  { id: "neck_extension_hold", name: "Neck Extension Hold (Prone)", pattern: "core", muscles: ["neck"], equipment: ["mat"], weighted: false, cues: ["Chin off the ground, eyes on the horizon", "Small movement, big endurance win"], howTo: "Lie prone, forehead on the ground. Lift the head so eyes look forward at the horizon (like looking over the nose of your surfboard). Hold. Build cervical extensor endurance so you can paddle without neck fatigue." },
+
+  // Cervical strength — 4-way banded (isometric)
+  { id: "banded_neck_4way", name: "Banded Neck 4-Way", pattern: "mobility", muscles: ["neck"], equipment: ["band"], weighted: false, cues: ["Isometric each direction, 15s per side", "Neutral spine throughout"], howTo: "Loop a light band around your head, anchor at head height. Face away for flexion iso, face toward for extension iso, sideways each way for lateral iso. 15-20s per direction. Cervical strength across all planes for wipeout tolerance and paddle-position durability." },
+
+  // Peroneal tendonitis rehab — banded eversion
+  { id: "banded_peroneal_eversion", name: "Banded Peroneal Eversion", pattern: "mobility", muscles: ["ankle", "calves"], equipment: ["band"], weighted: false, warmupTarget: "general", cues: ["Slow, controlled — you're rebuilding tendon capacity", "Eversion is turning the sole OUTWARD"], howTo: "Seated, leg extended. Loop a light band around the ball of your foot with the anchor to the inside. Push the foot outward against the band (eversion — sole turns away from midline). Slow up, slow down. 3×20 per side. Peroneal tendonitis rehab staple." },
+
+  // Kettlebell halo — shoulder health under overhead load
+  { id: "kb_halo", name: "Kettlebell Halo", pattern: "mobility", muscles: ["shoulder", "thoracic"], equipment: ["kettlebell"], weighted: true, warmupTarget: "shoulder", cues: ["Circle the bell around the head, slow", "Ribs stay down"], howTo: "Hold a light kettlebell by the horns at chest height. Slowly circle it around your head, keeping the ribs down and glutes tight. 5 each direction. Preps the shoulder complex + upper back mobility for overhead work." },
+
+  // Hip 90/90 transition — mobility + strength combined
+  { id: "hip_9090_transition", name: "Hip 90/90 Transition", pattern: "mobility", muscles: ["hip", "adductors"], equipment: ["mat"], weighted: false, warmupTarget: "hip", cues: ["Move slowly, no hands", "End position is a mirror of the start"], howTo: "Sit in 90/90 (front leg 90° in front, back leg 90° to the side). Without using hands, rotate the hips to switch sides so what was in front is now behind. Trains hip internal + external rotation strength — the exact quality that keeps hip flexors happy after hours seated on a board." },
+
+  // Underwater/breath prep — not exercises but modeled as one so they slot into sessions if desired
+  { id: "farmer_march", name: "Farmer March (In Place)", pattern: "carry", muscles: ["grip", "core", "hip"], equipment: ["dumbbell", "kettlebell"], weighted: true, cues: ["High knee, tall posture", "Grip stays iron-tight"], howTo: "Hold heavy DBs/KBs at your sides. March in place with high knees, staying tall. 30-60s per set. Combines grip endurance (rail hold), hip flexor strength (pop-up drive), and core stability." },
+
+  // ============================================================
+  // FOOT / ANKLE REHAB PROGRESSION — for peroneal tendonitis and
+  // full return-to-run/tennis capacity. Ordered by phase.
+  // ============================================================
+
+  // Phase 1: activation + isolated strength
+  { id: "toe_yoga", name: "Toe Yoga", pattern: "mobility", muscles: ["ankle"], equipment: ["bodyweight"], weighted: false, warmupTarget: "general", cues: ["Lift big toe while little toes stay down, then reverse", "Slow, deliberate"], howTo: "Barefoot, standing. Lift ONLY your big toe, keeping the other four on the ground. Hold 3s. Then lift the four small toes while pressing the big toe down. 10 alternations per foot. Restores individual toe control lost from shoes — foundational for foot function." },
+  { id: "short_foot_drill", name: "Short Foot Drill", pattern: "mobility", muscles: ["ankle"], equipment: ["bodyweight"], weighted: false, warmupTarget: "general", cues: ["Shorten the foot without curling toes", "Draw the ball of the foot toward the heel"], howTo: "Barefoot. Without curling your toes or lifting them, actively pull the ball of your foot toward the heel — arch rises. Hold 5s, release. 10 reps per side. Activates the arch's intrinsic muscles (the shock-absorption system running shoes have made lazy)." },
+
+  // Phase 2: eccentric loading + balance
+  { id: "heel_drop_eccentric", name: "Heel Drop (Eccentric)", pattern: "mobility", muscles: ["calves", "ankle"], equipment: ["box"], weighted: false, cues: ["Rise on both feet, drop slowly on one", "3-second lower on the injured side"], howTo: "Stand on a step with heels hanging off. Rise up on both feet, then transfer weight to the affected foot and lower slowly (3 seconds) below the step level. Reset with both feet. 3×10. The gold-standard tendon-loading protocol (Alfredson) — tendons remodel under slow eccentric load." },
+  { id: "single_leg_balance_pad", name: "Single-Leg Balance (Unstable Surface)", pattern: "mobility", muscles: ["ankle", "hip"], equipment: ["mat"], weighted: false, cues: ["Bare foot, eyes open then closed", "Micro-corrections OK — you're rebuilding the map"], howTo: "Barefoot, stand on one leg on a folded towel, foam pad, or BOSU. Hold 30-45s. Progression: eyes open → eyes closed → head turns. Rebuilds ankle proprioception — the exact quality peroneal tendonitis erodes." },
+  { id: "heel_toe_walks", name: "Heel Walks + Toe Walks", pattern: "mobility", muscles: ["ankle", "calves"], equipment: ["bodyweight"], weighted: false, warmupTarget: "general", cues: ["20 steps on heels, 20 on toes", "Balance the anterior and posterior chain"], howTo: "Walk 20 steps on your heels only (toes lifted — trains tibialis anterior). Then 20 steps on toes only (heels lifted — calves + arch). Anterior/posterior ankle balance. Do daily during rehab." },
+
+  // Phase 3: reactive + return to run
+  { id: "single_leg_hop_stick", name: "Single-Leg Hop and Stick", pattern: "plyometric", muscles: ["ankle", "calves", "legs"], equipment: ["bodyweight"], weighted: false, cues: ["Hop forward, land soft, STICK it for 2s", "Only progress here when pogo hops are painless"], howTo: "Hop forward on one leg. Land soft, absorb through the knee, and stick the landing for 2 seconds before the next hop. 3×5 per leg. Tests reactive strength through the peroneals — bridge between rehab and return-to-sport." },
+  { id: "lateral_hop_stick", name: "Lateral Hop and Stick", pattern: "plyometric", muscles: ["ankle", "hip"], equipment: ["bodyweight"], weighted: false, cues: ["Hop sideways, land soft, stick 2s", "Only when linear hops are painless"], howTo: "Hop laterally 30-50cm to one side, land on the same leg, stick 2s. Back the other way. 3×5 per side. This is the peroneal-specific reactive test — if this hurts, stay on linear hops longer. Peroneals brake lateral motion, so lateral hops both test and train them." },
+  { id: "walk_jog_intervals", name: "Walk-Jog Return Protocol", pattern: "conditioning", muscles: ["legs", "ankle"], equipment: ["bodyweight"], weighted: false, cues: ["1 min jog / 2 min walk × 8", "Pain-free the whole way — if not, walk another week"], howTo: "Return-to-run bridge for lower-leg tendinopathy. Start with 1 min slow jog / 2 min walk, repeat 6-8 rounds. Progress weekly to 2:2, 3:2, 5:2. Rule: pain-free during AND for 24h after — if either fails, drop back a step." },
 ];
 
 export const EXERCISES_BY_ID: Record<string, Exercise> = Object.fromEntries(

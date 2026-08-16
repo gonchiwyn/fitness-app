@@ -207,7 +207,12 @@ export default function HomePage() {
           return isDone ? (
             <BlockCompleteCard focus={focus} sessions={recent ?? []} />
           ) : (
-            <FocusIndicator focus={focus} />
+            <>
+              <FocusIndicator focus={focus} />
+              {focus.name === "Surf prep" && (
+                <BreathingCard weekInBlock={weekNum} />
+              )}
+            </>
           );
         })()
       )}
@@ -300,6 +305,79 @@ export default function HomePage() {
       </section>
 
     </div>
+  );
+}
+
+// Breathing card — Surf-Prep-only companion. Not tied to the workout block;
+// meant to be done at a separate time of day. Rotates the practice by
+// week-in-block so W1 is a gentle CNS baseline and W5 is real CO2/O2 work.
+function BreathingCard({ weekInBlock }: { weekInBlock: number }) {
+  const [expanded, setExpanded] = useState(false);
+  const w = Math.max(1, Math.min(6, weekInBlock));
+  const protocol = (() => {
+    if (w <= 2)
+      return {
+        name: "Box breathing",
+        summary: "4s in · 4s hold · 4s out · 4s hold · × 5 min",
+        why: "CNS baseline — trains calm under load.",
+        how: "Sit or lie down. Breathe in through the nose for 4 seconds, hold for 4, exhale through the mouth for 4, hold empty for 4. That's one round. Do it for 5 minutes. Any time of day works; especially good pre-sleep.",
+      };
+    if (w === 3)
+      return {
+        name: "CO2 tolerance table",
+        summary: "Hold with shrinking rest — 2:00 → 1:45 → 1:30 … → 0:15",
+        why: "Sailing week — build wipeout tolerance while you're in the water anyway.",
+        how: "Pick a comfortable breath-hold (say 45s). Rest 2:00, then hold. Rest 1:45, hold same time. Rest 1:30, hold. Keep dropping rest by 15s down to 0:15 rest. Hold length stays constant — the CO2 buildup does the work.",
+      };
+    if (w === 4)
+      return {
+        name: "O2 max-hold table",
+        summary: "Fixed 2:00 rest · holds climb 1:00 → 1:15 → 1:30 → 1:45 → 2:00",
+        why: "Build absolute breath-hold capacity.",
+        how: "Rest 2:00, hold 1:00. Rest 2:00, hold 1:15. Keep climbing the hold length. If you can't hit the next step, hold the last one again. 2× per week.",
+      };
+    if (w === 5)
+      return {
+        name: "Alternate CO2 & O2 tables",
+        summary: "Peak week — one table per day",
+        why: "Peak the breath-hold system without over-doing it. Alternate the stressor.",
+        how: "Odd days: CO2 table (from week 3). Even days: O2 table (from week 4). Skip a day if it feels stressful — this is a nervous-system practice, not a grind.",
+      };
+    return {
+      name: "4-7-8 breathing",
+      summary: "4s in · 7s hold · 8s out · × 10 rounds",
+      why: "Taper week — parasympathetic reset. Do it nightly before you fly.",
+      how: "Inhale through the nose for 4. Hold for 7. Exhale slowly through the mouth for 8, making a soft whoosh. That's one round. 10 rounds pre-sleep. Land in El Salvador rested.",
+    };
+  })();
+
+  return (
+    <button
+      onClick={() => setExpanded((v) => !v)}
+      className="w-full text-left bg-bg-elevated border border-border rounded-2xl p-4"
+    >
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-[10px] uppercase tracking-widest text-text-dim">
+            Breathing — Week {w}
+          </div>
+          <div className="font-semibold mt-0.5">{protocol.name}</div>
+          <div className="text-xs text-text-muted mt-0.5">
+            {protocol.summary}
+          </div>
+        </div>
+        <div className="text-text-dim text-lg">{expanded ? "−" : "+"}</div>
+      </div>
+      {expanded && (
+        <div className="mt-3 pt-3 border-t border-border space-y-2">
+          <div className="text-xs text-text-muted italic">{protocol.why}</div>
+          <div className="text-sm">{protocol.how}</div>
+          <div className="text-[10px] uppercase tracking-widest text-text-dim pt-1">
+            Do it separately from your workout — anywhere in the day.
+          </div>
+        </div>
+      )}
+    </button>
   );
 }
 

@@ -1881,6 +1881,325 @@ TEMPLATES.push(
   },
 );
 
+// ============================================================
+// SURF PREP — El Salvador block. Coach influences: Cris Mills
+// (Surf Strength Coach), Kalyn Kolbe (mobility), XPT (breath +
+// water), Andy Galpin (ordering + wave). Every session hits at
+// least one of the four surf fatigue points: shoulders, triceps,
+// neck, lateral hips. Foot-injury-safe: no running, no cutting,
+// jumps ramp progressively.
+// ============================================================
+TEMPLATES.push(
+  {
+    id: "surf_paddle_push",
+    category: "athlete",
+    name: "Paddle Push",
+    description: "Incline press + shoulder health + tricep endurance + neck. Surf-specific push.",
+    influences: ["galpin", "general"],
+    blocks: [
+      {
+        title: "Shoulder Prep",
+        scheme: "1 round — mobility + rotator cuff",
+        prescriptions: [
+          { exerciseId: "kb_halo", sets: 2, reps: "5/direction", notes: "T-spine + shoulder complex prep" },
+          { exerciseId: "prone_ytw", sets: 2, reps: "8/letter", rest: "45s", notes: "Rotator cuff + rear delt endurance" },
+        ],
+      },
+      {
+        title: "Incline Press (Shoulder-Safe)",
+        scheme: "4×8 — rest 90s",
+        note: "Incline biases upper chest + front delt with less shoulder-joint stress than flat bench.",
+        prescriptions: [
+          {
+            exerciseId: "incline_db_press",
+            pool: ["incline_db_press", "landmine_press", "incline_cable_fly"],
+            sets: 4, reps: "8", rpe: 8, rest: "90s",
+          },
+        ],
+      },
+      {
+        title: "Unilateral Press",
+        scheme: "3×10/side",
+        prescriptions: [
+          {
+            exerciseId: "landmine_press",
+            pool: ["landmine_press", "arnold_press"],
+            sets: 3, reps: "10/side", rpe: 8, rest: "60s",
+          },
+        ],
+      },
+      {
+        title: "Tricep Endurance (Paddle Recovery Phase)",
+        scheme: "2 exercises × 3×12-15",
+        note: "The paddle recovery phase is triceps under fatigue — endurance > max strength here.",
+        prescriptions: [
+          {
+            exerciseId: "rope_pushdown",
+            pool: ["rope_pushdown", "tricep_pushdown", "diamond_pushup"],
+            sets: 3, reps: "12-15", rpe: 9, rest: "45s",
+          },
+          {
+            exerciseId: "overhead_tricep_extension",
+            pool: ["overhead_tricep_extension", "cable_overhead_extension"],
+            sets: 3, reps: "10-12", rpe: 8, rest: "45s",
+          },
+        ],
+      },
+      {
+        title: "Neck + Cervical",
+        scheme: "3 rounds — endurance + strength",
+        note: "Cervical extensors fatigue faster than most surfers admit. Train them so 3-hour sessions stay comfortable.",
+        prescriptions: [
+          { exerciseId: "neck_extension_hold", sets: 3, reps: "30-45s", rest: "30s" },
+          { exerciseId: "banded_neck_4way", sets: 2, reps: "15s/direction", rest: "30s" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "surf_paddle_pull",
+    category: "athlete",
+    name: "Paddle Pull",
+    description: "Lat + rear delt + paddle-position endurance. The core surf session.",
+    influences: ["galpin", "general"],
+    blocks: [
+      {
+        title: "Shoulder Prep",
+        scheme: "1 round",
+        prescriptions: [
+          { exerciseId: "band_pull_apart", sets: 2, reps: "15", notes: "Wake up rear delts + scap" },
+          { exerciseId: "thoracic_opener", sets: 2, reps: "8/side", notes: "T-spine mobility for paddle reach" },
+        ],
+      },
+      {
+        title: "Horizontal Row (Lumbar-Safe)",
+        scheme: "4×10 — rest 90s",
+        prescriptions: [
+          {
+            exerciseId: "chest_supported_row",
+            pool: ["chest_supported_row", "seal_row", "seated_row"],
+            sets: 4, reps: "10", rpe: 8, rest: "90s",
+          },
+        ],
+      },
+      {
+        title: "Paddle-Position Pulldown",
+        scheme: "4×10 — mimics the pull phase",
+        prescriptions: [
+          {
+            exerciseId: "neutral_grip_pulldown",
+            pool: ["neutral_grip_pulldown", "lat_pulldown", "one_arm_lat_pulldown"],
+            sets: 4, reps: "10", rpe: 8, rest: "75s",
+          },
+        ],
+      },
+      {
+        title: "Straight-Arm Pulldown (Paddle Finish)",
+        scheme: "3×15",
+        note: "Mimics the exact end-range of a paddle stroke. Pure lat.",
+        prescriptions: [
+          { exerciseId: "straight_arm_pulldown", sets: 3, reps: "15", rpe: 9, rest: "60s" },
+        ],
+      },
+      {
+        title: "Rear Delt + Rotator Cuff",
+        scheme: "3×15",
+        prescriptions: [
+          {
+            exerciseId: "face_pull",
+            pool: ["face_pull", "reverse_pec_deck", "cable_rear_delt_fly"],
+            sets: 3, reps: "15", rpe: 9, rest: "45s",
+          },
+        ],
+      },
+      {
+        title: "Grip + Forearm",
+        scheme: "3×12",
+        prescriptions: [
+          {
+            exerciseId: "hammer_curl",
+            pool: ["hammer_curl", "reverse_curl", "cable_curl"],
+            sets: 3, reps: "12", rpe: 9, rest: "45s",
+          },
+        ],
+      },
+      {
+        title: "Paddle-Position Endurance",
+        scheme: "3×45s hold",
+        note: "The whole point of the session lands here. Train the position you'll live in for hours.",
+        prescriptions: [
+          { exerciseId: "prone_back_extension_hold", sets: 3, reps: "45s", rest: "45s" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "surf_legs",
+    category: "athlete",
+    name: "Surf Legs",
+    description: "Unilateral, hip mobility, foot rehab. Bilateral load, no pivoting.",
+    influences: ["galpin", "general"],
+    blocks: [
+      {
+        title: "Foot + Ankle Rehab (Progressive)",
+        scheme: "3 rounds — priority when fresh",
+        note: "Progressive rehab: activation → eccentric → balance → reactive. Rotates weekly so you cover the full progression across the block, not just one exercise. Goal is full return to run + tennis.",
+        prescriptions: [
+          {
+            exerciseId: "banded_peroneal_eversion",
+            // Activation + isolated strength (do at least one every session)
+            pool: ["banded_peroneal_eversion", "toe_yoga", "short_foot_drill"],
+            sets: 3, reps: "15-20/side", rest: "30s",
+            notes: "Activation — teaches the muscle to fire",
+          },
+          {
+            exerciseId: "heel_drop_eccentric",
+            // Eccentric loading + calf progression — Alfredson protocol style
+            pool: ["heel_drop_eccentric", "calf_raise", "seated_calf_raise"],
+            sets: 3, reps: "10", rest: "45s",
+            notes: "Slow eccentric loads the tendon — how it actually remodels",
+          },
+          {
+            exerciseId: "single_leg_balance_pad",
+            // Balance + proprioception (unstable surface)
+            pool: ["single_leg_balance_pad", "heel_toe_walks"],
+            sets: 2, reps: "45s/side", rest: "30s",
+            notes: "Proprioception — rebuild the map the injury erased",
+          },
+          {
+            exerciseId: "single_leg_hop_stick",
+            // Reactive — only progress when pain-free on lower phases
+            pool: ["single_leg_hop_stick", "lateral_hop_stick", "walk_jog_intervals"],
+            sets: 3, reps: "5/side", rest: "60s",
+            notes: "Reactive — only if the earlier phases are painless. Skip if any sharpness returns.",
+          },
+        ],
+      },
+      {
+        title: "Main Compound (Bilateral, No Pivot)",
+        scheme: "4×8-10",
+        note: "Bilateral squat pattern — no lateral loading of the foot during recovery.",
+        prescriptions: [
+          {
+            exerciseId: "leg_press",
+            pool: ["leg_press", "hack_squat", "back_squat"],
+            sets: 4, reps: "8-10", rpe: 8, rest: "2 min",
+          },
+        ],
+      },
+      {
+        title: "Unilateral Leg",
+        scheme: "3×8/side",
+        note: "Controlled unilateral — glute med + single-leg strength for surf stance.",
+        prescriptions: [
+          {
+            exerciseId: "bulgarian_split_squat",
+            pool: ["bulgarian_split_squat", "single_leg_rdl", "step_up"],
+            sets: 3, reps: "8/side", rpe: 8, rest: "75s",
+          },
+        ],
+      },
+      {
+        title: "Hinge",
+        scheme: "3×10",
+        prescriptions: [
+          {
+            exerciseId: "romanian_deadlift",
+            pool: ["romanian_deadlift", "single_leg_rdl", "back_extension_45"],
+            sets: 3, reps: "10", rpe: 8, rest: "90s",
+          },
+        ],
+      },
+      {
+        title: "Hip Mobility + Glute Med (Lateral Hip Care)",
+        scheme: "2 rounds — fixes your sitting-on-board hip discomfort",
+        prescriptions: [
+          { exerciseId: "cossack_squat", sets: 2, reps: "5/side", notes: "Adductor + hip mobility for surf stance" },
+          { exerciseId: "hip_9090_transition", sets: 2, reps: "6 transitions", notes: "Active hip IR + ER strength" },
+          { exerciseId: "lateral_band_walk", sets: 2, reps: "15/side", notes: "Glute med — the muscle sitting on a board complains about" },
+        ],
+      },
+      {
+        title: "Grip + Core Carry",
+        scheme: "3×40s",
+        note: "Farmer march trains grip (rail hold) + hip flexor + core in one shot.",
+        prescriptions: [
+          { exerciseId: "farmer_march", sets: 3, reps: "40s", rest: "60s" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "surf_pop_up_core",
+    category: "athlete",
+    name: "Pop-Up + Core",
+    description: "The surf skill day. Pop-up practice + rotational power + anti-rotation core.",
+    influences: ["galpin", "general"],
+    blocks: [
+      {
+        title: "Pop-Up Practice",
+        scheme: "5×5 — the skill lives here",
+        note: "First 2 weeks: no jump — slide the foot. From week 4: jump the foot into place. Get fresh reps in early.",
+        prescriptions: [
+          {
+            exerciseId: "pop_up_no_jump",
+            pool: ["pop_up_no_jump", "pop_up"],
+            sets: 5, reps: "5", rest: "60s",
+          },
+        ],
+      },
+      {
+        title: "BOSU Pop-Up (Proprioception)",
+        scheme: "3×5",
+        note: "Only when regular pop-ups feel automatic. Trains ankle/foot balance under fatigue.",
+        prescriptions: [
+          { exerciseId: "bosu_pop_up", sets: 3, reps: "5", rest: "60s" },
+        ],
+      },
+      {
+        title: "Explosive Hinge (Turn Drive)",
+        scheme: "4×10",
+        note: "Foot-friendly hip power. Snap hips like a turn off the top.",
+        prescriptions: [
+          {
+            exerciseId: "kb_swing",
+            pool: ["kb_swing", "med_ball_slam"],
+            sets: 4, reps: "10", rpe: 8, rest: "60s",
+          },
+        ],
+      },
+      {
+        title: "Rotational Power (Turns + Cutbacks)",
+        scheme: "3×10/side",
+        prescriptions: [
+          {
+            exerciseId: "landmine_rotational_punch",
+            pool: ["landmine_rotational_punch", "med_ball_rotational_throw"],
+            sets: 3, reps: "10/side", rpe: 8, rest: "60s",
+          },
+        ],
+      },
+      {
+        title: "Whole-Body Coordination",
+        scheme: "3×3/side",
+        note: "Turkish get-up — every muscle firing in sequence. Pre-surf tune-up in one movement.",
+        prescriptions: [
+          { exerciseId: "turkish_getup", sets: 3, reps: "3/side", rest: "60s" },
+        ],
+      },
+      {
+        title: "Anti-Rotation + Rotation Combined",
+        scheme: "2 exercises × 3 sets",
+        note: "Surfing = rotating shoulders while base stays stable. Train the dissociation.",
+        prescriptions: [
+          { exerciseId: "pallof_press", sets: 3, reps: "12/side", rest: "45s" },
+          { exerciseId: "side_plank_reach", sets: 3, reps: "8/side", rest: "45s", notes: "Anti-lateral + rotation combined" },
+        ],
+      },
+    ],
+  },
+);
+
 export function templatesFor(category: Category): Template[] {
   return TEMPLATES.filter((t) => t.category === category);
 }

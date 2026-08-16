@@ -246,6 +246,24 @@ export default function PlanPage() {
         { category: "stretching" },
       ],
     },
+    {
+      // Surf-trip prep. Foot-injury safe. Every session hits shoulders / triceps
+      // / neck / lateral hips — the fatigue points that limit surf sessions.
+      // Coaches: Cris Mills, XPT, Kalyn Kolbe, Galpin. See surf_* templates.
+      // Week 3 auto-populates as sailing/swim log-only (see applyPreset).
+      label: "Surf Prep — El Salvador (foot-safe, week 3 swim)",
+      focusName: "Surf prep",
+      durationWeeks: 6,
+      days: [
+        { category: "athlete", templateId: "surf_paddle_push" },
+        { category: "athlete", templateId: "surf_paddle_pull" },
+        { category: "cardio", templateId: "attia_zone2_45" },
+        { category: "athlete", templateId: "surf_legs" },
+        { category: "athlete", templateId: "surf_pop_up_core" },
+        { category: "cardio", templateId: "attia_zone2_45" },
+        { category: "recovery" },
+      ],
+    },
   ];
 
   const applyPreset = async (preset: (typeof presets)[number]) => {
@@ -261,6 +279,24 @@ export default function PlanPage() {
     };
     await saveProfile({ currentFocus: focus });
     setProfile((p) => (p ? { ...p, currentFocus: focus } : p));
+
+    // Surf prep has a fixed sailing week 3 — auto-populate that week as
+    // swim/sport log-only so the user can log against it. Keeps the base
+    // pattern (gym) untouched for weeks 1-2 and 4-6.
+    if (preset.focusName === "Surf prep") {
+      const startDate = new Date(today + "T00:00:00");
+      const week3Monday = new Date(startDate);
+      const daysUntilMonday = (1 - startDate.getDay() + 7) % 7;
+      week3Monday.setDate(
+        startDate.getDate() + daysUntilMonday + 14
+      );
+      const week3Start = format(week3Monday, "yyyy-MM-dd");
+      const sailingDays: PlannedDay[] = Array.from({ length: 7 }, (_, i) =>
+        i === 6 ? null : { category: "sport" as const }
+      );
+      await saveWeekOverride(week3Start, sailingDays);
+    }
+
     setShowPresets(false);
   };
 
