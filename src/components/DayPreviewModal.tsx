@@ -36,6 +36,12 @@ export default function DayPreviewModal({
       setLoading(false);
       return;
     }
+    // Sport is log-only — no template, no generator. Preview shows a card
+    // with sport suggestions and hands off to SportLogModal for logging.
+    if (day.category === "sport") {
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     (async () => {
       // Prefer the actual saved session for this date — if the user opened
@@ -95,6 +101,8 @@ export default function DayPreviewModal({
 
         {!day ? (
           <p className="text-sm text-text-muted">Rest day — no session planned.</p>
+        ) : day.category === "sport" ? (
+          <SportDayPreview />
         ) : loading ? (
           <p className="text-sm text-text-muted">Building preview…</p>
         ) : workout ? (
@@ -139,7 +147,15 @@ export default function DayPreviewModal({
           <p className="text-sm text-text-muted">Couldn&apos;t build a preview.</p>
         )}
 
-        {day && (
+        {day && day.category === "sport" ? (
+          <Link
+            href="/workout"
+            className="block text-center mt-4 text-accent font-semibold text-sm"
+            onClick={onClose}
+          >
+            Log a sport →
+          </Link>
+        ) : day && (
           <Link
             href={
               day.templateId
@@ -152,6 +168,24 @@ export default function DayPreviewModal({
             Open workout builder →
           </Link>
         )}
+      </div>
+    </div>
+  );
+}
+
+// Sport days have no template — show a plain card with sport suggestions.
+function SportDayPreview() {
+  return (
+    <div className="space-y-3">
+      <div className="text-xs uppercase tracking-widest text-text-dim">
+        Sport day
+      </div>
+      <p className="text-sm text-text-muted">
+        No structured workout — just move. Log what you did after (or before,
+        for planning).
+      </p>
+      <div className="bg-bg-card border border-border rounded-xl p-3 text-sm text-text-muted">
+        Ideas: swim, surf, tennis, hike, bike ride, climb, ski, football…
       </div>
     </div>
   );

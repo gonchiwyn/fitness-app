@@ -111,6 +111,21 @@ export default function SettingsPage() {
     location.reload();
   };
 
+  // Delete every unfinished draft so the next time you open that day, the
+  // workout gets generated fresh from the current templates. Use after a
+  // template update to force previously-peeked days to refresh.
+  const clearFutureDrafts = async () => {
+    const all = await db.sessions.toArray();
+    const drafts = all.filter((s) => !s.finishedAt);
+    if (drafts.length === 0) {
+      alert("No draft workouts to clear.");
+      return;
+    }
+    if (!confirm(`Clear ${drafts.length} draft workout(s)? Next time you open those days, they regenerate from the latest templates. Finished sessions are untouched.`)) return;
+    for (const d of drafts) if (d.id !== undefined) await db.sessions.delete(d.id);
+    alert(`Cleared ${drafts.length} drafts.`);
+  };
+
   // Export everything as a single JSON. On mobile PWAs, the Web Share API
   // hands the payload to the OS share sheet (AirDrop, Notes, email) so you
   // can move it off the phone. Falls back to clipboard + download.
@@ -583,6 +598,17 @@ export default function SettingsPage() {
         <p className="text-xs text-text-dim -mt-1">
           Share sheet on phone (AirDrop / Notes / email); clipboard on desktop.
           For pulling training history off-device.
+        </p>
+        <button
+          onClick={clearFutureDrafts}
+          className="w-full h-12 rounded-xl border border-border text-text-muted font-medium"
+        >
+          Clear all draft workouts
+        </button>
+        <p className="text-xs text-text-dim -mt-1">
+          Deletes any unfinished workouts you peeked at but never started.
+          Next time you open those days, they regenerate from the latest
+          templates. Finished sessions are untouched.
         </p>
         <button
           onClick={loadGonzalo}

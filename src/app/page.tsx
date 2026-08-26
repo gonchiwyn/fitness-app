@@ -261,7 +261,13 @@ export default function HomePage() {
       {previewDate && plan && profile && (
         <DayPreviewModal
           date={previewDate}
-          day={plan.days[dateToPlanIndex(new Date(previewDate + "T00:00:00"))]}
+          // Read from displayedWeekDays (override-aware) so sailing-week Sport
+          // days show the sport preview, not the base plan's Paddle Push.
+          day={
+            (displayedWeekDays ?? plan.days)[
+              dateToPlanIndex(new Date(previewDate + "T00:00:00"))
+            ]
+          }
           profile={profile}
           onClose={() => setPreviewDate(null)}
         />

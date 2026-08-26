@@ -610,11 +610,12 @@ function buildWarmup(
   }
 
   // Day-specific movement prep — mirrors the day's session so the warmup
-  // "matches" the workout, not just the chronic focus areas.
-  // Kept lightweight (1-2 moves) so we don't blow up the warmup length.
+  // "matches" the workout. Dedup against exercises already picked upstream
+  // so we don't get the same mobility twice in the same warmup.
   const dayPrep = dayPrepFor(modifiers.templateId, category, available);
   if (time >= 25 && dayPrep.length > 0) {
-    prescriptions.push(...dayPrep);
+    const already = new Set(prescriptions.map((p) => p.exerciseId));
+    for (const p of dayPrep) if (!already.has(p.exerciseId)) prescriptions.push(p);
   }
 
   // Personalized activation. Scapular activation is a priority on

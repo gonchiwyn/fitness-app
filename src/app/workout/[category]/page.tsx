@@ -207,6 +207,18 @@ export default function WorkoutForCategory({
     router.push("/");
   };
 
+  // Rebuild this session's blocks from the current templates. Used when the
+  // template library or coaching logic has been updated and the user wants
+  // the newer version without losing their date/category slot.
+  const regenerate = async () => {
+    if (!session.id) return;
+    if (session.startedAt) return; // safety: don't regenerate an in-progress session
+    if (!confirm("Regenerate this workout from the latest templates?")) return;
+    await db.sessions.delete(session.id);
+    // Reload — the page will generate a fresh session on mount
+    window.location.reload();
+  };
+
   const finish = async () => {
     if (!session.id) return;
     const now = Date.now();
@@ -526,12 +538,20 @@ export default function WorkoutForCategory({
             >
               I did this ✓
             </button>
-            <button
-              onClick={discard}
-              className="w-full text-text-dim text-sm py-2"
-            >
-              Discard — I didn't do it
-            </button>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={regenerate}
+                className="text-text-muted text-sm py-2 border border-border rounded-lg hover:bg-bg-elevated"
+              >
+                ↻ Regenerate
+              </button>
+              <button
+                onClick={discard}
+                className="text-text-dim text-sm py-2"
+              >
+                Discard
+              </button>
+            </div>
           </>
         )}
       </div>
