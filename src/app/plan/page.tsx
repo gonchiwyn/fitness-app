@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import clsx from "clsx";
-import { differenceInCalendarDays, format, startOfWeek } from "date-fns";
+import { addDays, differenceInCalendarDays, format, startOfWeek } from "date-fns";
+import DayPreviewModal from "@/components/DayPreviewModal";
 import {
   db,
   getProfile,
@@ -29,8 +30,12 @@ export default function PlanPage() {
   const [plan, setPlan] = useState<WeeklyPlan | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [editingDay, setEditingDay] = useState<number | null>(null);
+  const [previewingDay, setPreviewingDay] = useState<number | null>(null);
   const [showPresets, setShowPresets] = useState(false);
   const todayIdx = dateToPlanIndex(new Date());
+  // Monday of this week — used to compute a real date for each plan day
+  // so DayPreviewModal can show the next upcoming occurrence of e.g. "Mon".
+  const thisMonday = startOfWeek(new Date(), { weekStartsOn: 1 });
 
   const [viewMode, setViewMode] = useState<"this-week" | "base">("this-week");
   const [hasOverride, setHasOverride] = useState(false);
@@ -264,6 +269,26 @@ export default function PlanPage() {
         { category: "recovery" },
       ],
     },
+    {
+      // First-time Hyrox 6-week block. Galpin block periodization applied via
+      // template progression (not just phase.setAdjustment): W1-2 use intro
+      // templates (short runs, no sled push, upright-safe sled pull), W3-5
+      // use the full race-sim templates, W6 uses a light skill version.
+      // Lumbar-aware throughout — RDL replaces deadlift in W1-2.
+      label: "Hyrox Prep — first-time, 6w (back-aware)",
+      focusName: "Hyrox prep",
+      durationWeeks: 6,
+      // Base pattern used in W3-5 (middle "Build" phase)
+      days: [
+        { category: "hyrox", templateId: "hyrox_strength_pull" },
+        { category: "hyrox", templateId: "hyrox_sim_race" },
+        { category: "cardio", templateId: "attia_zone2_45" },
+        { category: "hyrox", templateId: "hyrox_strength_push" },
+        { category: "cardio", templateId: "attia_4x4_vo2" },
+        { category: "cardio", templateId: "attia_zone2_45" },
+        { category: "recovery" },
+      ],
+    },
   ];
 
   const applyPreset = async (preset: (typeof presets)[number]) => {
@@ -295,6 +320,54 @@ export default function PlanPage() {
         i === 6 ? null : { category: "sport" as const }
       );
       await saveWeekOverride(week3Start, sailingDays);
+    }
+
+    // Hyrox prep: template content shifts by phase (not just phase.setAdjustment).
+    // W1-2 (Learn): intro sim + easy engine + RDL instead of deadlift
+    // W3-5: base pattern as defined above (full race sim)
+    // W6 (Deload): light skill sim + easier engine
+    if (preset.focusName === "Hyrox prep") {
+      const startDate = new Date(today + "T00:00:00");
+      // Current week's Monday (may be in the past if today isn't Monday).
+      // The current partial week counts as Week 1 — otherwise applying mid-week
+      // would show the base W3-5 pattern on day 1, which defeats the point.
+      const thisMonday = (() => {
+        const d = new Date(startDate);
+        const dayOfWeek = d.getDay(); // 0=Sun ... 1=Mon
+        const daysBackToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        d.setDate(d.getDate() - daysBackToMonday);
+        return d;
+      })();
+      const weekMonday = (weekIndex: number) => {
+        const d = new Date(thisMonday);
+        d.setDate(d.getDate() + weekIndex * 7);
+        return format(d, "yyyy-MM-dd");
+      };
+
+      const learnWeek: PlannedDay[] = [
+        { category: "hyrox", templateId: "hyrox_strength_pull" },
+        { category: "hyrox", templateId: "hyrox_sim_intro" },
+        { category: "cardio", templateId: "attia_zone2_45" },
+        { category: "hyrox", templateId: "hyrox_strength_push" },
+        { category: "hyrox", templateId: "hyrox_engine_easy" },
+        { category: "cardio", templateId: "attia_zone2_45" },
+        { category: "recovery" },
+      ];
+      const deloadWeek: PlannedDay[] = [
+        { category: "stretching" },
+        { category: "hyrox", templateId: "hyrox_sim_light" },
+        { category: "cardio", templateId: "attia_zone2_45" },
+        { category: "stretching" },
+        { category: "hyrox", templateId: "hyrox_engine_easy" },
+        { category: "recovery" },
+        { category: "recovery" },
+      ];
+
+      // W1 is the current week (starting from today's Monday or past-Monday
+      // if today is mid-week); W6 is 5 weeks later.
+      await saveWeekOverride(weekMonday(0), learnWeek);
+      await saveWeekOverride(weekMonday(1), learnWeek);
+      await saveWeekOverride(weekMonday(5), deloadWeek);
     }
 
     setShowPresets(false);
@@ -360,7 +433,10 @@ export default function PlanPage() {
           />
           <div className="flex items-center justify-between text-xs text-text-dim">
             <span>Started {format(new Date(focus.startedAt), "MMM d")}</span>
-            <button onClick={endBlock} className="text-text-muted underline">
+            <button
+              onClick={endBlock}
+              className="text-[10px] text-text-dim hover:text-text-muted opacity-60"
+            >
               End block
             </button>
           </div>
@@ -453,44 +529,56 @@ export default function PlanPage() {
               ? templatesFor(day.category).find((t) => t.id === day.templateId)
               : null;
             return (
-              <button
+              <div
                 key={i}
-                onClick={() => setEditingDay(i)}
                 className={clsx(
-                  "w-full text-left rounded-2xl border p-4 transition-colors flex items-center gap-4",
+                  "w-full rounded-2xl border transition-colors",
                   isToday
                     ? "bg-accent/10 border-accent/40"
                     : "bg-bg-card border-border"
                 )}
               >
-                <div className={clsx("w-14 text-center", isToday ? "text-accent" : "text-text-dim")}>
-                  <div className="text-[10px] uppercase tracking-widest font-bold">
-                    {DAY_LABELS_LONG[i].slice(0, 3)}
-                  </div>
-                  {isToday && (
-                    <div className="text-[10px] mt-0.5 font-semibold uppercase tracking-widest">
-                      Today
+                <button
+                  onClick={() => setPreviewingDay(i)}
+                  className="w-full text-left flex items-center gap-4 p-4"
+                >
+                  <div className={clsx("w-14 text-center", isToday ? "text-accent" : "text-text-dim")}>
+                    <div className="text-[10px] uppercase tracking-widest font-bold">
+                      {DAY_LABELS_LONG[i].slice(0, 3)}
                     </div>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  {day ? (
-                    <>
-                      <div className="font-semibold">
-                        {lockedTemplate
-                          ? `${CATEGORY_LABELS[day.category]} — ${lockedTemplate.name}`
-                          : CATEGORY_LABELS[day.category]}
+                    {isToday && (
+                      <div className="text-[10px] mt-0.5 font-semibold uppercase tracking-widest">
+                        Today
                       </div>
-                      <div className="text-xs text-text-dim mt-0.5">
-                        {lockedTemplate ? lockedTemplate.description : CATEGORY_BLURBS[day.category]}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-text-dim italic">Rest day</div>
-                  )}
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    {day ? (
+                      <>
+                        <div className="font-semibold">
+                          {lockedTemplate
+                            ? `${CATEGORY_LABELS[day.category]} — ${lockedTemplate.name}`
+                            : CATEGORY_LABELS[day.category]}
+                        </div>
+                        <div className="text-xs text-text-dim mt-0.5">
+                          {lockedTemplate ? lockedTemplate.description : CATEGORY_BLURBS[day.category]}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-text-dim italic">Rest day</div>
+                    )}
+                  </div>
+                  <span className="text-xs text-text-dim">View ›</span>
+                </button>
+                <div className="border-t border-border/50 px-4 py-2 flex justify-end">
+                  <button
+                    onClick={() => setEditingDay(i)}
+                    className="text-[11px] text-text-dim hover:text-accent uppercase tracking-wider"
+                  >
+                    Edit day
+                  </button>
                 </div>
-                <span className="text-xs text-text-dim">Edit ›</span>
-              </button>
+              </div>
             );
           })}
         </div>
@@ -538,6 +626,20 @@ export default function PlanPage() {
           onClose={() => setEditingDay(null)}
         />
       )}
+
+      {previewingDay !== null && profile && (() => {
+        // Compute the next occurrence of this weekday for preview context.
+        // Index 0 is Monday — the thisMonday date lands at index 0.
+        const previewDateObj = addDays(thisMonday, previewingDay);
+        return (
+          <DayPreviewModal
+            date={format(previewDateObj, "yyyy-MM-dd")}
+            day={plan.days[previewingDay]}
+            profile={profile}
+            onClose={() => setPreviewingDay(null)}
+          />
+        );
+      })()}
     </div>
   );
 }

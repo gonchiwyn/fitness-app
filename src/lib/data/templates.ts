@@ -66,10 +66,14 @@ export const TEMPLATES: Template[] = [
         prescriptions: [{ exerciseId: "back_squat", sets: 5, reps: "5", rpe: 8, rest: "3 min" }],
       },
       {
-        title: "Strength",
+        title: "Hamstring + Unilateral",
         scheme: "4x6",
         prescriptions: [
-          { exerciseId: "romanian_deadlift", sets: 4, reps: "6", rpe: 7, rest: "2 min" },
+          {
+            exerciseId: "leg_curl",
+            pool: ["leg_curl", "nordic_leg_curl", "single_leg_rdl", "back_extension_45"],
+            sets: 4, reps: "8", rpe: 8, rest: "90s",
+          },
           { exerciseId: "bulgarian_split_squat", sets: 3, reps: "8/side", rest: "90s" },
         ],
       },
@@ -106,14 +110,18 @@ export const TEMPLATES: Template[] = [
         title: "Strength",
         scheme: "4x8",
         prescriptions: [
-          { exerciseId: "barbell_row", sets: 4, reps: "8", rpe: 7, rest: "2 min" },
+          {
+            exerciseId: "chest_supported_row",
+            pool: ["chest_supported_row", "seal_row", "db_row", "t_bar_row"],
+            sets: 4, reps: "8", rpe: 7, rest: "2 min",
+          },
           { exerciseId: "pullup", sets: 4, reps: "AMRAP", rest: "90s" },
         ],
       },
       {
         title: "Carry",
         scheme: "3 sets",
-        prescriptions: [{ exerciseId: "farmer_carry", sets: 3, reps: "40m heavy", rest: "90s" }],
+        prescriptions: [{ exerciseId: "farmer_carry", sets: 3, reps: "40m", rest: "90s" }],
       },
     ],
   },
@@ -209,11 +217,10 @@ export const TEMPLATES: Template[] = [
     description: "Quads, hamstrings, glutes — full volume.",
     blocks: [
       {
-        title: "Primary",
+        title: "Primary Squat",
         scheme: "4x8",
         prescriptions: [
           { exerciseId: "back_squat", sets: 4, reps: "8", rpe: 8, rest: "2 min" },
-          { exerciseId: "romanian_deadlift", sets: 4, reps: "8", rpe: 8, rest: "2 min" },
         ],
       },
       {
@@ -298,7 +305,6 @@ export const TEMPLATES: Template[] = [
       {
         title: "Main Compound",
         scheme: "4×5-8 — rest 3 min",
-        note: "Lower rep range on the squat because the systemic fatigue of high-rep squats is disproportionate.",
         prescriptions: [
           { exerciseId: "back_squat", sets: 4, reps: "5-8", rpe: 9, rest: "3 min", notes: "Autoreg: +2 reps over top → +2.5% next set" },
         ],
@@ -382,7 +388,7 @@ export const TEMPLATES: Template[] = [
         scheme: "21-15-9 For Time",
         note: "Score = time. Cap 12 min.",
         prescriptions: [
-          { exerciseId: "thruster", sets: 1, reps: "21-15-9" },
+          { exerciseId: "wallball", sets: 1, reps: "21-15-9" },
           { exerciseId: "pullup", sets: 1, reps: "21-15-9" },
         ],
       },
@@ -465,19 +471,29 @@ export const TEMPLATES: Template[] = [
     description: "Build the engine that pushes the sled.",
     blocks: [
       {
-        title: "Strength",
-        scheme: "5x5",
+        title: "Main Squat",
+        scheme: "5×5",
         prescriptions: [
-          { exerciseId: "back_squat", sets: 5, reps: "5", rpe: 7 },
-          { exerciseId: "romanian_deadlift", sets: 4, reps: "8", rpe: 7 },
+          { exerciseId: "back_squat", sets: 5, reps: "5", rpe: 7, rest: "2-3 min" },
+        ],
+      },
+      {
+        title: "Unilateral Leg",
+        scheme: "3×8/side",
+        prescriptions: [
+          {
+            exerciseId: "bulgarian_split_squat",
+            pool: ["bulgarian_split_squat", "walking_lunge"],
+            sets: 3, reps: "8/side", rpe: 8, rest: "90s",
+          },
         ],
       },
       {
         title: "Carry & Push",
-        scheme: "4 rounds",
+        scheme: "Circuit — 4 rounds",
         prescriptions: [
-          { exerciseId: "sled_push", sets: 4, reps: "20m heavy" },
-          { exerciseId: "farmer_carry", sets: 4, reps: "40m" },
+          { exerciseId: "sled_push", sets: 4, reps: "20m", rest: "60s" },
+          { exerciseId: "farmer_carry", sets: 4, reps: "40m", rest: "60s" },
         ],
       },
     ],
@@ -603,8 +619,16 @@ export const TEMPLATES: Template[] = [
         title: "Strength",
         scheme: "4x4",
         prescriptions: [
-          { exerciseId: "power_clean", sets: 4, reps: "4", rpe: 7, rest: "2 min" },
-          { exerciseId: "front_squat", sets: 4, reps: "4", rpe: 7, rest: "2 min" },
+          {
+            exerciseId: "power_clean",
+            pool: ["power_clean", "hang_clean_below_knee", "front_squat"],
+            sets: 4, reps: "4", rpe: 7, rest: "2 min",
+          },
+          {
+            exerciseId: "weighted_pullup",
+            pool: ["weighted_pullup", "pullup", "chest_supported_row"],
+            sets: 4, reps: "4-6", rpe: 7, rest: "2 min",
+          },
         ],
       },
       {
@@ -1086,7 +1110,7 @@ TEMPLATES.push(
         title: "Power Development",
         scheme: "4×3 — full rest",
         prescriptions: [
-          { exerciseId: "hang_clean", sets: 4, reps: "3", rpe: 7, rest: "2-3 min", loadHint: "@ ~80% 1RM, focus on bar speed" },
+          { exerciseId: "box_jump", sets: 4, reps: "3", rest: "2 min" },
           { exerciseId: "seated_box_jump", sets: 4, reps: "5", rest: "as needed" },
         ],
       },
@@ -1101,15 +1125,16 @@ TEMPLATES.push(
         title: "Knee Health for Speed",
         scheme: "3 rounds",
         prescriptions: [
-          { exerciseId: "single_leg_rdl_bw", sets: 3, reps: "8/side", rpe: 7, rest: "90s", notes: "Back-friendly hamstring build — progress to weighted single-leg RDL, then Nordic." },
+          { exerciseId: "single_leg_rdl_bw", sets: 3, reps: "8/side", rpe: 7, rest: "90s" },
           { exerciseId: "single_leg_squat_counter", sets: 3, reps: "6/side", rest: "60s" },
         ],
       },
       {
         title: "Posture-Supporting Strength",
-        scheme: "3×5",
+        scheme: "3×",
         prescriptions: [
-          { exerciseId: "overhead_squat", sets: 3, reps: "5", rpe: 8, rest: "2 min" },
+          { exerciseId: "pallof_press", sets: 3, reps: "10/side", rest: "60s" },
+          { exerciseId: "turkish_getup", sets: 3, reps: "3/side", rest: "60s" },
         ],
       },
     ],
@@ -1153,7 +1178,7 @@ TEMPLATES.push(
         scheme: "3 rounds",
         prescriptions: [
           { exerciseId: "single_leg_squat_counter", sets: 3, reps: "6/side", rest: "60s" },
-          { exerciseId: "single_leg_rdl_bw", sets: 3, reps: "8/side", rpe: 7, rest: "60s", notes: "Back-friendly hamstring build" },
+          { exerciseId: "single_leg_rdl_bw", sets: 3, reps: "8/side", rpe: 7, rest: "60s" },
           { exerciseId: "ankle_strengthening_series", sets: 3, reps: "8/side" },
         ],
       },
@@ -1415,7 +1440,6 @@ TEMPLATES.push(
       {
         title: "Main Compound (Horizontal)",
         scheme: "4×5-8 — rest 2-3 min",
-        note: "Heaviest work first (Galpin: choice + order). If you hit top of range for 2+ reps beyond target, add 2.5% next session (Menno autoregulation).",
         prescriptions: [
           { exerciseId: "bench_press", sets: 4, reps: "5-8", rpe: 8, rest: "2-3 min" },
         ],
@@ -1423,7 +1447,6 @@ TEMPLATES.push(
       {
         title: "Vertical Press",
         scheme: "4×6-10 — structural balance",
-        note: "Overhead pattern trains all three delt heads — non-negotiable for shoulder health.",
         prescriptions: [
           {
             exerciseId: "overhead_press",
@@ -1466,7 +1489,6 @@ TEMPLATES.push(
       {
         title: "Shoulder Isolation",
         scheme: "3×12-20 — side delt priority",
-        note: "Side delts respond to volume + stretch, not load. Menno-style: light, strict, high reps.",
         prescriptions: [
           {
             exerciseId: "cable_lateral_raise",
@@ -1481,7 +1503,6 @@ TEMPLATES.push(
       {
         title: "Triceps",
         scheme: "2 exercises × 3×10-15 — long + short head",
-        note: "Overhead work stretches the long head; pushdowns hit the lateral head.",
         prescriptions: [
           {
             exerciseId: "overhead_tricep_extension",
@@ -1513,7 +1534,6 @@ TEMPLATES.push(
       {
         title: "Main Compound (Vertical Pull)",
         scheme: "4×5-8 — rest 2-3 min",
-        note: "Loaded pull-up as the anchor (Menno/Israetel: overload the pattern once you can do 8+ BW reps). If you can't do weighted yet, swap to BW pull-up or lat pulldown.",
         prescriptions: [
           { exerciseId: "weighted_pullup", sets: 4, reps: "5-8", rpe: 8, rest: "2-3 min" },
         ],
@@ -1521,7 +1541,6 @@ TEMPLATES.push(
       {
         title: "Horizontal Row",
         scheme: "4×6-10 — thickness",
-        note: "Row pattern must balance the press volume from Push day. Chest-supported keeps lumbar out of it.",
         prescriptions: [
           {
             exerciseId: "chest_supported_row",
@@ -1536,7 +1555,6 @@ TEMPLATES.push(
       {
         title: "Lat Isolation",
         scheme: "3×10-15 — pure lat under stretch",
-        note: "Pulldowns bias width; straight-arm pulldown is pure lat isolation.",
         prescriptions: [
           {
             exerciseId: "neutral_grip_pulldown",
@@ -1551,7 +1569,6 @@ TEMPLATES.push(
       {
         title: "Rear Delt",
         scheme: "3×12-20 — shoulder health",
-        note: "Rear delts protect the shoulder joint. Menno: high reps, light load, feel the squeeze.",
         prescriptions: [
           {
             exerciseId: "reverse_pec_deck",
@@ -1566,7 +1583,6 @@ TEMPLATES.push(
       {
         title: "Traps",
         scheme: "3×10-15 — upper back",
-        note: "Traps live on Pull day (shrug pattern is a pull). Programmed after rear delt so shoulders are prepped.",
         prescriptions: [
           {
             exerciseId: "barbell_shrug",
@@ -1581,7 +1597,6 @@ TEMPLATES.push(
       {
         title: "Biceps",
         scheme: "2 exercises × 3×8-15 — short + long head",
-        note: "Incline curl stretches the long head; preacher isolates the short head. Both matter (Menno).",
         prescriptions: [
           {
             exerciseId: "incline_db_curl",
@@ -1613,7 +1628,6 @@ TEMPLATES.push(
       {
         title: "Main Compound (Squat)",
         scheme: "4×5-8 — rest 2-3 min",
-        note: "Heaviest bilateral squat first (Galpin CO-VIFRP: choice + order). Autoregulate: hit top of range for 2+ reps beyond target → +2.5% next session.",
         prescriptions: [
           { exerciseId: "back_squat", sets: 4, reps: "5-8", rpe: 8, rest: "2-3 min" },
         ],
@@ -1621,7 +1635,6 @@ TEMPLATES.push(
       {
         title: "Hip Hinge",
         scheme: "4×6-10 — hamstring bias",
-        note: "Balances the squat pattern. RDL is the default — teaches hip hinge under load.",
         prescriptions: [
           {
             exerciseId: "romanian_deadlift",
@@ -1636,7 +1649,6 @@ TEMPLATES.push(
       {
         title: "Unilateral Quad",
         scheme: "3×8-12 per side",
-        note: "Unilateral work exposes and closes side-to-side asymmetries (Galpin: structural balance).",
         prescriptions: [
           {
             exerciseId: "bulgarian_split_squat",
@@ -1665,7 +1677,6 @@ TEMPLATES.push(
       {
         title: "Hamstring Isolation",
         scheme: "3×10-15",
-        note: "Leg curl finishes the hamstrings after the RDL — knee-flexion vs hip-extension, both matter.",
         prescriptions: [
           {
             exerciseId: "leg_curl",
@@ -1680,7 +1691,6 @@ TEMPLATES.push(
       {
         title: "Calves",
         scheme: "4×10-20 — gastroc + soleus",
-        note: "Standing = gastroc; seated = soleus. Alternate weekly.",
         prescriptions: [
           {
             exerciseId: "calf_raise",
@@ -1856,17 +1866,25 @@ TEMPLATES.push(
     influences: ["general", "galpin"],
     blocks: [
       {
-        title: "Squat",
-        scheme: "4×6",
+        title: "Squat or Hinge",
+        scheme: "5×5",
         prescriptions: [
-          { exerciseId: "back_squat", sets: 4, reps: "6", rpe: 8, rest: "2 min" },
+          {
+            exerciseId: "back_squat",
+            pool: ["back_squat", "deadlift", "front_squat"],
+            sets: 5, reps: "5", rpe: 8, rest: "2-3 min",
+          },
         ],
       },
       {
-        title: "Hinge",
-        scheme: "3×6",
+        title: "Unilateral Leg",
+        scheme: "3×8/side",
         prescriptions: [
-          { exerciseId: "deadlift", sets: 3, reps: "6", rpe: 8, rest: "2 min" },
+          {
+            exerciseId: "bulgarian_split_squat",
+            pool: ["bulgarian_split_squat", "walking_lunge", "step_up"],
+            sets: 3, reps: "8/side", rest: "90s",
+          },
         ],
       },
       {
@@ -2227,6 +2245,246 @@ TEMPLATES.push(
         prescriptions: [
           { exerciseId: "pallof_press", sets: 3, reps: "12/side", rest: "45s" },
           { exerciseId: "side_plank_reach", sets: 3, reps: "8/side", rest: "45s" },
+        ],
+      },
+    ],
+  },
+);
+
+// ============================================================
+// HYROX PREP — 6-week first-time block. Coach influences: Hunter McIntyre
+// (Hyrox pedagogy), Nick Bare (hybrid athlete), Andy Galpin (block
+// periodization: Accumulation → Intensification → Realization → Deload).
+// Lumbar-aware: sled push introduced only W3 with upright-grip cue; W1-2
+// use sled pull (upright, back-safe). RDL replaces deadlift in W1-2.
+// ============================================================
+TEMPLATES.push(
+  // ---------- STRENGTH DAYS ----------
+  {
+    id: "hyrox_strength_pull",
+    category: "hyrox",
+    name: "Strength — Pull / Hinge",
+    description: "Hinge day. Pulling anchors the sled-pull + row stations.",
+    influences: ["galpin", "general"],
+    blocks: [
+      {
+        title: "Main Hinge",
+        scheme: "4×5-8",
+        prescriptions: [
+          {
+            exerciseId: "romanian_deadlift",
+            pool: ["romanian_deadlift", "deadlift", "rack_pull"],
+            sets: 4, reps: "5-8", rpe: 7, rest: "2-3 min",
+          },
+        ],
+      },
+      {
+        title: "Vertical Pull",
+        scheme: "4×6-10",
+        prescriptions: [
+          {
+            exerciseId: "weighted_pullup",
+            pool: ["weighted_pullup", "pullup", "neutral_grip_pulldown"],
+            sets: 4, reps: "6-10", rpe: 8, rest: "2 min",
+          },
+        ],
+      },
+      {
+        title: "Horizontal Row",
+        scheme: "4×10",
+        prescriptions: [
+          {
+            exerciseId: "chest_supported_row",
+            pool: ["chest_supported_row", "seal_row", "t_bar_row", "db_row"],
+            sets: 4, reps: "10", rpe: 8, rest: "90s",
+          },
+        ],
+      },
+      {
+        title: "Farmer Carry",
+        scheme: "4×40m",
+        prescriptions: [
+          { exerciseId: "farmer_carry", sets: 4, reps: "40m", rest: "60s" },
+        ],
+      },
+      {
+        title: "Rear Delt",
+        scheme: "3×15",
+        prescriptions: [
+          {
+            exerciseId: "face_pull",
+            pool: ["face_pull", "reverse_pec_deck"],
+            sets: 3, reps: "15", rpe: 9, rest: "45s",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "hyrox_strength_push",
+    category: "hyrox",
+    name: "Strength — Squat / Push",
+    description: "Squat day. OHP + wallball for the ski-erg and wallball stations.",
+    influences: ["galpin", "general"],
+    blocks: [
+      {
+        title: "Main Squat",
+        scheme: "4×5-8",
+        prescriptions: [
+          {
+            exerciseId: "back_squat",
+            pool: ["back_squat", "front_squat", "hack_squat"],
+            sets: 4, reps: "5-8", rpe: 7, rest: "2-3 min",
+          },
+        ],
+      },
+      {
+        title: "Unilateral Leg",
+        scheme: "3×8/side",
+        prescriptions: [
+          {
+            exerciseId: "bulgarian_split_squat",
+            pool: ["bulgarian_split_squat", "walking_lunge", "step_up"],
+            sets: 3, reps: "8/side", rpe: 8, rest: "90s",
+          },
+        ],
+      },
+      {
+        title: "Overhead Press",
+        scheme: "4×6-8",
+        prescriptions: [
+          {
+            exerciseId: "overhead_press",
+            pool: ["overhead_press", "arnold_press", "landmine_press"],
+            sets: 4, reps: "6-8", rpe: 8, rest: "2 min",
+          },
+        ],
+      },
+      {
+        title: "Wallball",
+        scheme: "3×20",
+        prescriptions: [
+          { exerciseId: "wallball", sets: 3, reps: "20", rest: "90s" },
+        ],
+      },
+      {
+        title: "Calves",
+        scheme: "3×15",
+        prescriptions: [
+          { exerciseId: "calf_raise", sets: 3, reps: "15", rest: "45s" },
+        ],
+      },
+    ],
+  },
+
+  // ---------- HYROX-SPECIFIC (phase-progressive) ----------
+  {
+    id: "hyrox_sim_intro",
+    category: "hyrox",
+    name: "Hyrox — Learn the Stations",
+    description: "Short runs + stations. Technique focus.",
+    influences: ["general"],
+    blocks: [
+      {
+        title: "Movement Prep",
+        scheme: "2 rounds",
+        prescriptions: [
+          { exerciseId: "kb_swing", sets: 2, reps: "15", rest: "60s" },
+          { exerciseId: "goblet_squat_hold", sets: 2, reps: "30s", rest: "60s" },
+        ],
+      },
+      {
+        title: "Mini-Sim",
+        scheme: "Circuit — 4 rounds, rest 2 min between rounds",
+        prescriptions: [
+          { exerciseId: "run", sets: 4, reps: "200m easy", rest: "0s" },
+          { exerciseId: "ski_erg", sets: 4, reps: "150m", rest: "0s" },
+          { exerciseId: "sled_pull", sets: 4, reps: "20m moderate", rest: "0s" },
+          { exerciseId: "farmer_carry", sets: 4, reps: "30m", rest: "0s" },
+          { exerciseId: "wallball", sets: 4, reps: "15 reps", rest: "2 min" },
+        ],
+      },
+      {
+        title: "Core Finish",
+        scheme: "3×",
+        prescriptions: [
+          { exerciseId: "plank", sets: 3, reps: "45s", rest: "30s" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "hyrox_sim_race",
+    category: "hyrox",
+    name: "Hyrox — Race Simulation",
+    description: "Full 400m runs + all 8 stations at race pace.",
+    influences: ["general"],
+    blocks: [
+      {
+        title: "Race Prep",
+        scheme: "1 round",
+        prescriptions: [
+          { exerciseId: "easy_bike", sets: 1, reps: "5 min easy" },
+          { exerciseId: "kb_swing", sets: 2, reps: "10", rest: "60s" },
+        ],
+      },
+      {
+        title: "Race Sim",
+        scheme: "Circuit — 8 rounds",
+        prescriptions: [
+          { exerciseId: "run", sets: 8, reps: "400m", rest: "0s" },
+          { exerciseId: "ski_erg", sets: 1, reps: "500m", rest: "60s" },
+          { exerciseId: "sled_push", sets: 1, reps: "25m moderate", rest: "60s" },
+          { exerciseId: "sled_pull", sets: 1, reps: "25m", rest: "60s" },
+          { exerciseId: "burpee_broad", sets: 1, reps: "40m", rest: "60s" },
+          { exerciseId: "row_500", sets: 1, reps: "1000m", rest: "60s" },
+          { exerciseId: "farmer_carry", sets: 1, reps: "200m", rest: "60s" },
+          { exerciseId: "sandbag_lunge", sets: 1, reps: "100m", rest: "60s" },
+          { exerciseId: "wallball", sets: 1, reps: "75 reps", rest: "60s" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "hyrox_sim_light",
+    category: "hyrox",
+    name: "Hyrox — Light Skill",
+    description: "Single round of each station, slow and clean.",
+    influences: ["general"],
+    blocks: [
+      {
+        title: "Single-Round Skill",
+        scheme: "1 round of each station — slow + skillful",
+        prescriptions: [
+          { exerciseId: "run", sets: 1, reps: "400m easy", rest: "60s" },
+          { exerciseId: "ski_erg", sets: 1, reps: "250m", rest: "60s" },
+          { exerciseId: "sled_pull", sets: 1, reps: "20m light", rest: "60s" },
+          { exerciseId: "farmer_carry", sets: 1, reps: "60m", rest: "60s" },
+          { exerciseId: "wallball", sets: 1, reps: "20", rest: "60s" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "hyrox_engine_easy",
+    category: "hyrox",
+    name: "Engine — Build",
+    description: "Shorter intervals, longer rest. Aerobic development.",
+    influences: ["general"],
+    blocks: [
+      {
+        title: "Intervals",
+        scheme: "6 rounds — rest 2 min",
+        prescriptions: [
+          { exerciseId: "run", sets: 6, reps: "400m moderate", rest: "2 min" },
+        ],
+      },
+      {
+        title: "Erg Finisher",
+        scheme: "3 rounds",
+        prescriptions: [
+          { exerciseId: "ski_erg", sets: 3, reps: "200m", rest: "60s" },
+          { exerciseId: "row_500", sets: 3, reps: "200m", rest: "60s" },
         ],
       },
     ],

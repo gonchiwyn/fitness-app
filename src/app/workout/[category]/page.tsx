@@ -663,6 +663,15 @@ function BlockCard({
   const scheme = computeSchemeHeader(block);
   const mode = detectBlockMode(scheme, block.prescriptions.length);
   const isGrouped = mode !== "straight" && block.prescriptions.length > 1;
+  // Multiple straight-set exercises in one block → clarify they're sequential,
+  // not paired. Showing "DO IN ORDER" removes the ambiguity with supersets.
+  // Suppress on warmup/cooldown — those are always sequential by nature and
+  // the badge adds noise there.
+  const isSequential =
+    mode === "straight" &&
+    block.prescriptions.length > 1 &&
+    !isWarmup &&
+    !isCooldown;
 
   return (
     <section className="bg-bg-card border border-border rounded-2xl overflow-hidden print-block">
@@ -695,6 +704,11 @@ function BlockCard({
                 {isGrouped && (
                   <span className="text-[10px] tracking-widest font-bold mr-2 bg-accent/15 text-accent px-1.5 py-0.5 rounded">
                     {MODE_LABELS[mode]}
+                  </span>
+                )}
+                {isSequential && (
+                  <span className="text-[10px] tracking-widest font-bold mr-2 bg-text-dim/15 text-text-muted px-1.5 py-0.5 rounded">
+                    DO IN ORDER
                   </span>
                 )}
                 {scheme}
@@ -811,11 +825,15 @@ function ExerciseCard({
     category
   );
 
-  // Letter labels for supersets: A1, A2 / B1, B2
+  // Position labels. Supersets: A1, A2. Circuits/AMRAP/etc.: 1., 2.
+  // Also label straight sets when there are multiple exercises in one block —
+  // otherwise two exercise cards back-to-back look like a superset but aren't.
+  // "1." / "2." makes it obvious these are sequential, not paired.
   const isGrouped = blockMode !== "straight" && totalInGroup > 1;
+  const isSequential = blockMode === "straight" && totalInGroup > 1;
   const letter = isGrouped && blockMode === "superset"
     ? `A${position + 1}`
-    : isGrouped
+    : isGrouped || isSequential
     ? `${position + 1}.`
     : null;
 

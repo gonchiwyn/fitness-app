@@ -88,7 +88,7 @@ export default function HistoryPage() {
         <div className="bg-bg-card border border-border rounded-2xl p-4">
           <div className="text-3xl font-bold">{Object.keys(byCategory).length}</div>
           <div className="text-xs text-text-dim mt-1 uppercase tracking-widest">
-            Disciplines
+            Categories
           </div>
         </div>
       </section>
@@ -326,33 +326,44 @@ function ConsistencyCalendar({ sessions }: { sessions: Session[] }) {
 
   const canGoPrev = true;
   const canGoNext = viewMonth < startOfMonth(today);
+  const isCurrentMonth = isSameMonth(viewMonth, today);
 
   return (
     <section>
-      <div className="flex items-center justify-between mb-3">
+      <div className="mb-3 space-y-2">
         <h2 className="text-xs uppercase tracking-widest text-text-dim font-semibold">
           {monthSessions.length} session{monthSessions.length === 1 ? "" : "s"} this month
         </h2>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => setViewMonth((m) => addMonths(m, -1))}
-            disabled={!canGoPrev}
-            aria-label="Previous month"
-            className="w-7 h-7 rounded-lg border border-border text-text-muted flex items-center justify-center hover:border-accent/40 disabled:opacity-30"
-          >
-            ‹
-          </button>
-          <div className="text-sm font-semibold tabular-nums min-w-[110px] text-center">
-            {format(viewMonth, "MMMM yyyy")}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setViewMonth((m) => addMonths(m, -1))}
+              disabled={!canGoPrev}
+              aria-label="Previous month"
+              className="w-7 h-7 rounded-lg border border-border text-text-muted flex items-center justify-center hover:border-accent/40 disabled:opacity-30"
+            >
+              ‹
+            </button>
+            <div className="text-sm font-semibold tabular-nums min-w-[110px] text-center">
+              {format(viewMonth, "MMMM yyyy")}
+            </div>
+            <button
+              onClick={() => setViewMonth((m) => addMonths(m, 1))}
+              disabled={!canGoNext}
+              aria-label="Next month"
+              className="w-7 h-7 rounded-lg border border-border text-text-muted flex items-center justify-center hover:border-accent/40 disabled:opacity-30"
+            >
+              ›
+            </button>
           </div>
-          <button
-            onClick={() => setViewMonth((m) => addMonths(m, 1))}
-            disabled={!canGoNext}
-            aria-label="Next month"
-            className="w-7 h-7 rounded-lg border border-border text-text-muted flex items-center justify-center hover:border-accent/40 disabled:opacity-30"
-          >
-            ›
-          </button>
+          {!isCurrentMonth && (
+            <button
+              onClick={() => setViewMonth(startOfMonth(today))}
+              className="text-[11px] uppercase tracking-wider text-accent font-semibold hover:underline"
+            >
+              Today
+            </button>
+          )}
         </div>
       </div>
       <div className="bg-bg-card border border-border rounded-2xl p-3">

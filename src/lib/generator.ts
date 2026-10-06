@@ -388,20 +388,17 @@ function buildCoreBlock(
     scheme: coreFocus === "protection" ? "Galpin 3-part rotation"
       : coreFocus === "aesthetic" ? "Isolation focus"
       : "Protection + aesthetic",
-    note: coreFocus !== "aesthetic"
-      ? "Core function rotates daily so all three protective patterns get hit this week."
-      : undefined,
     prescriptions,
   };
 }
 
 function humanCoreFunction(fn: CoreFunction): string {
   return {
-    anti_extension: "Anti-extension (protects lumbar)",
+    anti_extension: "Anti-extension",
     anti_rotation: "Anti-rotation",
     anti_lateral_flexion: "Anti-lateral flexion",
-    rotation: "Rotational power",
-    isolation: "Aesthetic",
+    rotation: "Rotational",
+    isolation: "Isolation",
   }[fn];
 }
 
@@ -805,6 +802,77 @@ function timeScaleBlocks(blocks: Block[], targetMinutes: number, baselineMinutes
 // ============================================================
 // REHAB ADJUSTMENTS — when rehab mode is active, lower intensity + add extra warmup for the zone
 // ============================================================
+// Exercise IDs that heavily load the lumbar spine. Session guard ensures
+// no two of these co-exist in one workout (regardless of template design
+// or pool rotation). Protects against cumulative lumbar fatigue when
+// combining squat + deadlift + Olympic lifts on the same day.
+const HEAVY_SPINE_LIFTS = new Set<string>([
+  "back_squat",
+  "front_squat",
+  "deadlift",
+  "romanian_deadlift",
+  "rack_pull",
+  "overhead_squat",
+  "power_clean",
+  "hang_clean",
+  "hang_clean_below_knee",
+  "clean_and_jerk",
+  "snatch",
+  "good_morning_light",
+  "hip_thrust",
+  "kas_glute_bridge",
+  "thruster",
+  "rdl_deficit_band",
+]);
+
+// Safer alternative when a second heavy-spine lift needs to be swapped.
+// Keyed by the lift being replaced; falls back to a general per-pattern map.
+const SPINE_SAFE_SWAPS: Record<string, string[]> = {
+  back_squat: ["leg_press", "hack_squat", "belt_squat", "bulgarian_split_squat"],
+  front_squat: ["leg_press", "hack_squat", "goblet_squat_hold"],
+  deadlift: ["back_extension_45", "cable_pull_through", "single_leg_rdl", "leg_curl"],
+  romanian_deadlift: ["back_extension_45", "cable_pull_through", "leg_curl", "single_leg_rdl"],
+  rack_pull: ["chest_supported_row", "cable_pull_through"],
+  overhead_squat: ["pallof_press", "turkish_getup"],
+  power_clean: ["box_jump", "kb_swing"],
+  hang_clean: ["box_jump", "kb_swing"],
+  hang_clean_below_knee: ["box_jump", "kb_swing"],
+  clean_and_jerk: ["box_jump", "kb_swing"],
+  snatch: ["box_jump", "kb_swing"],
+  good_morning_light: ["back_extension_45", "cable_pull_through"],
+  hip_thrust: ["single_leg_glute_bridge", "cable_kickback", "banded_glute_bridge"],
+  kas_glute_bridge: ["single_leg_glute_bridge", "cable_kickback"],
+  thruster: ["wallball", "overhead_press"],
+  rdl_deficit_band: ["back_extension_45", "single_leg_rdl"],
+};
+
+function enforceSingleHeavySpineLift(
+  blocks: Block[],
+  available: Set<Equipment>
+): Block[] {
+  let heavySeen = false;
+  return blocks.map((b) => ({
+    ...b,
+    prescriptions: b.prescriptions.map((p) => {
+      if (!HEAVY_SPINE_LIFTS.has(p.exerciseId)) return p;
+      if (!heavySeen) {
+        heavySeen = true;
+        return p;
+      }
+      // Second heavy spine lift — swap for a safer alternative.
+      const alternatives = SPINE_SAFE_SWAPS[p.exerciseId] ?? [];
+      for (const altId of alternatives) {
+        const altEx = EXERCISES.find((e) => e.id === altId);
+        if (altEx && altEx.equipment.some((eq) => available.has(eq))) {
+          return { ...p, exerciseId: altId };
+        }
+      }
+      // No safe alternative available in equipment pool — leave as is.
+      return p;
+    }),
+  }));
+}
+
 function applyRehabAdjustments(blocks: Block[], rehab: RehabZone): Block[] {
   return blocks.map((b) => ({
     ...b,
@@ -1234,6 +1302,12 @@ export async function generateWorkout(
   // Apply time scaling and rehab adjustments
   blocks = timeScaleBlocks(blocks, targetMinutes, CATEGORY_DURATION[category]);
   if (modifiers.rehab) blocks = applyRehabAdjustments(blocks, modifiers.rehab);
+
+  // Lumbar grouping guard — never ship a session with 2+ heavy spine-loading
+  // barbell lifts. If template rotation or pool picks produced one, swap the
+  // second one for a safer alternative. Test-category sessions are exempt
+  // (1RM test days intentionally stack).
+  if (category !== "test") blocks = enforceSingleHeavySpineLift(blocks, available);
 
   const name = buildWorkoutName(category, template.name, modifiers);
 

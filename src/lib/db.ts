@@ -68,6 +68,7 @@ const PRESET_DURATION: Record<string, number> = {
   "Bro split": 6,
   Longevity: 8,
   "Surf prep": 6,
+  "Hyrox prep": 6,
 };
 
 export async function getProfile(): Promise<Profile> {
