@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import clsx from "clsx";
 import { addDays, differenceInCalendarDays, format, startOfWeek } from "date-fns";
@@ -55,7 +55,19 @@ function patternForFrequency(presetDays: PlannedDay[], frequency: number): Plann
   return week;
 }
 
+// Default export wraps the real page in a Suspense boundary because
+// PlanPageInner reads `?pick=1` via useSearchParams. Next 16 prerenders
+// this route to static HTML; useSearchParams needs a Suspense parent so
+// only the part depending on the URL is CSR-rendered.
 export default function PlanPage() {
+  return (
+    <Suspense>
+      <PlanPageInner />
+    </Suspense>
+  );
+}
+
+function PlanPageInner() {
   const [plan, setPlan] = useState<WeeklyPlan | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const searchParams = useSearchParams();
