@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import clsx from "clsx";
 import { addDays, differenceInCalendarDays, format, startOfWeek } from "date-fns";
 import DayPreviewModal from "@/components/DayPreviewModal";
@@ -26,12 +27,47 @@ import {
   type WeeklyPlan,
 } from "@/lib/types";
 
+// Days a user can actually train. Used to render the frequency chips and
+// to map a chosen frequency to a weekday distribution (Mon=0 ... Sun=6).
+const FREQUENCY_OPTIONS = [3, 4, 5, 6] as const;
+
+// Weekday slots per frequency. First training session lands on Mon; others
+// spread so training days aren't bunched back-to-back when possible.
+const WEEKDAY_SLOTS: Record<number, number[]> = {
+  3: [0, 2, 4],              // M W F
+  4: [0, 1, 3, 4],           // M T Th F
+  5: [0, 1, 2, 3, 4],        // M T W Th F
+  6: [0, 1, 2, 3, 4, 5],     // M T W Th F Sa
+};
+
+// Transform a preset's priority-ordered day list (e.g. [Push, Pull, Legs, Cardio, Hyp, Cardio])
+// into a 7-slot weekly plan (Mon-Sun) using only the top `frequency` sessions.
+// Priority = position in the preset.days array (index 0 is most important).
+function patternForFrequency(presetDays: PlannedDay[], frequency: number): PlannedDay[] {
+  const sessions = presetDays.filter((d): d is NonNullable<PlannedDay> => d !== null);
+  const take = Math.min(frequency, sessions.length);
+  const chosen = sessions.slice(0, take);
+  const slots = WEEKDAY_SLOTS[frequency] ?? WEEKDAY_SLOTS[5];
+  const week: PlannedDay[] = [null, null, null, null, null, null, null];
+  slots.slice(0, chosen.length).forEach((weekdayIdx, i) => {
+    week[weekdayIdx] = chosen[i];
+  });
+  return week;
+}
+
 export default function PlanPage() {
   const [plan, setPlan] = useState<WeeklyPlan | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const searchParams = useSearchParams();
   const [editingDay, setEditingDay] = useState<number | null>(null);
   const [previewingDay, setPreviewingDay] = useState<number | null>(null);
-  const [showPresets, setShowPresets] = useState(false);
+  // ?pick=1 → auto-expand the preset picker (used from end-of-onboarding CTA).
+  const [showPresets, setShowPresets] = useState(searchParams.get("pick") === "1");
+  // Preset tapped once → show preview (expand); tapped again → apply.
+  const [previewingPreset, setPreviewingPreset] = useState<string | null>(null);
+  // Frequency selected inside the preview panel. Null until the user taps a chip
+  // (or the preview panel is opened — we default to the preset's recommendation).
+  const [selectedFrequency, setSelectedFrequency] = useState<number | null>(null);
   const todayIdx = dateToPlanIndex(new Date());
   // Monday of this week — used to compute a real date for each plan day
   // so DayPreviewModal can show the next upcoming occurrence of e.g. "Mon".
@@ -108,10 +144,19 @@ export default function PlanPage() {
 
   // Presets ordered by focus type. "durationWeeks" powers the Home indicator's
   // "Week X of N" counter — pick something meaningful for that block.
+  //
+  // `name`: short, goal-driven (2-4 words). No jargon, no parens.
+  // `tagline`: one sentence, what you'll actually do each week.
+  // `days`: ordered priority — index 0 is the most important session, used
+  //   when the user picks fewer training days than the full pattern has.
+  // `defaultFrequency`: suggested days/week when applying. Also what the
+  //   chip picker pre-selects.
   const presets: {
-    label: string;
+    name: string;
+    tagline: string;
     focusName: string;
     durationWeeks: number;
+    defaultFrequency: number;
     days: PlannedDay[];
   }[] = [
     // Durations per Galpin (real hypertrophy adaptation takes 5–6 weeks
@@ -119,128 +164,102 @@ export default function PlanPage() {
     // holds 2× Zone 2 minimum — Attia/Patrick's non-negotiable for aerobic
     // maintenance and mortality prevention regardless of block focus.
     {
-      label: "Hypertrophy month (PPL + Z2 maintenance)",
+      name: "Beginner",
+      tagline: "Build the habit. Full-body sessions + easy cardio.",
+      focusName: "Beginner",
+      durationWeeks: 4,
+      defaultFrequency: 3,
+      // Priority order: 3 strength (hits every muscle each session) → cardio → mobility
+      days: [
+        { category: "split", templateId: "split_full_body" },
+        { category: "split", templateId: "split_full_body" },
+        { category: "split", templateId: "split_full_body" },
+        { category: "cardio", templateId: "attia_zone2_45" },
+        { category: "stretching" },
+        { category: "cardio", templateId: "attia_zone2_45" },
+      ],
+    },
+    {
+      name: "Build muscle",
+      tagline: "Push / Pull / Legs twice a week + Z2 cardio.",
       focusName: "Hypertrophy",
       durationWeeks: 6,
+      defaultFrequency: 5,
       days: [
         { category: "split", templateId: "split_push" },
         { category: "split", templateId: "split_pull" },
-        { category: "cardio", templateId: "attia_zone2_45" },
         { category: "split", templateId: "split_legs" },
+        { category: "cardio", templateId: "attia_zone2_45" },
         { category: "hypertrophy" },
         { category: "cardio", templateId: "attia_zone2_45" },
-        null,
       ],
     },
     {
-      // Galpin's lab-validated Menno Henselmans autoregulated hypertrophy
-      // program. ABAB weekly split — same day twice per week. Autoregulation:
-      // reps 2+ above range → +2.5% load; 2+ below → -10%. 8-week protocol.
-      label: "Menno autoregulated hypertrophy (Galpin lab)",
+      name: "Build muscle — autoregulated",
+      tagline: "ABAB hypertrophy. Load adapts rep-by-rep (Menno/Galpin).",
       focusName: "Menno Hypertrophy",
       durationWeeks: 8,
+      defaultFrequency: 4,
       days: [
         { category: "hypertrophy", templateId: "menno_hyp_a" },
         { category: "hypertrophy", templateId: "menno_hyp_b" },
-        { category: "cardio", templateId: "attia_zone2_45" },
         { category: "hypertrophy", templateId: "menno_hyp_a" },
         { category: "hypertrophy", templateId: "menno_hyp_b" },
         { category: "cardio", templateId: "attia_zone2_45" },
-        null,
+        { category: "cardio", templateId: "attia_zone2_45" },
       ],
     },
     {
-      label: "Strength peak (heavy compounds + Z2)",
+      name: "Get stronger",
+      tagline: "Heavy bench, squat, deadlift. 8-week peak.",
       focusName: "Strength peak",
       durationWeeks: 8,
+      defaultFrequency: 4,
       days: [
         { category: "strength", templateId: "strength_lower_a" },
         { category: "strength", templateId: "strength_upper_a" },
-        { category: "cardio", templateId: "attia_zone2_45" },
         { category: "strength", templateId: "strength_deadlift_day" },
         { category: "split", templateId: "split_arms" },
         { category: "cardio", templateId: "attia_zone2_45" },
-        null,
+        { category: "cardio", templateId: "attia_zone2_45" },
       ],
     },
     {
-      label: "Cardio base (mostly Z2 + strength maintenance)",
+      name: "Cardio base",
+      tagline: "Mostly Z2 running / biking + 2× strength maintenance.",
       focusName: "Cardio base",
       durationWeeks: 8,
+      defaultFrequency: 5,
       days: [
         { category: "cardio", templateId: "attia_zone2_45" },
-        { category: "strength" },
         { category: "cardio", templateId: "attia_zone2_45" },
         { category: "cardio", templateId: "attia_4x4_vo2" },
         { category: "strength" },
+        { category: "strength" },
         { category: "cardio", templateId: "attia_zone2_45" },
-        null,
       ],
     },
     {
-      label: "Athletic month (Hyrox + power + Z2)",
+      name: "Athletic power",
+      tagline: "Jumps, sprints, Hyrox stations, heavy legs.",
       focusName: "Athletic",
       durationWeeks: 6,
+      defaultFrequency: 5,
       days: [
         { category: "athlete" },
         { category: "hyrox" },
-        { category: "cardio", templateId: "attia_zone2_45" },
         { category: "split", templateId: "split_legs" },
         { category: "hyrox" },
         { category: "cardio", templateId: "attia_zone2_45" },
-        { category: "recovery" },
-      ],
-    },
-    {
-      label: "Recovery week (mobility + easy Z2)",
-      focusName: "Recovery",
-      durationWeeks: 1,
-      days: [
-        { category: "stretching" },
-        { category: "cardio", templateId: "attia_zone2_45" },
-        { category: "stretching" },
-        { category: "recovery" },
-        { category: "cardio", templateId: "attia_zone2_45" },
-        { category: "recovery" },
-        null,
-      ],
-    },
-    {
-      label: "PPL classic (Push/Pull balanced + Z2)",
-      focusName: "PPL",
-      durationWeeks: 6,
-      // Push and Pull symmetric (2× each). Legs at 1× because it recovers
-      // slower and benefits more from a single hard session than two
-      // moderate ones. Under-pulling → shoulder / posture issues; that
-      // rules out the old "2 Push / 1 Pull / 2 Legs" pattern.
-      days: [
-        { category: "split", templateId: "split_push" },
-        { category: "split", templateId: "split_pull" },
-        { category: "cardio", templateId: "attia_zone2_45" },
-        { category: "split", templateId: "split_legs" },
-        { category: "split", templateId: "split_push" },
-        { category: "split", templateId: "split_pull" },
         { category: "cardio", templateId: "attia_zone2_45" },
       ],
     },
     {
-      label: "Bro split (5 lifts + 2× Z2)",
-      focusName: "Bro split",
-      durationWeeks: 6,
-      days: [
-        { category: "split", templateId: "split_chest" },
-        { category: "split", templateId: "split_back" },
-        { category: "cardio", templateId: "attia_zone2_45" },
-        { category: "split", templateId: "split_shoulders" },
-        { category: "split", templateId: "split_arms" },
-        { category: "split", templateId: "split_legs" },
-        { category: "cardio", templateId: "attia_zone2_45" },
-      ],
-    },
-    {
-      label: "Longevity (3 strength · 2 Z2 · 1 VO2 · 1 stretch)",
+      name: "Longevity",
+      tagline: "3 strength · 2 Z2 · 1 VO2 · 1 stretch. The Attia week.",
       focusName: "Longevity",
       durationWeeks: 8,
+      defaultFrequency: 6,
       days: [
         { category: "strength" },
         { category: "cardio", templateId: "attia_zone2_45" },
@@ -252,13 +271,44 @@ export default function PlanPage() {
       ],
     },
     {
-      // Surf-trip prep. Foot-injury safe. Every session hits shoulders / triceps
-      // / neck / lateral hips — the fatigue points that limit surf sessions.
-      // Coaches: Cris Mills, XPT, Kalyn Kolbe, Galpin. See surf_* templates.
-      // Week 3 auto-populates as sailing/swim log-only (see applyPreset).
-      label: "Surf Prep — El Salvador (foot-safe, week 3 swim)",
+      name: "Push / Pull / Legs",
+      tagline: "Classic PPL — Push & Pull twice, Legs once.",
+      focusName: "PPL",
+      durationWeeks: 6,
+      defaultFrequency: 6,
+      days: [
+        { category: "split", templateId: "split_push" },
+        { category: "split", templateId: "split_pull" },
+        { category: "split", templateId: "split_legs" },
+        { category: "split", templateId: "split_push" },
+        { category: "split", templateId: "split_pull" },
+        { category: "cardio", templateId: "attia_zone2_45" },
+        { category: "cardio", templateId: "attia_zone2_45" },
+      ],
+    },
+    {
+      name: "Recovery week",
+      tagline: "Mobility, easy Z2, no barbell. Reset the system.",
+      focusName: "Recovery",
+      durationWeeks: 1,
+      defaultFrequency: 5,
+      days: [
+        { category: "stretching" },
+        { category: "cardio", templateId: "attia_zone2_45" },
+        { category: "stretching" },
+        { category: "recovery" },
+        { category: "cardio", templateId: "attia_zone2_45" },
+        { category: "recovery" },
+      ],
+    },
+    {
+      // Fixed layout — frequency chip is cosmetic here, structure is designed
+      // around sailing week 3 and auto-override; see applyPreset.
+      name: "Surf trip prep",
+      tagline: "Paddle, pop-up, back-safe. Built for a 6-week countdown.",
       focusName: "Surf prep",
       durationWeeks: 6,
+      defaultFrequency: 6,
       days: [
         { category: "athlete", templateId: "surf_paddle_push" },
         { category: "athlete", templateId: "surf_paddle_pull" },
@@ -266,34 +316,29 @@ export default function PlanPage() {
         { category: "athlete", templateId: "surf_legs" },
         { category: "athlete", templateId: "surf_pop_up_core" },
         { category: "cardio", templateId: "attia_zone2_45" },
-        { category: "recovery" },
       ],
     },
     {
-      // First-time Hyrox 6-week block. Galpin block periodization applied via
-      // template progression (not just phase.setAdjustment): W1-2 use intro
-      // templates (short runs, no sled push, upright-safe sled pull), W3-5
-      // use the full race-sim templates, W6 uses a light skill version.
-      // Lumbar-aware throughout — RDL replaces deadlift in W1-2.
-      label: "Hyrox Prep — first-time, 6w (back-aware)",
+      // Fixed layout — phase-based template progression W1-2 vs W3-5 vs W6.
+      name: "Hyrox prep",
+      tagline: "First-time Hyrox: learn → build → peak. Back-aware.",
       focusName: "Hyrox prep",
       durationWeeks: 6,
-      // Base pattern used in W3-5 (middle "Build" phase)
+      defaultFrequency: 5,
       days: [
         { category: "hyrox", templateId: "hyrox_strength_pull" },
         { category: "hyrox", templateId: "hyrox_sim_race" },
-        { category: "cardio", templateId: "attia_zone2_45" },
         { category: "hyrox", templateId: "hyrox_strength_push" },
         { category: "cardio", templateId: "attia_4x4_vo2" },
         { category: "cardio", templateId: "attia_zone2_45" },
-        { category: "recovery" },
+        { category: "cardio", templateId: "attia_zone2_45" },
       ],
     },
   ];
 
-  const applyPreset = async (preset: (typeof presets)[number]) => {
-    if (!confirm(`Start "${preset.focusName}" focus? Replaces your current weekly plan.`)) return;
-    const next: WeeklyPlan = { id: "me", days: preset.days };
+  const applyPreset = async (preset: (typeof presets)[number], frequency: number) => {
+    if (!confirm(`Start "${preset.name}" (${frequency} days/week)? Replaces your current weekly plan.`)) return;
+    const next: WeeklyPlan = { id: "me", days: patternForFrequency(preset.days, frequency) };
     setPlan(next);
     await saveWeeklyPlan(next);
     const today = format(new Date(), "yyyy-MM-dd");
@@ -590,23 +635,57 @@ export default function PlanPage() {
             {blockState === "completed" ? "Pick your next block" : "Focus blocks"}
           </h2>
           <p className="text-xs text-text-dim">
-            Each block sets the weekly pattern + tags Home with "Week X of N".
+            Tap a block to preview it. Pick days/week, then start.
           </p>
           <div className="space-y-2">
-            {presets.map((p, i) => (
-              <button
-                key={i}
-                onClick={() => applyPreset(p)}
-                className="w-full text-left bg-bg-card border border-border rounded-xl px-4 py-3 hover:border-accent/40 transition-colors"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="text-sm">{p.label}</div>
-                  <div className="text-[10px] uppercase tracking-widest text-text-dim shrink-0">
-                    {p.durationWeeks}w
-                  </div>
+            {presets.map((p, i) => {
+              const isPreview = previewingPreset === p.focusName;
+              const freq = selectedFrequency ?? p.defaultFrequency;
+              return (
+                <div
+                  key={i}
+                  className={clsx(
+                    "rounded-xl border transition-colors",
+                    isPreview ? "bg-bg-card border-accent/40" : "bg-bg-card border-border"
+                  )}
+                >
+                  <button
+                    onClick={() => {
+                      if (isPreview) {
+                        setPreviewingPreset(null);
+                        setSelectedFrequency(null);
+                      } else {
+                        setPreviewingPreset(p.focusName);
+                        setSelectedFrequency(p.defaultFrequency);
+                      }
+                    }}
+                    className="w-full text-left px-4 py-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold">{p.name}</div>
+                        <div className="text-xs text-text-dim mt-0.5">{p.tagline}</div>
+                      </div>
+                      <div className="text-[10px] uppercase tracking-widest text-text-dim shrink-0">
+                        {p.durationWeeks}w
+                      </div>
+                    </div>
+                  </button>
+                  {isPreview && (
+                    <PresetPreview
+                      preset={p}
+                      frequency={freq}
+                      onFrequencyChange={setSelectedFrequency}
+                      onStart={() => {
+                        applyPreset(p, freq);
+                        setPreviewingPreset(null);
+                        setSelectedFrequency(null);
+                      }}
+                    />
+                  )}
                 </div>
-              </button>
-            ))}
+              );
+            })}
           </div>
         </section>
       )}
@@ -640,6 +719,96 @@ export default function PlanPage() {
           />
         );
       })()}
+    </div>
+  );
+}
+
+// Block preview — shown when a preset is tapped once (before applying).
+// Lists the weekly pattern derived from the chosen frequency + a frequency
+// picker + a Start button. Frequency is required: picking it is what shapes
+// the actual week the user commits to.
+function PresetPreview({
+  preset,
+  frequency,
+  onFrequencyChange,
+  onStart,
+}: {
+  preset: {
+    name: string;
+    tagline: string;
+    focusName: string;
+    durationWeeks: number;
+    defaultFrequency: number;
+    days: PlannedDay[];
+  };
+  frequency: number;
+  onFrequencyChange: (f: number) => void;
+  onStart: () => void;
+}) {
+  const week = patternForFrequency(preset.days, frequency);
+  return (
+    <div className="border-t border-border/50 px-4 py-3 space-y-3">
+      <div>
+        <div className="text-[10px] uppercase tracking-widest text-text-dim mb-2">
+          How many days per week?
+        </div>
+        <div className="grid grid-cols-4 gap-2">
+          {FREQUENCY_OPTIONS.map((f) => {
+            const active = f === frequency;
+            return (
+              <button
+                key={f}
+                onClick={() => onFrequencyChange(f)}
+                className={clsx(
+                  "h-10 rounded-lg border text-sm font-semibold transition-colors",
+                  active
+                    ? "bg-accent text-black border-accent"
+                    : "bg-bg-elevated border-border text-text-muted"
+                )}
+              >
+                {f}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div>
+        <div className="text-[10px] uppercase tracking-widest text-text-dim mb-2">
+          Your week
+        </div>
+        <div className="space-y-1">
+          {week.map((d, i) => {
+            const tmpl = d?.templateId
+              ? templatesFor(d.category).find((t) => t.id === d.templateId)
+              : null;
+            const label = !d
+              ? "Rest"
+              : tmpl
+                ? `${CATEGORY_LABELS[d.category]} — ${tmpl.name}`
+                : CATEGORY_LABELS[d.category];
+            return (
+              <div key={i} className="flex items-baseline gap-2 text-xs">
+                <span className="w-10 shrink-0 text-text-dim uppercase tracking-widest text-[10px]">
+                  {DAY_LABELS_LONG[i].slice(0, 3)}
+                </span>
+                <span className={clsx(!d && "text-text-dim")}>{label}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="text-[10px] text-text-dim">
+        {preset.durationWeeks} weeks · progresses easy → harder → peak → deload. You can edit any day later.
+      </div>
+
+      <button
+        onClick={onStart}
+        className="w-full h-11 rounded-lg bg-accent text-black font-semibold text-sm"
+      >
+        Start this block →
+      </button>
     </div>
   );
 }

@@ -58,6 +58,7 @@ export const db = new FitnessDB();
 // duration silently so the Home indicator + phase model reflect the intent.
 // Only bumps upward — never shortens an in-flight block.
 const PRESET_DURATION: Record<string, number> = {
+  Beginner: 4,
   Hypertrophy: 6,
   "Menno Hypertrophy": 8,
   "Strength peak": 8,
@@ -65,7 +66,6 @@ const PRESET_DURATION: Record<string, number> = {
   Athletic: 6,
   Recovery: 1,
   PPL: 6,
-  "Bro split": 6,
   Longevity: 8,
   "Surf prep": 6,
   "Hyrox prep": 6,

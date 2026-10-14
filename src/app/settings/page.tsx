@@ -22,7 +22,6 @@ import {
   type LiftId,
   type Profile,
   type RehabZone,
-  type Sex,
   type WarmupTarget,
 } from "@/lib/types";
 
@@ -373,7 +372,7 @@ export default function SettingsPage() {
 
       <CollapsibleSection
         title="Personal record"
-        hint="Basics, goals, history — set once, rarely changes."
+        hint="Experience, equipment, warmup, goals — set once, rarely changes."
       >
       <Section title="Basics">
         <Field label="Name">
@@ -386,38 +385,11 @@ export default function SettingsPage() {
           />
         </Field>
 
-        <div className="grid grid-cols-3 gap-3">
-          <Field label="Age">
-            <NumField value={profile.age} onChange={(v) => update({ age: v })} placeholder="34" />
-          </Field>
-          <Field label="Height (cm)">
-            <NumField value={profile.heightCm} onChange={(v) => update({ heightCm: v })} placeholder="178" />
-          </Field>
-          <Field label={`Weight (${profile.units})`}>
-            <NumField value={profile.weightKg} onChange={(v) => update({ weightKg: v })} placeholder="80" />
-          </Field>
-        </div>
-
         <Field label="Units">
           <div className="grid grid-cols-2 gap-2">
             {(["kg", "lb"] as const).map((u) => (
               <Pill key={u} active={profile.units === u} onClick={() => update({ units: u })}>
                 {u.toUpperCase()}
-              </Pill>
-            ))}
-          </div>
-        </Field>
-
-        <Field label="Sex">
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { v: "male" as Sex, l: "Male" },
-              { v: "female" as Sex, l: "Female" },
-              { v: "other" as Sex, l: "Other" },
-              { v: "prefer_not_to_say" as Sex, l: "Prefer not to say" },
-            ].map((o) => (
-              <Pill key={o.v} active={profile.sex === o.v} onClick={() => update({ sex: o.v })}>
-                {o.l}
               </Pill>
             ))}
           </div>
@@ -513,55 +485,6 @@ export default function SettingsPage() {
             );
           })}
         </div>
-      </Section>
-
-      <Section title="Context & goals">
-        <p className="text-sm text-text-muted -mt-2">
-          What else is going on? Surfaces quietly on Home and (soon) feeds into smarter recommendations.
-        </p>
-        <Field label="Current goal / upcoming event">
-          <input
-            type="text"
-            value={profile.currentGoal ?? ""}
-            onChange={(e) => update({ currentGoal: e.target.value })}
-            placeholder="e.g. Hyrox Madrid – Apr 15, or Marathon Oct 12"
-            className="w-full h-12 px-4 bg-bg-card border border-border rounded-xl"
-          />
-        </Field>
-        <Field label="Other regular commitments">
-          <textarea
-            value={profile.otherCommitments ?? ""}
-            onChange={(e) => update({ otherCommitments: e.target.value })}
-            rows={3}
-            placeholder="e.g. Football Sundays, practice Tue/Thu evenings, surf 3x/week"
-            className="w-full p-4 bg-bg-card border border-border rounded-xl text-sm"
-          />
-        </Field>
-      </Section>
-
-      <Section title="History & context">
-        <p className="text-sm text-text-muted -mt-2">
-          Free text — informational only. Doesn&apos;t drive swaps (that&apos;s Current concerns above).
-          Useful for you to reference, and future AI coach will read it as context.
-        </p>
-        <Field label="Workout history">
-          <textarea
-            value={profile.workoutHistory ?? ""}
-            onChange={(e) => update({ workoutHistory: e.target.value })}
-            rows={4}
-            placeholder="Years of training, recent focus, sports, etc."
-            className="w-full p-4 bg-bg-card border border-border rounded-xl text-sm"
-          />
-        </Field>
-        <Field label="Injury history">
-          <textarea
-            value={profile.injuryHistory ?? ""}
-            onChange={(e) => update({ injuryHistory: e.target.value })}
-            rows={4}
-            placeholder="Past injuries, surgeries, quirks. Context only — active concerns above trigger swaps."
-            className="w-full p-4 bg-bg-card border border-border rounded-xl text-sm"
-          />
-        </Field>
       </Section>
 
       </CollapsibleSection>

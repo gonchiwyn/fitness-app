@@ -288,7 +288,7 @@ function dedupeAgainstUsed(
     exerciseId: alternatives[0].id,
     // Load hint no longer applies since exercise changed
     loadHint: undefined,
-    notes: [p.notes, `Swapped from ${target.name} to avoid duplicate`].filter(Boolean).join(" · "),
+    notes: p.notes,
   };
 }
 

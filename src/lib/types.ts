@@ -345,6 +345,16 @@ export const GOAL_LABELS: Record<Goal, string> = {
   general_fitness: "General fitness",
 };
 
+export const GOAL_BLURBS: Record<Goal, string> = {
+  longevity: "Live well into your 80s. Zone 2, VO2 max, strength to prevent falls.",
+  aesthetic: "Build muscle, keep body fat moderate. Hypertrophy-biased.",
+  strength: "Big bench, squat, deadlift. Lower reps, heavier loads.",
+  athletic_performance: "Jump higher, run faster, change direction. Power + speed.",
+  endurance: "Run further, bike longer. Z2 base + harder intervals.",
+  fat_loss: "Caloric burn, mixed-modal conditioning, lean-out protocols.",
+  general_fitness: "Balanced week — a bit of everything, nothing extreme.",
+};
+
 export type LiftId =
   | "bench_press"
   | "weighted_pullup"

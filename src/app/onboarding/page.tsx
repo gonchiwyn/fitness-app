@@ -7,6 +7,7 @@ import { getProfile, saveProfile } from "@/lib/db";
 import {
   EQUIPMENT_PRESET_LABELS,
   EQUIPMENT_PRESETS,
+  GOAL_BLURBS,
   GOAL_LABELS,
   GOALS,
   TRACKED_LIFTS,
@@ -16,19 +17,19 @@ import {
   type LiftId,
   type LiftMax,
   type Profile,
-  type Sex,
-  type WarmupTarget,
+  type RehabZone,
 } from "@/lib/types";
 
+// Every step must produce input that measurably changes what the generator
+// returns. If you can't name the specific generator rule it feeds, remove it.
 const STEPS = [
   { id: "welcome", title: "Welcome" },
-  { id: "basics", title: "About You" },
-  { id: "history", title: "History & Injuries" },
-  { id: "goals", title: "Goals" },
-  { id: "equipment", title: "Equipment" },
-  { id: "warmup", title: "Warmup Focus" },
-  { id: "strength", title: "Strength Maxes" },
-  { id: "running", title: "Running" },
+  { id: "experience", title: "Experience" },     // → hides advanced lifts, picks template complexity
+  { id: "goals", title: "Goals" },               // → pickTemplate() scoring bias
+  { id: "equipment", title: "Equipment" },       // → filters exercises
+  { id: "history", title: "Injuries" },          // → activeConcerns + chronicLumbarCare → injury swaps + lumbar caps
+  { id: "strength", title: "Strength Maxes" },   // → load hints as % of 1RM
+  { id: "running", title: "Running" },           // → cardio paces
   { id: "done", title: "Done" },
 ];
 
@@ -56,6 +57,14 @@ export default function OnboardingPage() {
 
   const finish = async () => {
     await update({ onboarded: true });
+    // End of wizard: steer the user to pick their first block right away
+    // instead of landing on Home with a half-informed Quick Start.
+    router.push("/plan?pick=1");
+  };
+
+  // Skip for now: go straight home, don't open the block picker.
+  const skip = async () => {
+    await update({ onboarded: true });
     router.push("/");
   };
 
@@ -65,7 +74,7 @@ export default function OnboardingPage() {
         <div className="flex items-center justify-between text-xs text-text-dim mb-2">
           <span>Step {step + 1} / {STEPS.length}</span>
           <button
-            onClick={finish}
+            onClick={skip}
             className="text-text-dim hover:text-text-muted"
           >
             Skip for now
@@ -81,14 +90,13 @@ export default function OnboardingPage() {
 
       <div className="flex-1">
         {step === 0 && <WelcomeStep />}
-        {step === 1 && <BasicsStep profile={profile} update={update} />}
-        {step === 2 && <HistoryStep profile={profile} update={update} />}
-        {step === 3 && <GoalsStep profile={profile} update={update} />}
-        {step === 4 && <EquipmentStep profile={profile} update={update} />}
-        {step === 5 && <WarmupStep profile={profile} update={update} />}
-        {step === 6 && <StrengthStep profile={profile} update={update} />}
-        {step === 7 && <RunningStep profile={profile} update={update} />}
-        {step === 8 && <DoneStep />}
+        {step === 1 && <ExperienceStep profile={profile} update={update} />}
+        {step === 2 && <GoalsStep profile={profile} update={update} />}
+        {step === 3 && <EquipmentStep profile={profile} update={update} />}
+        {step === 4 && <HistoryStep profile={profile} update={update} />}
+        {step === 5 && <StrengthStep profile={profile} update={update} />}
+        {step === 6 && <RunningStep profile={profile} update={update} />}
+        {step === 7 && <DoneStep />}
       </div>
 
       <div className="mt-8 flex gap-3 pb-8">
@@ -112,7 +120,7 @@ export default function OnboardingPage() {
             onClick={finish}
             className="flex-1 h-12 rounded-xl bg-accent text-white font-semibold"
           >
-            Start Training
+            Pick my first block →
           </button>
         )}
       </div>
@@ -124,64 +132,57 @@ function WelcomeStep() {
   return (
     <div className="space-y-4">
       <div className="text-xs uppercase tracking-widest text-accent font-semibold">
-        Welcome to Forge
+        Welcome to Outwork
       </div>
-      <h1 className="text-3xl font-bold">Built on the work of coaches and scientists who actually know.</h1>
+      <h1 className="text-3xl font-bold">Workouts that adapt to you.</h1>
       <p className="text-text-muted leading-relaxed">
-        We&apos;ll ask a few questions to tailor your workouts. Every answer is optional and editable later.
+        Tell us a few things about your body, goals, and gym — we&apos;ll build a weekly program around that. Every answer is optional and editable later.
       </p>
-      <div className="bg-bg-card border border-border rounded-2xl p-5 space-y-3 mt-4">
-        <p className="text-sm font-semibold">Recommendations are shaped by:</p>
-        <ul className="text-sm text-text-muted space-y-2">
-          <li>· <span className="text-text">Andy Galpin</span> — strength &amp; conditioning framework (3-5 method, velocity-based training, periodization)</li>
-          <li>· <span className="text-text">Peter Attia</span> — Centenarian Decathlon, Zone 2 &amp; VO2 max protocols</li>
-          <li>· <span className="text-text">Andrew Huberman</span> — weekly structure, sleep &amp; recovery integration</li>
-          <li>· <span className="text-text">Rhonda Patrick</span> — endurance, HIIT &amp; resistance balance</li>
-          <li>· <span className="text-text">Chris Hemsworth</span> — functional + aesthetic training</li>
+      <div className="bg-bg-card border border-border rounded-2xl p-5 space-y-2">
+        <p className="text-sm font-semibold">You&apos;ll get:</p>
+        <ul className="text-sm text-text-muted space-y-1.5">
+          <li>· A multi-week training <span className="text-text">block</span> with a clear goal</li>
+          <li>· Warmups + loads tuned to your injuries and strength</li>
+          <li>· Safer swaps when something isn&apos;t right for you</li>
+          <li>· A reading of each session&apos;s intent, not just a list of exercises</li>
         </ul>
       </div>
+      <p className="text-[11px] text-text-dim leading-relaxed pt-1">
+        Built on the work of Galpin, Attia, Huberman, Rhonda Patrick and Chris Hemsworth&apos;s team.
+      </p>
     </div>
   );
 }
 
-function BasicsStep({ profile, update }: { profile: Profile; update: (c: Partial<Profile>) => void }) {
+function ExperienceStep({ profile, update }: { profile: Profile; update: (c: Partial<Profile>) => void }) {
   return (
     <div className="space-y-5">
-      <h2 className="text-2xl font-bold">About you</h2>
-      <p className="text-text-muted text-sm">So we can tailor volume, recovery, and load.</p>
+      <h2 className="text-2xl font-bold">How much have you trained?</h2>
+      <p className="text-text-muted text-sm">
+        Beginners get simpler lifts and lighter starting loads. Advanced gets the full exercise library.
+      </p>
 
-      <Field label="Name">
-        <input
-          type="text"
-          value={profile.name === "Athlete" ? "" : profile.name}
-          onChange={(e) => update({ name: e.target.value || "Athlete" })}
-          placeholder="What should we call you?"
-          className="w-full h-12 px-4 bg-bg-card border border-border rounded-xl"
-        />
-      </Field>
-
-      <div className="grid grid-cols-3 gap-3">
-        <Field label="Age">
-          <NumberField
-            value={profile.age}
-            onChange={(v) => update({ age: v })}
-            placeholder="34"
-          />
-        </Field>
-        <Field label={`Height (cm)`}>
-          <NumberField
-            value={profile.heightCm}
-            onChange={(v) => update({ heightCm: v })}
-            placeholder="178"
-          />
-        </Field>
-        <Field label={`Weight (${profile.units})`}>
-          <NumberField
-            value={profile.weightKg}
-            onChange={(v) => update({ weightKg: v })}
-            placeholder="80"
-          />
-        </Field>
+      <div className="space-y-2">
+        {([
+          { v: "beginner" as Experience, l: "Beginner", desc: "New to the gym or less than 1 year of consistent training." },
+          { v: "intermediate" as Experience, l: "Intermediate", desc: "1-3 years. Comfortable with the main lifts." },
+          { v: "advanced" as Experience, l: "Advanced", desc: "3+ years. You know what RPE 8 feels like." },
+        ]).map((o) => {
+          const active = profile.experience === o.v;
+          return (
+            <button
+              key={o.v}
+              onClick={() => update({ experience: o.v })}
+              className={clsx(
+                "w-full text-left p-4 rounded-xl border transition-colors",
+                active ? "bg-accent/10 border-accent/40" : "bg-bg-card border-border"
+              )}
+            >
+              <div className="font-semibold">{o.l}</div>
+              <div className="text-xs text-text-dim mt-0.5">{o.desc}</div>
+            </button>
+          );
+        })}
       </div>
 
       <Field label="Units">
@@ -197,82 +198,86 @@ function BasicsStep({ profile, update }: { profile: Profile; update: (c: Partial
           ))}
         </div>
       </Field>
-
-      <Field label="Sex">
-        <div className="grid grid-cols-2 gap-2">
-          {(
-            [
-              { v: "male" as Sex, l: "Male" },
-              { v: "female" as Sex, l: "Female" },
-              { v: "other" as Sex, l: "Other" },
-              { v: "prefer_not_to_say" as Sex, l: "Prefer not to say" },
-            ]
-          ).map((o) => (
-            <Pill key={o.v} active={profile.sex === o.v} onClick={() => update({ sex: o.v })}>
-              {o.l}
-            </Pill>
-          ))}
-        </div>
-      </Field>
-
-      <Field label="Training experience">
-        <div className="grid grid-cols-3 gap-2">
-          {(
-            [
-              { v: "beginner" as Experience, l: "Beginner", desc: "< 1 yr" },
-              { v: "intermediate" as Experience, l: "Intermediate", desc: "1-3 yrs" },
-              { v: "advanced" as Experience, l: "Advanced", desc: "3+ yrs" },
-            ]
-          ).map((o) => (
-            <button
-              key={o.v}
-              onClick={() => update({ experience: o.v })}
-              className={clsx(
-                "rounded-xl p-3 text-sm border transition-colors",
-                profile.experience === o.v
-                  ? "bg-accent text-white border-accent"
-                  : "bg-bg-card border-border text-text-muted"
-              )}
-            >
-              <div className="font-semibold">{o.l}</div>
-              <div className="text-[10px] mt-0.5 opacity-80">{o.desc}</div>
-            </button>
-          ))}
-        </div>
-      </Field>
     </div>
   );
 }
 
 function HistoryStep({ profile, update }: { profile: Profile; update: (c: Partial<Profile>) => void }) {
+  const zones: { id: RehabZone; label: string }[] = [
+    { id: "lower_back", label: "Lower back" },
+    { id: "shoulder", label: "Shoulder" },
+    { id: "knee", label: "Knee" },
+    { id: "hip", label: "Hip" },
+    { id: "elbow", label: "Elbow" },
+    { id: "neck", label: "Neck" },
+  ];
+  const active = new Set(profile.activeConcerns ?? []);
+  const toggle = (z: RehabZone) => {
+    if (active.has(z)) active.delete(z);
+    else active.add(z);
+    update({ activeConcerns: Array.from(active) });
+  };
+
   return (
     <div className="space-y-5">
-      <h2 className="text-2xl font-bold">History & injuries</h2>
+      <h2 className="text-2xl font-bold">Anything bothering you?</h2>
       <p className="text-text-muted text-sm">
-        Free-text — write it however you want. We&apos;ll look for keywords to adjust loads, swap risky lifts, and adapt the warmup.
+        Tap any area that&apos;s currently nagging — we&apos;ll swap risky lifts for safer alternatives. Leave empty if you&apos;re all good.
       </p>
 
-      <Field label="Workout history">
-        <textarea
-          value={profile.workoutHistory ?? ""}
-          onChange={(e) => update({ workoutHistory: e.target.value })}
-          rows={5}
-          placeholder="e.g. 10 yrs of recreational lifting, did a powerlifting cycle 2 years ago, recently moved to CrossFit. Surf 3x/week, run 1x/week."
-          className="w-full p-4 bg-bg-card border border-border rounded-xl text-sm leading-relaxed"
-        />
+      <div className="grid grid-cols-2 gap-2">
+        {zones.map((z) => {
+          const on = active.has(z.id);
+          return (
+            <button
+              key={z.id}
+              onClick={() => toggle(z.id)}
+              className={clsx(
+                "p-4 rounded-xl border text-left transition-colors",
+                on ? "bg-accent/10 border-accent/40" : "bg-bg-card border-border"
+              )}
+            >
+              <div className="font-medium">{z.label}</div>
+            </button>
+          );
+        })}
+      </div>
+
+      <Field label="Lower-back history">
+        <button
+          onClick={() => update({ chronicLumbarCare: !profile.chronicLumbarCare })}
+          className={clsx(
+            "w-full text-left p-4 rounded-xl border transition-colors flex items-center justify-between",
+            profile.chronicLumbarCare ? "bg-accent/10 border-accent/40" : "bg-bg-card border-border"
+          )}
+        >
+          <div>
+            <div className="font-medium">I have a history of lower-back issues</div>
+            <div className="text-xs text-text-dim mt-0.5">Caps intensity on risky patterns, always primes glutes + core in warmup.</div>
+          </div>
+          <div
+            className={clsx(
+              "w-5 h-5 rounded border-2 flex items-center justify-center shrink-0",
+              profile.chronicLumbarCare ? "bg-accent border-accent" : "border-border"
+            )}
+          >
+            {profile.chronicLumbarCare && (
+              <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" className="w-3 h-3">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+          </div>
+        </button>
       </Field>
 
-      <Field label="Injury history">
+      <Field label="Extra context (optional)">
         <textarea
           value={profile.injuryHistory ?? ""}
           onChange={(e) => update({ injuryHistory: e.target.value })}
-          rows={5}
-          placeholder="e.g. tweaked lower back deadlifting in 2022 — fine now but cautious. Bad right shoulder under heavy overhead. Old ACL on left knee."
+          rows={3}
+          placeholder="e.g. tweaked lower back deadlifting in 2022, old ACL on left knee…"
           className="w-full p-4 bg-bg-card border border-border rounded-xl text-sm leading-relaxed"
         />
-        <p className="text-xs text-text-dim mt-2">
-          Mentions of <code>knee, shoulder, lower back, elbow, hip, neck</code> will swap risky lifts for safer alternatives.
-        </p>
       </Field>
     </div>
   );
@@ -297,14 +302,17 @@ function GoalsStep({ profile, update }: { profile: Profile; update: (c: Partial<
             key={g}
             onClick={() => toggle(g)}
             className={clsx(
-              "w-full text-left p-4 rounded-xl border transition-colors flex items-center justify-between",
+              "w-full text-left p-4 rounded-xl border transition-colors flex items-start justify-between gap-3",
               selected.has(g) ? "bg-accent/10 border-accent/40" : "bg-bg-card border-border"
             )}
           >
-            <span className="font-medium">{GOAL_LABELS[g]}</span>
+            <div className="flex-1 min-w-0">
+              <div className="font-medium">{GOAL_LABELS[g]}</div>
+              <div className="text-xs text-text-dim mt-0.5">{GOAL_BLURBS[g]}</div>
+            </div>
             <div
               className={clsx(
-                "w-5 h-5 rounded border-2 flex items-center justify-center",
+                "w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 mt-0.5",
                 selected.has(g) ? "bg-accent border-accent" : "border-border"
               )}
             >
@@ -369,66 +377,14 @@ function EquipmentStep({ profile, update }: { profile: Profile; update: (c: Part
   );
 }
 
-function WarmupStep({ profile, update }: { profile: Profile; update: (c: Partial<Profile>) => void }) {
-  const targets: { id: WarmupTarget; label: string; desc: string }[] = [
-    { id: "lower_back", label: "Lower back", desc: "Bracing, hinging, anti-extension" },
-    { id: "hip", label: "Hips", desc: "Mobility, internal/external rotation" },
-    { id: "shoulder", label: "Shoulders", desc: "Scap stability, rotator cuff" },
-  ];
-  const selected = new Set(profile.focusAreas ?? []);
-  const toggle = (t: WarmupTarget) => {
-    if (selected.has(t)) selected.delete(t);
-    else selected.add(t);
-    update({ focusAreas: Array.from(selected) });
-  };
-
-  return (
-    <div className="space-y-5">
-      <h2 className="text-2xl font-bold">Warmup focus</h2>
-      <p className="text-text-muted text-sm">
-        Every workout opens with mobility for these areas. Default is all three — uncheck what doesn&apos;t apply.
-      </p>
-
-      <div className="space-y-2">
-        {targets.map((t) => {
-          const active = selected.has(t.id);
-          return (
-            <button
-              key={t.id}
-              onClick={() => toggle(t.id)}
-              className={clsx(
-                "w-full text-left p-4 rounded-xl border transition-colors",
-                active ? "bg-accent/10 border-accent/40" : "bg-bg-card border-border"
-              )}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium">{t.label}</div>
-                  <div className="text-xs text-text-dim mt-0.5">{t.desc}</div>
-                </div>
-                <div
-                  className={clsx(
-                    "w-5 h-5 rounded border-2 flex items-center justify-center",
-                    active ? "bg-accent border-accent" : "border-border"
-                  )}
-                >
-                  {active && (
-                    <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" className="w-3 h-3">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </div>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 function StrengthStep({ profile, update }: { profile: Profile; update: (c: Partial<Profile>) => void }) {
   const maxes = profile.maxes ?? {};
+  const isBeginner = profile.experience === "beginner";
+  // Hide loaded body-weight lifts for beginners — most can't do a weighted
+  // pull-up or dip at all, so the field is just a dead end.
+  const BEGINNER_HIDDEN = new Set<LiftId>(["weighted_pullup", "weighted_dip"]);
+  const visibleLifts = TRACKED_LIFTS.filter(({ id }) => !isBeginner || !BEGINNER_HIDDEN.has(id));
+
   const setMax = (id: LiftId, m: LiftMax | undefined) => {
     const next = { ...maxes };
     if (m === undefined || (!m.weight && !m.reps)) {
@@ -439,16 +395,31 @@ function StrengthStep({ profile, update }: { profile: Profile; update: (c: Parti
     update({ maxes: next });
   };
 
+  const skipAll = () => {
+    update({ maxes: {} });
+  };
+  const hasAnyMax = Object.keys(maxes).length > 0;
+
   return (
     <div className="space-y-5">
       <h2 className="text-2xl font-bold">Your strength numbers</h2>
       <p className="text-text-muted text-sm">
-        Enter weight × reps for each lift. We&apos;ll estimate your 1RM (Epley) and prescribe weights as % of that.
-        Don&apos;t know one? Leave it blank — we&apos;ll fall back to history.
+        For each lift, enter a weight you&apos;ve lifted recently and how many reps you did. We&apos;ll use it to pick safe starting loads.
+        {" "}Any lift you don&apos;t know, leave blank.
       </p>
 
+      <button
+        onClick={skipAll}
+        className={clsx(
+          "w-full p-3 rounded-xl border text-sm transition-colors",
+          !hasAnyMax ? "bg-accent/10 border-accent/40 text-text" : "bg-bg-card border-border text-text-muted"
+        )}
+      >
+        I&apos;m new to lifting — use conservative starting loads
+      </button>
+
       <div className="space-y-3">
-        {TRACKED_LIFTS.map(({ id, label }) => {
+        {visibleLifts.map(({ id, label }) => {
           const cur = maxes[id];
           return (
             <div key={id} className="bg-bg-card border border-border rounded-xl p-4">
@@ -510,8 +481,18 @@ function RunningStep({ profile, update }: { profile: Profile; update: (c: Partia
     <div className="space-y-5">
       <h2 className="text-2xl font-bold">Running capacity</h2>
       <p className="text-text-muted text-sm">
-        A recent solid effort — not your race PR, not your easy jog. We&apos;ll use this to set Zone 2 and VO2 max paces.
+        A recent solid effort — fastest pace you could hold without stopping. We&apos;ll use it to set your easy-cardio and interval paces.
       </p>
+
+      <button
+        onClick={() => update({ runBenchmark: undefined })}
+        className={clsx(
+          "w-full p-3 rounded-xl border text-sm transition-colors",
+          !rb ? "bg-accent/10 border-accent/40 text-text" : "bg-bg-card border-border text-text-muted"
+        )}
+      >
+        I don&apos;t run — skip this
+      </button>
 
       <Field label="Distance">
         <div className="grid grid-cols-4 gap-2">
@@ -546,7 +527,7 @@ function RunningStep({ profile, update }: { profile: Profile; update: (c: Partia
         <div className="bg-accent/10 border border-accent/30 rounded-xl p-4 text-sm">
           <div className="text-accent font-semibold">Your tempo pace: {paceFmt}</div>
           <div className="text-text-muted text-xs mt-1">
-            We&apos;ll use this to suggest Zone 2 and high-intensity paces in your cardio sessions.
+            We&apos;ll use this to suggest easy and hard paces in your cardio sessions.
           </div>
         </div>
       )}
@@ -560,22 +541,30 @@ function DoneStep() {
       <div className="text-xs uppercase tracking-widest text-accent font-semibold">
         You&apos;re set
       </div>
-      <h2 className="text-3xl font-bold">Let&apos;s train.</h2>
+      <h2 className="text-3xl font-bold">Last thing: pick your first block.</h2>
       <p className="text-text-muted leading-relaxed">
-        You can edit any of this any time from <span className="text-accent">Profile</span>.
-        Pick a category and we&apos;ll build today&apos;s session.
+        A <span className="text-text font-semibold">block</span> is your training program for the next few weeks — the whole app adapts to it.
       </p>
-      <div className="bg-bg-card border border-border rounded-2xl p-5 space-y-2">
-        <p className="text-sm font-semibold">What you&apos;ll see:</p>
-        <ul className="text-sm text-text-muted space-y-1.5">
-          <li>· Warmup tuned to your focus areas (always first)</li>
-          <li>· Core block at the end (Galpin 3-part rotation by default — change in Profile)</li>
-          <li>· Load suggestions as % of your estimated 1RM</li>
-          <li>· Risky lifts auto-swapped if they conflict with an injury you mentioned</li>
-          <li>· Cardio paces from your running benchmark</li>
-          <li>· The philosophy behind each session (Galpin, Attia, Huberman…)</li>
-        </ul>
+
+      <div className="bg-bg-card border border-border rounded-2xl p-5 space-y-3">
+        <div>
+          <div className="text-xs uppercase tracking-widest text-accent font-semibold">Block</div>
+          <div className="text-sm mt-1">
+            Your <span className="font-semibold">program</span> for 4-8 weeks. Weekly pattern + progression (easy → harder → peak → deload). <span className="text-text-dim">Pick one in Plan.</span>
+          </div>
+        </div>
+        <div className="h-px bg-border" />
+        <div>
+          <div className="text-xs uppercase tracking-widest text-text-dim font-semibold">Category</div>
+          <div className="text-sm mt-1 text-text-muted">
+            A single <span className="font-semibold text-text">workout type</span> you can grab anytime (Strength, Cardio, Split…). Use it when you want to do something off-plan today.
+          </div>
+        </div>
       </div>
+
+      <p className="text-xs text-text-dim leading-relaxed">
+        Tapping the big button below takes you to Plan where you can preview and pick a block. You can also edit any onboarding answer any time from Profile.
+      </p>
     </div>
   );
 }

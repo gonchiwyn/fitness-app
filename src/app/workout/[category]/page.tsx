@@ -291,7 +291,7 @@ export default function WorkoutForCategory({
         exerciseId: newExerciseId,
         loadHint: undefined,
         sets: old.sets.map((set) => ({ ...set, completed: false })),
-        notes: [old.notes, `Swapped from ${getExercise(old.exerciseId).name}`].filter(Boolean).join(" · "),
+        notes: old.notes,
       };
       block.prescriptions = prescriptions;
       blocks[blockIdx] = block;
