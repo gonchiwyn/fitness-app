@@ -17,6 +17,7 @@ import {
   DAY_LABELS_SHORT,
   chipShortLabel,
   dateToPlanIndex,
+  effectiveFocusToday,
   getBlockPhase,
   normalizePlannedDay,
   type PlannedDay,
@@ -217,8 +218,12 @@ export default function HomePage() {
         })()
       )}
 
-      {/* TODAY's primary CTA */}
-      {todaysSession ? (
+      {/* TODAY's primary CTA.
+          When the block is paused we hide the planned session — the user is
+          off-plan on purpose. They can still open categories manually. */}
+      {profile?.currentFocus?.pausedAt ? (
+        <PausedTodayCard />
+      ) : todaysSession ? (
         <TodaysSessionCard session={todaysSession} />
       ) : plannedToday ? (
         <>
@@ -392,7 +397,10 @@ function FocusIndicator({
 }: {
   focus: NonNullable<Profile["currentFocus"]>;
 }) {
-  const daysIn = Math.max(0, differenceInCalendarDays(new Date(), new Date(focus.startedAt)));
+  // While paused, time stops: week counter + phase freeze at pausedAt.
+  const isPaused = !!focus.pausedAt;
+  const effToday = effectiveFocusToday(focus);
+  const daysIn = Math.max(0, differenceInCalendarDays(effToday, new Date(focus.startedAt)));
   const weekNum = Math.floor(daysIn / 7) + 1;
   const done = weekNum > focus.durationWeeks;
   const totalDays = focus.durationWeeks * 7;
@@ -401,16 +409,31 @@ function FocusIndicator({
   // this week feels different (Realization = peak, Deload = ease off).
   const phase = done
     ? null
-    : getBlockPhase(focus.startedAt, focus.durationWeeks, new Date());
+    : getBlockPhase(focus.startedAt, focus.durationWeeks, effToday);
 
   return (
     <Link
       href="/plan"
-      className="block bg-bg-card border border-border rounded-2xl px-4 py-3 hover:border-accent/40 transition-colors"
+      className={clsx(
+        "block border rounded-2xl px-4 py-3 transition-colors",
+        isPaused
+          ? "bg-bg-card border-text-dim/40"
+          : "bg-bg-card border-border hover:border-accent/40"
+      )}
     >
       <div className="flex items-baseline justify-between gap-3">
         <div>
-          <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold">
+          <div
+            className={clsx(
+              "text-[10px] uppercase tracking-widest font-semibold flex items-center gap-2",
+              isPaused ? "text-text-dim" : "text-text-dim"
+            )}
+          >
+            {isPaused && (
+              <span className="bg-text-dim/15 text-text-muted px-1.5 py-0.5 rounded">
+                PAUSED
+              </span>
+            )}
             Focus block
           </div>
           <div className="text-sm font-medium mt-0.5">{focus.name}</div>
@@ -422,7 +445,7 @@ function FocusIndicator({
             <>
               Week {weekNum} of {focus.durationWeeks}
               {phase && (
-                <span className="block text-[10px] text-accent mt-0.5">
+                <span className={clsx("block text-[10px] mt-0.5", isPaused ? "text-text-dim" : "text-accent")}>
                   {phase.label}
                 </span>
               )}
@@ -432,7 +455,7 @@ function FocusIndicator({
       </div>
       <div className="mt-2 h-1 bg-border rounded-full overflow-hidden">
         <div
-          className="h-full bg-accent"
+          className={clsx("h-full", isPaused ? "bg-text-dim/60" : "bg-accent")}
           style={{ width: `${done ? 100 : pct}%` }}
         />
       </div>
@@ -613,6 +636,24 @@ function RecommendationCard({ rec }: { rec: Recommendation }) {
       <div className="mt-4 text-sm text-accent font-medium">
         Start workout →
       </div>
+    </Link>
+  );
+}
+
+function PausedTodayCard() {
+  return (
+    <Link
+      href="/plan"
+      className="block bg-bg-card border border-text-dim/30 rounded-2xl p-5"
+    >
+      <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold">
+        Block paused
+      </div>
+      <div className="text-lg font-semibold mt-1">You&apos;re off-plan today.</div>
+      <p className="text-sm text-text-muted mt-2 leading-relaxed">
+        Nothing scheduled while the block is paused. Train what fits — tap a category from the catalog, or resume from Plan.
+      </p>
+      <div className="text-xs text-accent mt-3">Open Plan →</div>
     </Link>
   );
 }

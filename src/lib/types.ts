@@ -574,6 +574,10 @@ export type Profile = {
     name: string;
     startedAt: string;   // yyyy-MM-dd
     durationWeeks: number;
+    // When set, the block is paused: week counter + phase calc freeze at this
+    // date. On resume, startedAt is shifted forward by (resumeDate - pausedAt)
+    // so the block picks up exactly where it was. Use for travel, illness, etc.
+    pausedAt?: string;   // yyyy-MM-dd
   };
   // Currently-active issues — drives injury swaps in the generator.
   // Text `injuryHistory` above is just context/description.
@@ -592,6 +596,17 @@ export type CyclePhase = {
   intensityMultiplier: number;
   setAdjustment: number;
 };
+
+// "Effective today" for a focus block. When paused, time stops: week counter,
+// phase label, Home indicator all freeze at pausedAt. Resume shifts startedAt
+// so the block picks up exactly where it was.
+export function effectiveFocusToday(
+  focus: NonNullable<Profile["currentFocus"]> | undefined,
+  realToday: Date = new Date()
+): Date {
+  if (focus?.pausedAt) return new Date(focus.pausedAt + "T00:00:00");
+  return realToday;
+}
 
 // Galpin-style block wave: Accumulation → Intensification → Realization → Deload.
 // Applied always when a focus block is active — this is how programs actually work.

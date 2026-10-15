@@ -9,6 +9,8 @@ import {
   db,
   getProfile,
   getWeeklyPlan,
+  pauseFocusBlock,
+  resumeFocusBlock,
   saveProfile,
   saveWeeklyPlan,
   saveWeekOverride,
@@ -21,6 +23,7 @@ import {
   CATEGORY_LABELS,
   DAY_LABELS_LONG,
   dateToPlanIndex,
+  effectiveFocusToday,
   type Category,
   type PlannedDay,
   type Profile,
@@ -436,16 +439,33 @@ function PlanPageInner() {
     setProfile((p) => (p ? { ...p, currentFocus: undefined } : p));
   };
 
+  const togglePause = async () => {
+    if (!profile?.currentFocus) return;
+    const paused = !!profile.currentFocus.pausedAt;
+    if (paused) {
+      if (!confirm("Resume the block? Your start date shifts forward so you pick up at the same week + phase.")) return;
+      await resumeFocusBlock();
+    } else {
+      if (!confirm("Pause the block? Week counter and phase freeze until you resume. Workouts you log while paused still save.")) return;
+      await pauseFocusBlock();
+    }
+    const fresh = await getProfile();
+    setProfile(fresh);
+  };
+
   // Compute block state — drives whether we render the "current block" hero
   // or the "pick a block" hero at the top of the page.
+  // While paused, "today" is frozen at pausedAt so week counter stops advancing.
   const focus = profile?.currentFocus;
+  const isPaused = !!focus?.pausedAt;
   let blockState: "active" | "completed" | "none" = "none";
   let weekNum = 0;
   let progressPct = 0;
   if (focus) {
+    const effToday = effectiveFocusToday(focus);
     const daysIn = Math.max(
       0,
-      differenceInCalendarDays(new Date(), new Date(focus.startedAt))
+      differenceInCalendarDays(effToday, new Date(focus.startedAt))
     );
     weekNum = Math.floor(daysIn / 7) + 1;
     const totalDays = focus.durationWeeks * 7;
@@ -468,10 +488,25 @@ function PlanPageInner() {
       </header>
 
       {blockState === "active" && focus && (
-        <section className="bg-bg-card border border-accent/40 rounded-2xl p-5 space-y-3">
+        <section
+          className={clsx(
+            "border rounded-2xl p-5 space-y-3",
+            isPaused ? "bg-bg-card border-text-dim/40" : "bg-bg-card border-accent/40"
+          )}
+        >
           <div className="flex items-baseline justify-between gap-3">
             <div>
-              <div className="text-[10px] uppercase tracking-widest text-accent font-semibold">
+              <div
+                className={clsx(
+                  "text-[10px] uppercase tracking-widest font-semibold flex items-center gap-2",
+                  isPaused ? "text-text-dim" : "text-accent"
+                )}
+              >
+                {isPaused && (
+                  <span className="bg-text-dim/15 text-text-muted px-1.5 py-0.5 rounded">
+                    PAUSED
+                  </span>
+                )}
                 Current focus block
               </div>
               <div className="text-2xl font-bold mt-1">{focus.name}</div>
@@ -481,13 +516,33 @@ function PlanPageInner() {
             </div>
           </div>
           <div className="h-1 bg-border rounded-full overflow-hidden">
-            <div className="h-full bg-accent" style={{ width: `${progressPct}%` }} />
+            <div
+              className={clsx("h-full", isPaused ? "bg-text-dim/60" : "bg-accent")}
+              style={{ width: `${progressPct}%` }}
+            />
           </div>
           <PhaseOutline
             durationWeeks={focus.durationWeeks}
             startedAt={focus.startedAt}
             currentWeek={weekNum}
           />
+          {isPaused && focus.pausedAt && (
+            <p className="text-xs text-text-muted bg-bg-elevated border border-border rounded-lg p-3">
+              Paused since {format(new Date(focus.pausedAt + "T00:00:00"), "MMM d")}.
+              The week counter and phase will resume where they left off.
+            </p>
+          )}
+          <button
+            onClick={togglePause}
+            className={clsx(
+              "w-full h-10 rounded-lg text-sm font-semibold border",
+              isPaused
+                ? "bg-accent text-black border-accent"
+                : "bg-bg-elevated text-text-muted border-border hover:border-accent/40"
+            )}
+          >
+            {isPaused ? "Resume block" : "Pause block"}
+          </button>
           <div className="flex items-center justify-between text-xs text-text-dim">
             <span>Started {format(new Date(focus.startedAt), "MMM d")}</span>
             <button

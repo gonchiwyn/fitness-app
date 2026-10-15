@@ -114,6 +114,42 @@ export async function saveProfile(p: Partial<Profile>): Promise<void> {
   await db.profile.put({ ...current, ...p, id: "me" });
 }
 
+/** Pause the current focus block. Freezes week counter + phase at today. */
+export async function pauseFocusBlock(): Promise<void> {
+  const current = await getProfile();
+  if (!current.currentFocus || current.currentFocus.pausedAt) return;
+  const today = new Date().toISOString().slice(0, 10);
+  await db.profile.put({
+    ...current,
+    currentFocus: { ...current.currentFocus, pausedAt: today },
+  });
+}
+
+/** Resume a paused block. Shifts startedAt forward by the pause duration so
+ *  the block picks up exactly where it was (same week, same phase). */
+export async function resumeFocusBlock(): Promise<void> {
+  const current = await getProfile();
+  const focus = current.currentFocus;
+  if (!focus || !focus.pausedAt) return;
+  const pausedDate = new Date(focus.pausedAt + "T00:00:00");
+  const today = new Date();
+  const pauseDays = Math.max(
+    0,
+    Math.floor((today.getTime() - pausedDate.getTime()) / 86400000)
+  );
+  const start = new Date(focus.startedAt + "T00:00:00");
+  start.setDate(start.getDate() + pauseDays);
+  const newStartedAt = start.toISOString().slice(0, 10);
+  await db.profile.put({
+    ...current,
+    currentFocus: {
+      ...focus,
+      startedAt: newStartedAt,
+      pausedAt: undefined,
+    },
+  });
+}
+
 export async function recentSessions(limit = 30): Promise<Session[]> {
   return db.sessions.orderBy("date").reverse().limit(limit).toArray();
 }
