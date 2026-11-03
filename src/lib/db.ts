@@ -71,6 +71,112 @@ const PRESET_DURATION: Record<string, number> = {
   "Hyrox prep": 6,
 };
 
+// Map of deprecated template IDs → their replacements. getProfile() runs this
+// against the weekly plan + overrides so users mid-block don't have to
+// manually re-apply when a template is swapped under them.
+const TEMPLATE_MIGRATIONS: Record<string, string> = {
+  // Hyrox: full-circuit sim variants replaced by station-block ("Pairs") ones
+  // that use the same equipment but hold one station at a time — gym-mate
+  // can't break your workout by grabbing the sled mid-flow. Original IDs
+  // still exist for anyone with a Hyrox-equipped box they can commandeer.
+  hyrox_sim_race: "hyrox_sim_pairs",
+  hyrox_sim_intro: "hyrox_sim_pairs_intro",
+  hyrox_sim_light: "hyrox_sim_pairs_light",
+  // Users briefly migrated to the DB-only commercial variants in the previous
+  // iteration (pre-pairs). Shift them forward to the Pairs variants.
+  hyrox_sim_commercial: "hyrox_sim_pairs",
+  hyrox_sim_commercial_intro: "hyrox_sim_pairs_intro",
+  hyrox_sim_commercial_light: "hyrox_sim_pairs_light",
+};
+
+// One-shot structural upgrade for an active Hyrox block that was applied
+// before the Nov-02 review (added short mid-week sim + long run + W5 realization
+// test). Idempotent: each check guards itself so it's safe to call every load.
+async function upgradeActiveHyroxBlock(): Promise<void> {
+  const profile = await db.profile.get("me");
+  const focus = profile?.currentFocus;
+  if (!focus || focus.name !== "Hyrox prep") return;
+
+  // 1) Rewrite base plan Thursday + Saturday if they still carry the pre-review
+  //    defaults. Only touches slots that match the old content exactly, so a
+  //    user who manually customized either day is left alone.
+  const plan = await db.weeklyPlan.get("me");
+  if (plan) {
+    const next = [...plan.days];
+    let changed = false;
+    const thu = next[3];
+    if (thu?.category === "cardio" && thu.templateId === "attia_4x4_vo2") {
+      next[3] = { category: "hyrox", templateId: "hyrox_sim_short" };
+      changed = true;
+    }
+    const sat = next[5];
+    if (sat?.category === "cardio" && sat.templateId === "attia_zone2_45") {
+      next[5] = { category: "cardio", templateId: "nick_bare_long_run" };
+      changed = true;
+    }
+    if (changed) await db.weeklyPlan.put({ ...plan, days: next });
+  }
+
+  // 2) Add W5 Realization override (timed mini-race benchmark on Tuesday).
+  //    W5 Monday = Monday of the week containing startedAt, +4 weeks.
+  const startedAt = new Date(focus.startedAt + "T00:00:00");
+  const w1Monday = new Date(startedAt);
+  const dow = w1Monday.getDay();
+  const daysBack = dow === 0 ? 6 : dow - 1;
+  w1Monday.setDate(w1Monday.getDate() - daysBack);
+  const w5Monday = new Date(w1Monday);
+  w5Monday.setDate(w5Monday.getDate() + 28);
+  const w5MondayStr = w5Monday.toISOString().slice(0, 10);
+
+  const existing = await db.weekOverrides
+    .where("weekStartDate")
+    .equals(w5MondayStr)
+    .first();
+  if (!existing) {
+    const realizationDays: PlannedDay[] = [
+      { category: "hyrox", templateId: "hyrox_strength_pull" },
+      { category: "hyrox", templateId: "hyrox_sim_test" },
+      { category: "hyrox", templateId: "hyrox_strength_push" },
+      { category: "hyrox", templateId: "hyrox_sim_short" },
+      { category: "cardio", templateId: "attia_zone2_45" },
+      { category: "cardio", templateId: "nick_bare_long_run" },
+      { category: "recovery" },
+    ];
+    await db.weekOverrides.put({
+      weekStartDate: w5MondayStr,
+      days: realizationDays,
+      updatedAt: Date.now(),
+    });
+  }
+}
+
+async function migrateDeprecatedTemplates(): Promise<void> {
+  const plan = await db.weeklyPlan.get("me");
+  if (plan) {
+    let changed = false;
+    const next = plan.days.map((d) => {
+      if (d?.templateId && TEMPLATE_MIGRATIONS[d.templateId]) {
+        changed = true;
+        return { ...d, templateId: TEMPLATE_MIGRATIONS[d.templateId] };
+      }
+      return d;
+    });
+    if (changed) await db.weeklyPlan.put({ ...plan, days: next });
+  }
+  const overrides = await db.weekOverrides.toArray();
+  for (const o of overrides) {
+    let changed = false;
+    const nextDays = o.days.map((d) => {
+      if (d?.templateId && TEMPLATE_MIGRATIONS[d.templateId]) {
+        changed = true;
+        return { ...d, templateId: TEMPLATE_MIGRATIONS[d.templateId] };
+      }
+      return d;
+    });
+    if (changed) await db.weekOverrides.put({ ...o, days: nextDays, updatedAt: Date.now() });
+  }
+}
+
 export async function getProfile(): Promise<Profile> {
   const existing = await db.profile.get("me");
   if (existing) {
@@ -83,10 +189,13 @@ export async function getProfile(): Promise<Profile> {
           currentFocus: { ...focus, durationWeeks: target },
         };
         await db.profile.put(upgraded);
-        return upgraded;
       }
     }
-    return existing;
+    // Fire-and-forget migrations. Each is idempotent so calling on every
+    // profile read is safe. We don't await: profile reads shouldn't wait.
+    migrateDeprecatedTemplates();
+    upgradeActiveHyroxBlock();
+    return (await db.profile.get("me")) ?? existing;
   }
   // Personalized default — see lib/data/personalProfile.ts
   await db.profile.put(GENERIC_PROFILE);

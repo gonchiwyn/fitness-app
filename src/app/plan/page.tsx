@@ -335,6 +335,12 @@ function PlanPageInner() {
     },
     {
       // Fixed layout — phase-based template progression W1-2 vs W3-5 vs W6.
+      // Sim day uses the "Station Blocks" variant by default — real Hyrox
+      // equipment but held one station at a time, so you don't need to
+      // commandeer a whole circuit. Travel / no-sled days can swap to
+      // hyrox_sim_commercial; a Hyrox-equipped box can swap to hyrox_sim_race.
+      // Thursday (short mid-week sim) and Saturday (long run) added per
+      // Hunter McIntyre + Nick Bare review.
       name: "Hyrox prep",
       tagline: "First-time Hyrox: learn → build → peak. Back-aware.",
       focusName: "Hyrox prep",
@@ -342,11 +348,11 @@ function PlanPageInner() {
       defaultFrequency: 5,
       days: [
         { category: "hyrox", templateId: "hyrox_strength_pull" },
-        { category: "hyrox", templateId: "hyrox_sim_race" },
+        { category: "hyrox", templateId: "hyrox_sim_pairs" },
         { category: "hyrox", templateId: "hyrox_strength_push" },
-        { category: "cardio", templateId: "attia_4x4_vo2" },
+        { category: "hyrox", templateId: "hyrox_sim_short" },
         { category: "cardio", templateId: "attia_zone2_45" },
-        { category: "cardio", templateId: "attia_zone2_45" },
+        { category: "cardio", templateId: "nick_bare_long_run" },
       ],
     },
   ];
@@ -406,7 +412,7 @@ function PlanPageInner() {
 
       const learnWeek: PlannedDay[] = [
         { category: "hyrox", templateId: "hyrox_strength_pull" },
-        { category: "hyrox", templateId: "hyrox_sim_intro" },
+        { category: "hyrox", templateId: "hyrox_sim_pairs_intro" },
         { category: "cardio", templateId: "attia_zone2_45" },
         { category: "hyrox", templateId: "hyrox_strength_push" },
         { category: "hyrox", templateId: "hyrox_engine_easy" },
@@ -415,11 +421,22 @@ function PlanPageInner() {
       ];
       const deloadWeek: PlannedDay[] = [
         { category: "stretching" },
-        { category: "hyrox", templateId: "hyrox_sim_light" },
+        { category: "hyrox", templateId: "hyrox_sim_pairs_light" },
         { category: "cardio", templateId: "attia_zone2_45" },
         { category: "stretching" },
         { category: "hyrox", templateId: "hyrox_engine_easy" },
         { category: "recovery" },
+        { category: "recovery" },
+      ];
+      // Realization week — swap Tuesday for a timed mini-race benchmark.
+      // Everything else stays at Build-phase shape; this is the one real test.
+      const realizationWeek: PlannedDay[] = [
+        { category: "hyrox", templateId: "hyrox_strength_pull" },
+        { category: "hyrox", templateId: "hyrox_sim_test" },
+        { category: "hyrox", templateId: "hyrox_strength_push" },
+        { category: "hyrox", templateId: "hyrox_sim_short" },
+        { category: "cardio", templateId: "attia_zone2_45" },
+        { category: "cardio", templateId: "nick_bare_long_run" },
         { category: "recovery" },
       ];
 
@@ -427,6 +444,7 @@ function PlanPageInner() {
       // if today is mid-week); W6 is 5 weeks later.
       await saveWeekOverride(weekMonday(0), learnWeek);
       await saveWeekOverride(weekMonday(1), learnWeek);
+      await saveWeekOverride(weekMonday(4), realizationWeek);
       await saveWeekOverride(weekMonday(5), deloadWeek);
     }
 

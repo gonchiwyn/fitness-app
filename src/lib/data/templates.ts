@@ -2270,10 +2270,14 @@ TEMPLATES.push(
       {
         title: "Main Hinge",
         scheme: "4×5-8",
+        // Hinge pool defaults to lumbar-safe loader (back ext) → RDL →
+        // Pull-through. Deadlift intentionally omitted; the spine guard also
+        // enforces no 2-heavy-lift stacking.
+        note: "Stop the set if bar speed drops noticeably — chase quality reps, not grinds.",
         prescriptions: [
           {
             exerciseId: "romanian_deadlift",
-            pool: ["romanian_deadlift", "deadlift", "rack_pull"],
+            pool: ["romanian_deadlift", "back_extension_45", "cable_pull_through", "rack_pull"],
             sets: 4, reps: "5-8", rpe: 7, rest: "2-3 min",
           },
         ],
@@ -2318,6 +2322,25 @@ TEMPLATES.push(
           },
         ],
       },
+      {
+        title: "Arms — Finisher",
+        scheme: "Superset — 3 rounds",
+        // Aesthetic finisher. Biceps + triceps paired so you alternate stations
+        // and keep the engine ticking. Keeps the "look great" side alive while
+        // the rest of the block hunts Hyrox performance.
+        prescriptions: [
+          {
+            exerciseId: "incline_db_curl",
+            pool: ["incline_db_curl", "barbell_curl", "cable_curl", "hammer_curl"],
+            sets: 3, reps: "10-12", rpe: 9, rest: "0s",
+          },
+          {
+            exerciseId: "rope_pushdown",
+            pool: ["rope_pushdown", "overhead_tricep_extension", "cable_overhead_extension"],
+            sets: 3, reps: "12-15", rpe: 9, rest: "60s",
+          },
+        ],
+      },
     ],
   },
   {
@@ -2330,10 +2353,13 @@ TEMPLATES.push(
       {
         title: "Main Squat",
         scheme: "4×5-8",
+        // Back squat only (user doesn't do front squats); hack squat as the
+        // machine-friendly alternative.
+        note: "Stop the set if bar speed drops noticeably — chase quality reps, not grinds.",
         prescriptions: [
           {
             exerciseId: "back_squat",
-            pool: ["back_squat", "front_squat", "hack_squat"],
+            pool: ["back_squat", "hack_squat", "leg_press"],
             sets: 4, reps: "5-8", rpe: 7, rest: "2-3 min",
           },
         ],
@@ -2372,6 +2398,24 @@ TEMPLATES.push(
         scheme: "3×15",
         prescriptions: [
           { exerciseId: "calf_raise", sets: 3, reps: "15", rest: "45s" },
+        ],
+      },
+      {
+        title: "Shoulders + Chest — Finisher",
+        scheme: "Superset — 3 rounds",
+        // Side-delt + upper-chest pump. Side delts drive the "wide" look;
+        // incline fly keeps chest tissue stimulated through the Hyrox block.
+        prescriptions: [
+          {
+            exerciseId: "cable_lateral_raise",
+            pool: ["cable_lateral_raise", "lateral_raise", "machine_lateral_raise"],
+            sets: 3, reps: "12-15", rpe: 9, rest: "0s",
+          },
+          {
+            exerciseId: "incline_cable_fly",
+            pool: ["incline_cable_fly", "cable_fly", "incline_db_press", "pec_deck"],
+            sets: 3, reps: "10-12", rpe: 9, rest: "60s",
+          },
         ],
       },
     ],
@@ -2485,6 +2529,298 @@ TEMPLATES.push(
         prescriptions: [
           { exerciseId: "ski_erg", sets: 3, reps: "200m", rest: "60s" },
           { exerciseId: "row_500", sets: 3, reps: "200m", rest: "60s" },
+        ],
+      },
+    ],
+  },
+
+  // ---------- COMMERCIAL-GYM HYROX (no sled, no erg, no sandbag) ----------
+  // Equivalent engine stimulus using one DB rack + skip rope + bodyweight.
+  // Trains the same qualities as the race-equipped sim (compromised running,
+  // mixed-modal fatigue, grip + hip hinge power) without needing to
+  // monopolize a whole gym for 45 min.
+  {
+    id: "hyrox_sim_commercial_intro",
+    category: "hyrox",
+    name: "Hyrox — Learn (Commercial Gym)",
+    description: "DBs + skip rope only. Short rounds, long rest. Learn transitions.",
+    influences: ["general"],
+    blocks: [
+      {
+        title: "Movement Prep",
+        scheme: "2 rounds",
+        prescriptions: [
+          { exerciseId: "kb_swing", sets: 2, reps: "15", rest: "60s" },
+          { exerciseId: "goblet_squat_hold", sets: 2, reps: "30s", rest: "60s" },
+        ],
+      },
+      {
+        title: "Mini-Sim",
+        scheme: "Circuit — 3 rounds, rest 2 min between rounds",
+        prescriptions: [
+          { exerciseId: "jump_rope_continuous", sets: 3, reps: "60s", rest: "0s" },
+          { exerciseId: "db_thruster", sets: 3, reps: "10", rest: "0s" },
+          { exerciseId: "kb_swing", sets: 3, reps: "15", rest: "0s" },
+          { exerciseId: "db_row", sets: 3, reps: "10/side", rest: "0s" },
+          { exerciseId: "walking_lunge", sets: 3, reps: "16 steps", rest: "2 min" },
+        ],
+      },
+      {
+        title: "Core Finish",
+        scheme: "3×",
+        prescriptions: [
+          { exerciseId: "plank", sets: 3, reps: "45s", rest: "30s" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "hyrox_sim_commercial",
+    category: "hyrox",
+    name: "Hyrox — Race Pace (Commercial Gym)",
+    description: "Full 6-station circuit using DBs + skip rope + bodyweight. Race pace.",
+    influences: ["general"],
+    blocks: [
+      {
+        title: "Race Prep",
+        scheme: "1 round",
+        prescriptions: [
+          { exerciseId: "jump_rope_continuous", sets: 1, reps: "3 min easy" },
+          { exerciseId: "kb_swing", sets: 2, reps: "10", rest: "60s" },
+        ],
+      },
+      {
+        title: "Race Sim",
+        scheme: "Circuit — 5 rounds",
+        prescriptions: [
+          { exerciseId: "jump_rope_continuous", sets: 5, reps: "90s", rest: "0s" },
+          { exerciseId: "db_thruster", sets: 5, reps: "15", rest: "0s" },
+          { exerciseId: "kb_swing", sets: 5, reps: "20", rest: "0s" },
+          { exerciseId: "db_row", sets: 5, reps: "12/side", rest: "0s" },
+          { exerciseId: "walking_lunge", sets: 5, reps: "20 steps", rest: "0s" },
+          { exerciseId: "burpee", sets: 5, reps: "10", rest: "60s" },
+        ],
+      },
+      {
+        title: "Grip Finisher",
+        scheme: "3×",
+        prescriptions: [
+          { exerciseId: "farmer_carry", sets: 3, reps: "40m heavy", rest: "60s" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "hyrox_sim_commercial_light",
+    category: "hyrox",
+    name: "Hyrox — Light Skill (Commercial Gym)",
+    description: "Single round of each station, slow + clean. DBs + skip rope.",
+    influences: ["general"],
+    blocks: [
+      {
+        title: "Single-Round Skill",
+        scheme: "1 round — slow + skillful",
+        prescriptions: [
+          { exerciseId: "jump_rope_continuous", sets: 1, reps: "3 min easy", rest: "60s" },
+          { exerciseId: "db_thruster", sets: 1, reps: "12", rest: "60s" },
+          { exerciseId: "kb_swing", sets: 1, reps: "15", rest: "60s" },
+          { exerciseId: "db_row", sets: 1, reps: "10/side", rest: "60s" },
+          { exerciseId: "walking_lunge", sets: 1, reps: "16 steps", rest: "60s" },
+          { exerciseId: "farmer_carry", sets: 1, reps: "40m", rest: "60s" },
+        ],
+      },
+    ],
+  },
+
+  // ---------- HYROX PAIRS (station blocks, shared-gym friendly) ----------
+  // Same engine as a full race sim, same equipment, but reorganized so you
+  // only hold ONE station at a time. Finish all your sets at Ski Erg, THEN
+  // move to the sled area, THEN wall ball, etc. A gym-mate grabbing the sled
+  // mid-session doesn't ruin anything — you weren't locked onto two.
+  {
+    id: "hyrox_sim_pairs_intro",
+    category: "hyrox",
+    name: "Hyrox — Learn (Station Blocks)",
+    description: "Shorter runs + light stations, held one at a time. Learn transitions.",
+    influences: ["general"],
+    blocks: [
+      {
+        title: "Movement Prep",
+        scheme: "1 round",
+        prescriptions: [
+          { exerciseId: "easy_bike", sets: 1, reps: "4 min easy" },
+          { exerciseId: "kb_swing", sets: 2, reps: "12", rest: "60s" },
+        ],
+      },
+      {
+        title: "Block 1 — Ski Pairs",
+        scheme: "3 rounds — hold the ski erg",
+        prescriptions: [
+          { exerciseId: "run", sets: 3, reps: "200m easy", rest: "0s" },
+          { exerciseId: "ski_erg", sets: 3, reps: "250m moderate", rest: "90s" },
+        ],
+      },
+      {
+        title: "Block 2 — Sled Pull Pairs",
+        scheme: "3 rounds — hold the sled",
+        prescriptions: [
+          { exerciseId: "run", sets: 3, reps: "200m easy", rest: "0s" },
+          { exerciseId: "sled_pull", sets: 3, reps: "20m moderate", rest: "90s" },
+        ],
+      },
+      {
+        title: "Block 3 — Wall Ball Pairs",
+        scheme: "2 rounds — hold the wall ball",
+        prescriptions: [
+          { exerciseId: "run", sets: 2, reps: "200m easy", rest: "0s" },
+          { exerciseId: "wallball", sets: 2, reps: "12", rest: "90s" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "hyrox_sim_pairs",
+    category: "hyrox",
+    name: "Hyrox — Race Pace (Station Blocks)",
+    description: "Full equipment, held one at a time. Compromised running + 3 stations per session.",
+    influences: ["general"],
+    blocks: [
+      {
+        title: "Race Prep",
+        scheme: "1 round",
+        prescriptions: [
+          { exerciseId: "easy_bike", sets: 1, reps: "5 min easy" },
+          { exerciseId: "kb_swing", sets: 2, reps: "10", rest: "60s" },
+        ],
+      },
+      {
+        title: "Block 1 — Ski Erg Pairs",
+        scheme: "4 rounds — hold the ski erg",
+        prescriptions: [
+          { exerciseId: "run", sets: 4, reps: "400m race pace", rest: "0s" },
+          { exerciseId: "ski_erg", sets: 4, reps: "500m hard", rest: "2 min" },
+        ],
+      },
+      {
+        title: "Block 2 — Sled Pairs",
+        scheme: "4 rounds — hold the sled area",
+        prescriptions: [
+          { exerciseId: "run", sets: 4, reps: "400m race pace", rest: "0s" },
+          { exerciseId: "sled_push", sets: 4, reps: "25m moderate", rest: "0s" },
+          { exerciseId: "sled_pull", sets: 4, reps: "25m moderate", rest: "2 min" },
+        ],
+      },
+      {
+        title: "Block 3 — Wall Ball + Lunge Pairs",
+        scheme: "3 rounds — hold wall-ball station",
+        prescriptions: [
+          { exerciseId: "run", sets: 3, reps: "400m race pace", rest: "0s" },
+          { exerciseId: "wallball", sets: 3, reps: "20", rest: "0s" },
+          { exerciseId: "sandbag_lunge", sets: 3, reps: "30m", rest: "2 min" },
+        ],
+      },
+      {
+        title: "Finisher — Farmer Carry",
+        scheme: "3×",
+        prescriptions: [
+          { exerciseId: "farmer_carry", sets: 3, reps: "100m heavy", rest: "90s" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "hyrox_sim_test",
+    category: "hyrox",
+    name: "Hyrox — Realization Test",
+    description: "W5 peak-week benchmark. Time a mini-race. Record the number.",
+    influences: ["galpin", "general"],
+    blocks: [
+      {
+        title: "Race Prep",
+        scheme: "1 round",
+        prescriptions: [
+          { exerciseId: "easy_bike", sets: 1, reps: "5 min easy" },
+          { exerciseId: "kb_swing", sets: 2, reps: "10", rest: "60s" },
+        ],
+      },
+      {
+        title: "Mini Race — For Time",
+        scheme: "Start the stopwatch. One continuous effort.",
+        // Peak-week benchmark. Hunter McIntyre: test one honest effort so you
+        // know what Hyrox pace actually feels like before race day.
+        note: "Log total time in Benchmarks when done. Compare to this attempt again next block.",
+        prescriptions: [
+          { exerciseId: "run", sets: 1, reps: "1000m race pace", rest: "0s" },
+          { exerciseId: "ski_erg", sets: 1, reps: "500m hard", rest: "0s" },
+          { exerciseId: "sled_push", sets: 1, reps: "25m moderate", rest: "0s" },
+          { exerciseId: "sled_pull", sets: 1, reps: "25m", rest: "0s" },
+          { exerciseId: "run", sets: 1, reps: "1000m race pace", rest: "0s" },
+          { exerciseId: "wallball", sets: 1, reps: "50 reps", rest: "0s" },
+          { exerciseId: "run", sets: 1, reps: "1000m race pace", rest: "60s" },
+        ],
+      },
+      {
+        title: "Cool-down walk",
+        scheme: "5 min easy",
+        prescriptions: [
+          { exerciseId: "run", sets: 1, reps: "5 min walk" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "hyrox_sim_short",
+    category: "hyrox",
+    name: "Hyrox — Short Sim (Mid-Week)",
+    description: "25-min race-pace sim. Compromised running + 2 stations. Hunts your weakness.",
+    influences: ["general"],
+    blocks: [
+      {
+        title: "Race Prep",
+        scheme: "1 round",
+        prescriptions: [
+          { exerciseId: "easy_bike", sets: 1, reps: "4 min easy" },
+          { exerciseId: "kb_swing", sets: 2, reps: "10", rest: "45s" },
+        ],
+      },
+      {
+        title: "Short Sim — Pick 2 Stations",
+        scheme: "3 rounds — rotate stations by week",
+        // Short mid-week sim. Attacks compromised running + whichever 2
+        // stations felt worst on Tuesday. Default pair = ski + sled, rotate.
+        prescriptions: [
+          { exerciseId: "run", sets: 3, reps: "400m race pace", rest: "0s" },
+          { exerciseId: "ski_erg", sets: 3, reps: "500m hard", rest: "0s" },
+          { exerciseId: "run", sets: 3, reps: "400m race pace", rest: "0s" },
+          { exerciseId: "sled_push", sets: 3, reps: "25m moderate", rest: "2 min" },
+        ],
+      },
+      {
+        title: "Grip Finisher",
+        scheme: "3×",
+        prescriptions: [
+          { exerciseId: "farmer_carry", sets: 3, reps: "60m heavy", rest: "60s" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "hyrox_sim_pairs_light",
+    category: "hyrox",
+    name: "Hyrox — Light Skill (Station Blocks)",
+    description: "One pair at each station, slow + clean.",
+    influences: ["general"],
+    blocks: [
+      {
+        title: "Single-Round Skill",
+        scheme: "1 round of each pair — slow + skillful",
+        prescriptions: [
+          { exerciseId: "run", sets: 1, reps: "400m easy", rest: "60s" },
+          { exerciseId: "ski_erg", sets: 1, reps: "300m easy", rest: "60s" },
+          { exerciseId: "run", sets: 1, reps: "400m easy", rest: "60s" },
+          { exerciseId: "sled_pull", sets: 1, reps: "25m light", rest: "60s" },
+          { exerciseId: "run", sets: 1, reps: "400m easy", rest: "60s" },
+          { exerciseId: "wallball", sets: 1, reps: "15", rest: "60s" },
         ],
       },
     ],

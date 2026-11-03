@@ -345,6 +345,8 @@ export const EXERCISES: Exercise[] = [
   // Underwater/breath prep — not exercises but modeled as one so they slot into sessions if desired
   { id: "farmer_march", name: "Farmer March (In Place)", pattern: "carry", muscles: ["grip", "core", "hip"], equipment: ["dumbbell", "kettlebell"], weighted: true, cues: ["High knee, tall posture", "Grip stays iron-tight"], howTo: "Hold heavy DBs/KBs at your sides. March in place with high knees, staying tall. 30-60s per set. Combines grip endurance (rail hold), hip flexor strength (pop-up drive), and core stability." },
 
+  { id: "db_thruster", name: "Dumbbell Thruster", pattern: "squat", muscles: ["full_body"], equipment: ["dumbbell"], weighted: true, cues: ["Elbows high at the bottom", "Press as you stand — one fluid motion"], howTo: "Hold two DBs in the front rack (resting on shoulders, elbows up). Squat down to depth, then drive up and press the DBs overhead in one motion. Best wallball / barbell-thruster substitute for a crowded gym." },
+
   // ============================================================
   // FOOT / ANKLE REHAB PROGRESSION — for peroneal tendonitis and
   // full return-to-run/tennis capacity. Ordered by phase.

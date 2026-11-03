@@ -1163,7 +1163,13 @@ export async function generateWorkout(
       let p: Prescription | null = applyInjurySwaps(resolvedP, injuryFlags, available, usedExerciseIds);
       p = adaptToEquipment(p, available, rng, usedExerciseIds);
       if (!p) continue;
-      p = dedupeAgainstUsed(p, usedExerciseIds, available, rng);
+      // Hyrox templates are hand-crafted race-sim structures — repeating
+      // the same movement (runs between stations, same station across pairs)
+      // is the whole point. Skip dedupe so "run 4×400m" in Block 1 doesn't
+      // get swapped to pogo hops in Block 2.
+      if (category !== "hyrox") {
+        p = dedupeAgainstUsed(p, usedExerciseIds, available, rng);
+      }
 
       // Apply periodization wave. Main compounds follow phase.setAdjustment
       // directly (Realization +1 set, Deload -1). Accessories run the opposite
@@ -1237,20 +1243,25 @@ export async function generateWorkout(
         }
       }
 
-      // Focus block bias — the coach thinks in blocks. Hypertrophy shifts reps to
-      // 8-12; Strength peak to 3-5 w/ long rest; Cardio caps accessory volume;
-      // Recovery caps everything. See applyBlockBias for the exact rules.
-      p = applyBlockBias(p, profile.currentFocus?.name, LIFT_ID_SET.has(p.exerciseId));
+      // Hyrox sim templates own their sets/reps structure (compromised running
+      // intervals, station work periods) — don't let hypertrophy block bias
+      // or weekly accessory rotation flatten "4×500m hard" into "3×12".
+      if (category !== "hyrox") {
+        // Focus block bias — the coach thinks in blocks. Hypertrophy shifts reps to
+        // 8-12; Strength peak to 3-5 w/ long rest; Cardio caps accessory volume;
+        // Recovery caps everything. See applyBlockBias for the exact rules.
+        p = applyBlockBias(p, profile.currentFocus?.name, LIFT_ID_SET.has(p.exerciseId));
 
-      // Week-to-week scheme rotation on accessories. Same Monday next week
-      // won't be an identical 3×12 — the sets/reps step through a 4-week
-      // cycle tuned to the block. Main lifts are never touched.
-      p = applyWeeklySchemeRotation(
-        p,
-        date,
-        profile.currentFocus?.name,
-        LIFT_ID_SET.has(p.exerciseId)
-      );
+        // Week-to-week scheme rotation on accessories. Same Monday next week
+        // won't be an identical 3×12 — the sets/reps step through a 4-week
+        // cycle tuned to the block. Main lifts are never touched.
+        p = applyWeeklySchemeRotation(
+          p,
+          date,
+          profile.currentFocus?.name,
+          LIFT_ID_SET.has(p.exerciseId)
+        );
+      }
 
       // Scale time-based durations (cardio, stretching holds, warmup, etc.) — visible on
       // categories where load% doesn't apply. "45 min Z2" becomes 34 min easy / 54 min push.
