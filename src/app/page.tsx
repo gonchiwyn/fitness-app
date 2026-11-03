@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { format, startOfWeek, addDays, differenceInCalendarDays } from "date-fns";
 import { useLiveQuery } from "dexie-react-hooks";
 import clsx from "clsx";
-import { cleanupStaleDrafts, db, getProfile, getWeeklyPlan, saveProfile } from "@/lib/db";
+import { archiveCurrentFocus, cleanupStaleDrafts, db, getProfile, getWeeklyPlan, saveProfile } from "@/lib/db";
 import QuickLogModal from "@/components/QuickLogModal";
 import DayPreviewModal from "@/components/DayPreviewModal";
 import WeeklyReviewModal from "@/components/WeeklyReviewModal";
@@ -481,6 +481,7 @@ function BlockCompleteCard({
 
   const clear = async () => {
     if (!confirm(`Close out the ${focus.name} block? You'll pick a new focus.`)) return;
+    await archiveCurrentFocus();
     await saveProfile({ currentFocus: undefined });
     // Home rerenders on live query; nothing else needed.
     location.reload();

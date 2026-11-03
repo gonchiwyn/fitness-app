@@ -6,6 +6,7 @@ import clsx from "clsx";
 import { addDays, differenceInCalendarDays, format, startOfWeek } from "date-fns";
 import DayPreviewModal from "@/components/DayPreviewModal";
 import {
+  archiveCurrentFocus,
   db,
   getProfile,
   getWeeklyPlan,
@@ -359,6 +360,9 @@ function PlanPageInner() {
 
   const applyPreset = async (preset: (typeof presets)[number], frequency: number) => {
     if (!confirm(`Start "${preset.name}" (${frequency} days/week)? Replaces your current weekly plan.`)) return;
+    // Archive the outgoing block (if any) so it badges on the Profile page
+    // before we overwrite with the new one.
+    await archiveCurrentFocus();
     const next: WeeklyPlan = { id: "me", days: patternForFrequency(preset.days, frequency) };
     setPlan(next);
     await saveWeeklyPlan(next);
@@ -453,6 +457,9 @@ function PlanPageInner() {
 
   const endBlock = async () => {
     if (!confirm("End the current focus block? Your weekly plan stays as-is.")) return;
+    // Archive first so the block earns its badge on the Profile page, then
+    // clear currentFocus. Safe even if archival fails — profile change still goes through.
+    await archiveCurrentFocus();
     await saveProfile({ currentFocus: undefined });
     setProfile((p) => (p ? { ...p, currentFocus: undefined } : p));
   };

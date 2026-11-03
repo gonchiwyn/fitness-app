@@ -532,6 +532,16 @@ export default function WorkoutForCategory({
           </>
         ) : (
           <>
+            {category === "cardio" && (
+              <KmInput
+                value={session.actualKm}
+                onChange={(v) => {
+                  const next = { ...session, actualKm: v };
+                  setSession(next);
+                  if (session.id !== undefined) db.sessions.put(next);
+                }}
+              />
+            )}
             <button
               onClick={finish}
               className="w-full bg-accent text-black font-bold py-4 rounded-2xl text-lg hover:bg-accent-dim transition-colors"
@@ -554,6 +564,46 @@ export default function WorkoutForCategory({
             </div>
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+// Quick km capture on cardio-session finish. Optional — most prescriptions
+// are time-based ("45 min Z2") so we can't infer distance from the plan.
+// What the user types here feeds the Profile page's km counter directly.
+function KmInput({
+  value,
+  onChange,
+}: {
+  value: number | undefined;
+  onChange: (v: number | undefined) => void;
+}) {
+  const [text, setText] = useState(value ? String(value) : "");
+  return (
+    <div className="flex items-center justify-between gap-3 bg-bg-card border border-border rounded-xl px-4 py-3">
+      <div>
+        <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold">
+          Distance covered
+        </div>
+        <div className="text-xs text-text-muted mt-0.5">Optional — feeds your stats.</div>
+      </div>
+      <div className="flex items-center gap-1 shrink-0">
+        <input
+          type="number"
+          inputMode="decimal"
+          step="0.1"
+          min="0"
+          value={text}
+          onChange={(e) => {
+            setText(e.target.value);
+            const parsed = parseFloat(e.target.value);
+            onChange(Number.isFinite(parsed) && parsed > 0 ? parsed : undefined);
+          }}
+          placeholder="—"
+          className="w-16 h-10 rounded-lg bg-bg-elevated border border-border px-2 text-right font-bold tabular-nums"
+        />
+        <span className="text-sm text-text-dim">km</span>
       </div>
     </div>
   );
@@ -733,6 +783,18 @@ function BlockCard({
             <div className="px-4 pt-3 text-xs italic text-text-dim">{block.note}</div>
           )}
 
+          {/* Actual-rounds adjuster — lets the user record "I did 3 instead of
+              4" without digging into set-level logging. Hidden on warmup /
+              cooldown (not meaningful there). Adjusts every prescription in
+              the block in sync — one tap for circuits with 3+ exercises. */}
+          {!isWarmup && !isCooldown && block.prescriptions.length > 0 && (
+            <BlockRoundsAdjuster
+              block={block}
+              isGrouped={isGrouped || isSequential}
+              onUpdate={onUpdate}
+            />
+          )}
+
           <div className={clsx(
             "px-4 py-4 space-y-3",
             isGrouped && "relative"
@@ -765,6 +827,61 @@ function BlockCard({
         </div>
       )}
     </section>
+  );
+}
+
+// Inline adjuster that lets the user record how many rounds/sets they
+// actually did on this block. Writes back to prescribedSets on every
+// prescription in sync so History reflects reality, not the plan.
+function BlockRoundsAdjuster({
+  block,
+  isGrouped,
+  onUpdate,
+}: {
+  block: LoggedBlock;
+  isGrouped: boolean;
+  onUpdate: (b: LoggedBlock) => void;
+}) {
+  // All prescriptions in a block usually share the same set count. Pick the
+  // first as the display source; the adjust delta applies to all of them.
+  const current = block.prescriptions[0]?.prescribedSets ?? 1;
+  const label = isGrouped ? "Rounds done" : "Sets done";
+  const bump = (delta: number) => {
+    const next = Math.max(1, Math.min(10, current + delta));
+    if (next === current) return;
+    const nextPrescriptions = block.prescriptions.map((p) => ({
+      ...p,
+      prescribedSets: Math.max(1, p.prescribedSets + delta),
+    }));
+    onUpdate({ ...block, prescriptions: nextPrescriptions });
+  };
+  return (
+    <div className="px-4 pt-3 flex items-center justify-between gap-3 no-print">
+      <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold">
+        {label}
+      </div>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => bump(-1)}
+          disabled={current <= 1}
+          className="w-8 h-8 rounded-lg border border-border text-text-muted hover:border-accent/40 disabled:opacity-30 disabled:hover:border-border font-semibold"
+          aria-label="Decrease"
+        >
+          −
+        </button>
+        <div className="min-w-[2rem] text-center text-sm font-bold tabular-nums">
+          {current}
+        </div>
+        <button
+          onClick={() => bump(1)}
+          disabled={current >= 10}
+          className="w-8 h-8 rounded-lg border border-border text-text-muted hover:border-accent/40 disabled:opacity-30 disabled:hover:border-border font-semibold"
+          aria-label="Increase"
+        >
+          +
+        </button>
+      </div>
+    </div>
   );
 }
 

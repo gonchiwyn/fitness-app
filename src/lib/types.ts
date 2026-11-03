@@ -277,6 +277,9 @@ export type Session = {
   // Optional: for the "Sport" category — tennis, football, swim etc.
   // Free-text so users aren't boxed in.
   sportName?: string;
+  // Optional: for cardio sessions — the km the user actually covered. Prescriptions
+  // are usually time-based ("45 min Z2") so km can't be inferred. Asked on finish.
+  actualKm?: number;
   blocks: LoggedBlock[];
 };
 
@@ -288,6 +291,19 @@ export type WeekOverride = {
   weekStartDate: string; // yyyy-MM-dd of the Monday
   days: PlannedDay[];
   updatedAt: number;
+};
+
+// A finished focus block — archived on completion / ended / switched-out so
+// the Profile page can render a "badge wall" of what the athlete has done.
+// Minimal fields: enough to recognize the block + count what happened inside.
+export type CompletedBlock = {
+  id?: number;
+  name: string;              // "Hyrox prep", "Beginner", ...
+  startedAt: string;         // yyyy-MM-dd
+  finishedAt: string;        // yyyy-MM-dd of archival
+  durationWeeks: number;     // intended duration
+  endedEarly: boolean;       // true if archived before completing
+  sessionsLogged: number;    // finished sessions whose date falls in the window
 };
 
 // End-of-week self-report. Every field maps to a specific generator

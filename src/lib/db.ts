@@ -1,5 +1,5 @@
 import Dexie, { type Table } from "dexie";
-import type { Benchmark, PlannedDay, Profile, Session, WeeklyPlan, WeeklyReview, WeekOverride } from "./types";
+import type { Benchmark, CompletedBlock, PlannedDay, Profile, Session, WeeklyPlan, WeeklyReview, WeekOverride } from "./types";
 import { dateToPlanIndex, normalizePlannedDay } from "./types";
 import {
   GENERIC_PROFILE,
@@ -15,6 +15,7 @@ export class FitnessDB extends Dexie {
   benchmarks!: Table<Benchmark, number>;
   weeklyReviews!: Table<WeeklyReview, number>;
   weekOverrides!: Table<WeekOverride, number>;
+  completedBlocks!: Table<CompletedBlock, number>;
 
   constructor() {
     super("fitness-app");
@@ -47,6 +48,15 @@ export class FitnessDB extends Dexie {
       benchmarks: "++id, date, type",
       weeklyReviews: "++id, weekEndDate",
       weekOverrides: "++id, &weekStartDate",
+    });
+    this.version(6).stores({
+      sessions: "++id, date, category, workoutId",
+      profile: "id",
+      weeklyPlan: "id",
+      benchmarks: "++id, date, type",
+      weeklyReviews: "++id, weekEndDate",
+      weekOverrides: "++id, &weekStartDate",
+      completedBlocks: "++id, finishedAt, name",
     });
   }
 }
@@ -216,11 +226,52 @@ export async function resetToBlank(): Promise<void> {
   await db.benchmarks.clear();
   await db.weeklyReviews.clear();
   await db.weekOverrides.clear();
+  await db.completedBlocks.clear();
 }
 
 export async function saveProfile(p: Partial<Profile>): Promise<void> {
   const current = await getProfile();
   await db.profile.put({ ...current, ...p, id: "me" });
+}
+
+/** Archive the current focus block to completedBlocks so it earns a badge
+ *  on the Profile page. Counts finished sessions between startedAt and
+ *  today whose focusName matches. Idempotent: skipped if a row with the
+ *  same name + startedAt already exists. */
+export async function archiveCurrentFocus(): Promise<void> {
+  const current = await db.profile.get("me");
+  const focus = current?.currentFocus;
+  if (!focus) return;
+  const today = new Date().toISOString().slice(0, 10);
+  const duplicate = await db.completedBlocks
+    .where("name")
+    .equals(focus.name)
+    .filter((b) => b.startedAt === focus.startedAt)
+    .first();
+  if (duplicate) return;
+
+  const sessions = await db.sessions.toArray();
+  const sessionsLogged = sessions.filter(
+    (s) =>
+      s.finishedAt !== undefined &&
+      s.date >= focus.startedAt &&
+      s.date <= today &&
+      (s.focusName === focus.name || !s.focusName)
+  ).length;
+
+  // Ended early if archival date is before the planned end (startedAt + N weeks).
+  const startMs = new Date(focus.startedAt + "T00:00:00").getTime();
+  const plannedEndMs = startMs + focus.durationWeeks * 7 * 86400000;
+  const endedEarly = Date.now() < plannedEndMs - 86400000; // 1-day grace
+
+  await db.completedBlocks.add({
+    name: focus.name,
+    startedAt: focus.startedAt,
+    finishedAt: today,
+    durationWeeks: focus.durationWeeks,
+    endedEarly,
+    sessionsLogged,
+  });
 }
 
 /** Pause the current focus block. Freezes week counter + phase at today. */
