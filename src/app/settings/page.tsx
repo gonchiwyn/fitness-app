@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import clsx from "clsx";
 import { db, getProfile, loadPersonalSeed, resetToBlank, saveProfile } from "@/lib/db";
-import { format } from "date-fns";
 import {
   CORE_FOCUS_DESCRIPTIONS,
   CORE_FOCUS_LABELS,
@@ -14,22 +13,13 @@ import {
   GOALS,
   REHAB_ZONE_LABELS,
   TRACKED_LIFTS,
-  getCurrentCyclePhase,
   type CoreFocus,
   type EquipmentPreset,
-  type Experience,
   type Goal,
   type LiftId,
   type Profile,
   type RehabZone,
-  type WarmupTarget,
 } from "@/lib/types";
-
-const FOCUS_AREAS: { id: WarmupTarget; label: string; desc: string }[] = [
-  { id: "lower_back", label: "Lower back", desc: "Bracing, hinging, anti-extension" },
-  { id: "hip", label: "Hips", desc: "Mobility, internal/external rotation" },
-  { id: "shoulder", label: "Shoulders", desc: "Scap stability, rotator cuff" },
-];
 
 export default function SettingsPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -46,14 +36,6 @@ export default function SettingsPage() {
     setProfile(next);
     await saveProfile(changes);
     setSaving(false);
-  };
-
-  const toggleFocus = (target: WarmupTarget) => {
-    if (!profile) return;
-    const cur = new Set(profile.focusAreas);
-    if (cur.has(target)) cur.delete(target);
-    else cur.add(target);
-    update({ focusAreas: Array.from(cur) });
   };
 
   const toggleGoal = (g: Goal) => {
@@ -320,96 +302,67 @@ export default function SettingsPage() {
         </div>
       </Section>
 
-      <Section title="Core focus">
+      <Section title="Training constraints">
         <p className="text-sm text-text-muted -mt-2">
-          Auto-injects a Core block at the end of every workout (except Stretching/Recovery/Cardio).
+          Always-on preferences that shape every workout — core block focus
+          and lumbar-friendly intensity caps.
         </p>
-        <div className="space-y-2">
-          {(["off", "protection", "aesthetic", "both"] as CoreFocus[]).map((c) => {
-            const active = (profile.coreFocus ?? "protection") === c;
-            return (
-              <button
-                key={c}
-                onClick={() => update({ coreFocus: c })}
-                className={clsx(
-                  "w-full text-left p-4 rounded-xl border transition-colors",
-                  active ? "bg-accent/10 border-accent/40" : "bg-bg-card border-border"
-                )}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium">{CORE_FOCUS_LABELS[c]}</div>
-                    <div className="text-xs text-text-dim mt-0.5">{CORE_FOCUS_DESCRIPTIONS[c]}</div>
+
+        <div>
+          <div className="text-[11px] uppercase tracking-widest text-text-dim font-medium mb-2">
+            Core block focus
+          </div>
+          <div className="space-y-2">
+            {(["off", "protection", "aesthetic", "both"] as CoreFocus[]).map((c) => {
+              const active = (profile.coreFocus ?? "protection") === c;
+              return (
+                <button
+                  key={c}
+                  onClick={() => update({ coreFocus: c })}
+                  className={clsx(
+                    "w-full text-left p-4 rounded-xl border transition-colors",
+                    active ? "bg-accent/10 border-accent/40" : "bg-bg-card border-border"
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium">{CORE_FOCUS_LABELS[c]}</div>
+                      <div className="text-xs text-text-dim mt-0.5">{CORE_FOCUS_DESCRIPTIONS[c]}</div>
+                    </div>
+                    <Check active={active} />
                   </div>
-                  <Check active={active} />
-                </div>
-              </button>
-            );
-          })}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="pt-2">
+          <div className="text-[11px] uppercase tracking-widest text-text-dim font-medium mb-2">
+            Chronic lumbar care
+          </div>
+          <button
+            onClick={() => update({ chronicLumbarCare: !profile.chronicLumbarCare })}
+            className={clsx(
+              "w-full text-left p-4 rounded-xl border transition-colors flex items-center justify-between",
+              profile.chronicLumbarCare ? "bg-accent/10 border-accent/40" : "bg-bg-card border-border"
+            )}
+          >
+            <div>
+              <div className="font-medium">{profile.chronicLumbarCare ? "On" : "Off"}</div>
+              <div className="text-xs text-text-dim mt-0.5">
+                Caps hinge/squat intensity at ~78% 1RM, adds glute activation to warmup.
+              </div>
+            </div>
+            <Check active={profile.chronicLumbarCare ?? false} />
+          </button>
         </div>
       </Section>
 
-      <Section title="Chronic lumbar care">
-        <p className="text-sm text-text-muted -mt-2">
-          Always-on gentle care without blanket swaps: caps intensity on
-          hinge/squat lifts at ~78% 1RM and adds glute activation to warmup.
-          Doesn&apos;t remove exercises — trusts you to lift smart.
-        </p>
-        <button
-          onClick={() => update({ chronicLumbarCare: !profile.chronicLumbarCare })}
-          className={clsx(
-            "w-full text-left p-4 rounded-xl border transition-colors flex items-center justify-between",
-            profile.chronicLumbarCare ? "bg-accent/10 border-accent/40" : "bg-bg-card border-border"
-          )}
-        >
-          <div>
-            <div className="font-medium">{profile.chronicLumbarCare ? "On" : "Off"}</div>
-            <div className="text-xs text-text-dim mt-0.5">Tap to {profile.chronicLumbarCare ? "disable" : "enable"}</div>
-          </div>
-          <Check active={profile.chronicLumbarCare ?? false} />
-        </button>
-      </Section>
-
       <CollapsibleSection
-        title="Personal record"
-        hint="Experience, equipment, warmup, goals — set once, rarely changes."
+        title="Preferences"
+        hint="Equipment default and goal bias — set once, rarely changes."
       >
-      <Section title="Basics">
-        <Field label="Name">
-          <input
-            type="text"
-            value={profile.name === "Athlete" ? "" : profile.name}
-            onChange={(e) => update({ name: e.target.value || "Athlete" })}
-            placeholder="What should we call you?"
-            className="w-full h-12 px-4 bg-bg-card border border-border rounded-xl"
-          />
-        </Field>
-
-        <Field label="Units">
-          <div className="grid grid-cols-2 gap-2">
-            {(["kg", "lb"] as const).map((u) => (
-              <Pill key={u} active={profile.units === u} onClick={() => update({ units: u })}>
-                {u.toUpperCase()}
-              </Pill>
-            ))}
-          </div>
-        </Field>
-
-        <Field label="Training experience">
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { v: "beginner" as Experience, l: "Beginner" },
-              { v: "intermediate" as Experience, l: "Intermediate" },
-              { v: "advanced" as Experience, l: "Advanced" },
-            ].map((o) => (
-              <Pill key={o.v} active={profile.experience === o.v} onClick={() => update({ experience: o.v })}>
-                {o.l}
-              </Pill>
-            ))}
-          </div>
-        </Field>
-      </Section>
-
       <Section title="Default equipment">
         <p className="text-sm text-text-muted -mt-2">
           Your usual setup. Workouts adapt to this; you can override per-session.
@@ -428,37 +381,6 @@ export default function SettingsPage() {
               >
                 <span className="font-medium">{EQUIPMENT_PRESET_LABELS[p]}</span>
                 <Check active={active} />
-              </button>
-            );
-          })}
-        </div>
-      </Section>
-
-      {/* Periodization section removed — phase model is always-on via the
-          active focus block. profile.periodizationEnabled + programStartDate
-          kept as fallback for anyone in the middle of the old wave. */}
-
-      <Section title="Warmup focus">
-        <p className="text-sm text-text-muted -mt-2">Always included at the start of every workout.</p>
-        <div className="space-y-2">
-          {FOCUS_AREAS.map((f) => {
-            const active = profile.focusAreas.includes(f.id);
-            return (
-              <button
-                key={f.id}
-                onClick={() => toggleFocus(f.id)}
-                className={clsx(
-                  "w-full text-left p-4 rounded-xl border transition-colors",
-                  active ? "bg-accent/10 border-accent/40" : "bg-bg-card border-border"
-                )}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium">{f.label}</div>
-                    <div className="text-xs text-text-dim mt-0.5">{f.desc}</div>
-                  </div>
-                  <Check active={active} />
-                </div>
               </button>
             );
           })}
@@ -628,30 +550,6 @@ function NumField({
       placeholder={placeholder}
       className="w-full h-12 px-3 bg-bg border border-border rounded-xl text-center tabular-nums focus:outline-none focus:border-accent"
     />
-  );
-}
-
-function Pill({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={clsx(
-        "h-12 rounded-xl border text-sm font-medium transition-colors",
-        active
-          ? "bg-accent text-white border-accent"
-          : "bg-bg-card border-border text-text-muted"
-      )}
-    >
-      {children}
-    </button>
   );
 }
 

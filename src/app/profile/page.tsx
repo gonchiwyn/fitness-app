@@ -109,59 +109,52 @@ export default function ProfilePage() {
         </p>
       </section>
 
-      {/* Muscle coverage — promoted ahead of KPIs per Steve Cook review.
-          Bars show set count + MEV target line (10 sets/wk weighted by period
-          length) + delta vs previous period. Red if under-dosed, accent if
-          hitting target, muted if neglected. */}
+      {/* Muscle coverage — bar chart with top 3 highlighted. Delta next to
+          each is sets this period vs the equivalent previous period
+          (week-vs-week, month-vs-month, etc.). */}
       {muscles.some((m) => m.sets > 0) && (() => {
-        const weeksInPeriod =
-          period === "week" ? 1 : period === "month" ? 4 : period === "year" ? 52 : 52;
-        // MEV = minimum effective volume to grow / maintain (Menno/Israetel) → 10 sets/wk
-        const mevTarget = 10 * weeksInPeriod;
-        const max = Math.max(...muscles.map((m) => m.sets), mevTarget);
         const trained = muscles.filter((m) => m.sets > 0);
         const neglected = muscles.filter((m) => m.sets === 0).map((m) => m.label);
+        const max = Math.max(...trained.map((m) => m.sets), 1);
+        const prevLabel =
+          period === "week" ? "last wk"
+          : period === "month" ? "last mo"
+          : period === "year" ? "last yr"
+          : "prior";
         return (
           <section className="space-y-3">
             <h2 className="text-xs uppercase tracking-widest text-text-dim font-semibold">
-              Muscle coverage · MEV {mevTarget} sets
+              Muscle coverage <span className="text-[10px] normal-case tracking-normal text-text-dim">· Δ vs {prevLabel}</span>
             </h2>
             <div className="bg-bg-card border border-border rounded-2xl p-4 space-y-2.5">
-              {trained.map((m) => {
+              {trained.map((m, i) => {
                 const pct = Math.round((m.sets / max) * 100);
-                const mevPct = Math.round((mevTarget / max) * 100);
-                const hitsMev = m.sets >= mevTarget;
-                const underDosed = m.sets < mevTarget / 2;
+                const isTop = i < 3;
                 const delta = muscleDeltas[m.group] ?? 0;
                 return (
                   <div key={m.group} className="space-y-1">
                     <div className="flex items-baseline justify-between text-sm gap-2">
-                      <span className="font-medium">{m.label}</span>
+                      <span className={clsx("font-medium", isTop ? "text-text" : "text-text-muted")}>
+                        {m.label}
+                      </span>
                       <div className="flex items-baseline gap-2 text-xs tabular-nums shrink-0">
-                        <span
-                          className={clsx(
-                            "font-semibold text-[10px]",
-                            delta > 0 ? "text-accent" : delta < 0 ? "text-danger" : "text-text-dim"
-                          )}
-                        >
-                          {delta > 0 ? `+${delta}` : delta === 0 ? "" : delta}
-                        </span>
+                        {delta !== 0 && (
+                          <span
+                            className={clsx(
+                              "font-semibold text-[10px]",
+                              delta > 0 ? "text-accent" : "text-danger"
+                            )}
+                          >
+                            {delta > 0 ? `+${delta}` : delta}
+                          </span>
+                        )}
                         <span className="text-text-dim">{m.sets} sets</span>
                       </div>
                     </div>
-                    <div className="relative h-2 bg-border rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-border rounded-full overflow-hidden">
                       <div
-                        className={clsx(
-                          "h-full transition-all",
-                          hitsMev ? "bg-accent" : underDosed ? "bg-danger/70" : "bg-text-muted/60"
-                        )}
+                        className={clsx("h-full transition-all", isTop ? "bg-accent" : "bg-text-dim/40")}
                         style={{ width: `${pct}%` }}
-                      />
-                      {/* MEV target line */}
-                      <div
-                        className="absolute top-0 bottom-0 w-0.5 bg-text-dim/60"
-                        style={{ left: `${mevPct}%` }}
-                        title={`MEV target ${mevTarget} sets`}
                       />
                     </div>
                   </div>
@@ -404,30 +397,91 @@ export default function ProfilePage() {
         </div>
       </section>
 
-      {/* Share card — a clean summary you can screenshot and send */}
+      {/* Share card — designed for a screenshot you'd actually send.
+          Hero = archetype + name. Stats laid out in bold display type.
+          "Most trained" flex line at the bottom. Brand mark corner-bottom. */}
       <section className="space-y-3">
         <h2 className="text-xs uppercase tracking-widest text-text-dim font-semibold">
           Share
         </h2>
-        <div className="bg-gradient-to-br from-accent/30 via-accent/10 to-bg-card border border-accent/40 rounded-2xl p-6 space-y-4 aspect-[4/5] flex flex-col">
-          <div>
-            <div className="text-[10px] uppercase tracking-widest text-accent font-semibold">
-              Outwork · {PERIOD_LABELS[period]}
-            </div>
-            <div className="text-2xl font-bold mt-1">{name}</div>
-          </div>
-          <div className="flex-1 grid grid-cols-2 gap-4 content-center">
-            <ShareStat big={stats.workouts.toString()} label="workouts" />
-            <ShareStat big={`${stats.km}`} label="km" />
-            <ShareStat big={(stats.minutes / 60).toFixed(1)} label="hours" />
-            <ShareStat big={`${stats.streakDays}`} label="day streak" />
-          </div>
-          <div className="text-[10px] uppercase tracking-widest text-text-dim">
-            {stats.byCategory.slice(0, 3).map((c) => CATEGORY_LABELS[c.category as Category] ?? c.category).join(" · ") || "no training logged"}
-          </div>
-        </div>
+        <ShareCard
+          name={name}
+          period={period}
+          archetype={archetype}
+          stats={stats}
+          topMuscle={muscles.find((m) => m.sets > 0)}
+        />
         <p className="text-[10px] text-text-dim">Screenshot the card above to share.</p>
       </section>
+    </div>
+  );
+}
+
+function ShareCard({
+  name,
+  period,
+  archetype,
+  stats,
+  topMuscle,
+}: {
+  name: string;
+  period: Period;
+  archetype: { name: string; tagline: string; icon: string };
+  stats: ReturnType<typeof import("@/lib/stats").computeStats>;
+  topMuscle?: { label: string; sets: number };
+}) {
+  const periodWord =
+    period === "week" ? "This Week"
+    : period === "month" ? "This Month"
+    : period === "year" ? "This Year"
+    : "All Time";
+  return (
+    <div
+      className="relative rounded-3xl overflow-hidden aspect-[4/5] p-6 text-text flex flex-col"
+      style={{
+        background: "radial-gradient(circle at 20% 10%, rgba(250,204,21,0.35), transparent 55%), radial-gradient(circle at 80% 90%, rgba(250,204,21,0.18), transparent 55%), linear-gradient(135deg, #1a1a1a 0%, #0b0b0b 100%)",
+      }}
+    >
+      {/* Top corners: brand + period */}
+      <div className="flex items-start justify-between text-[10px] uppercase tracking-[0.25em] font-bold">
+        <span className="text-accent">Outwork</span>
+        <span className="text-text-dim">{periodWord}</span>
+      </div>
+
+      {/* Hero: archetype */}
+      <div className="flex-1 flex flex-col items-center justify-center text-center">
+        <div className="text-7xl mb-2 leading-none">{archetype.icon}</div>
+        <div className="text-[10px] uppercase tracking-[0.3em] text-text-dim font-semibold">
+          {name} trains like a
+        </div>
+        <div className="text-4xl font-black mt-1 leading-tight">
+          {archetype.name.toUpperCase()}
+        </div>
+      </div>
+
+      {/* Stats row — bold display type, 4 up */}
+      <div className="border-t border-text-dim/20 pt-4 mt-2 grid grid-cols-4 gap-2 text-center">
+        <ShareNum big={stats.workouts.toString()} label="workouts" />
+        <ShareNum big={stats.km > 0 ? Math.round(stats.km).toString() : "—"} label="km" />
+        <ShareNum big={(stats.minutes / 60).toFixed(1)} label="hours" />
+        <ShareNum big={stats.streakDays.toString()} label="streak" />
+      </div>
+
+      {/* Flex line — most trained muscle in the period */}
+      {topMuscle && (
+        <div className="mt-3 text-[11px] text-center text-text-dim uppercase tracking-widest">
+          Most trained · <span className="text-text font-semibold">{topMuscle.label}</span> · {topMuscle.sets} sets
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ShareNum({ big, label }: { big: string; label: string }) {
+  return (
+    <div>
+      <div className="text-2xl font-black tabular-nums leading-none">{big}</div>
+      <div className="text-[9px] uppercase tracking-widest text-text-dim mt-1">{label}</div>
     </div>
   );
 }
@@ -519,11 +573,3 @@ function KpiTile({
   );
 }
 
-function ShareStat({ big, label }: { big: string; label: string }) {
-  return (
-    <div>
-      <div className="text-3xl font-bold tabular-nums">{big}</div>
-      <div className="text-[10px] uppercase tracking-widest text-text-muted mt-0.5">{label}</div>
-    </div>
-  );
-}

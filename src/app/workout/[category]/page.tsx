@@ -18,6 +18,7 @@ import {
   getBlockPhase,
   EXERCISE_TO_BENCHMARK,
   INTENSITY_LABELS,
+  TRACKED_LIFTS,
   type Category,
   type CoachInfluence,
   type CoreFocus,
@@ -44,6 +45,10 @@ const INFLUENCE_LABELS: Record<CoachInfluence, string> = {
   general: "Foundational",
 };
 
+// Which exercise ids trigger the top-set RPE+weight capture on their card.
+// Mirror of TRACKED_LIFTS — kept as a Set for O(1) lookup in the render loop.
+const TRACKED_LIFT_IDS = new Set<string>(TRACKED_LIFTS.map((l) => l.id));
+
 // Block "mode" inferred from scheme string — drives visual grouping
 type BlockMode = "superset" | "circuit" | "amrap" | "emom" | "for_time" | "straight";
 
@@ -66,9 +71,51 @@ const MODE_LABELS: Record<BlockMode, string> = {
   straight: "STRAIGHT SETS",
 };
 
+// Parse a rest string like "2 min", "90s", "0s", "2-3 min" into seconds.
+// Used to compare rests inside a block and pick the one that represents the
+// "end-of-round" break. Returns 0 for falsy / unparseable input.
+function parseRestSeconds(rest: string | undefined): number {
+  if (!rest) return 0;
+  const r = rest.toLowerCase();
+  const minMatch = r.match(/(\d+(?:\.\d+)?)(?:\s*-\s*(\d+(?:\.\d+)?))?\s*min/);
+  if (minMatch) {
+    const a = parseFloat(minMatch[1]);
+    const b = minMatch[2] ? parseFloat(minMatch[2]) : a;
+    return ((a + b) / 2) * 60;
+  }
+  const secMatch = r.match(/(\d+(?:\.\d+)?)(?:\s*-\s*(\d+(?:\.\d+)?))?\s*s/);
+  if (secMatch) {
+    const a = parseFloat(secMatch[1]);
+    const b = secMatch[2] ? parseFloat(secMatch[2]) : a;
+    return (a + b) / 2;
+  }
+  return 0;
+}
+
+// The "round rest" for a block — the pause between rounds (or sets of the one
+// exercise). In a circuit/superset the templates encode this on the LAST
+// prescription's `rest` field (the preceding exercises have 0s "go straight in"
+// rests). For a straight single-exercise block that same rest field is the
+// between-sets rest. Picking the largest rest in the block captures both
+// patterns correctly; first-prescription-only gave the wrong answer for sims.
+function roundRestForBlock(block: LoggedBlock): string | undefined {
+  if (block.prescriptions.length === 0) return undefined;
+  let bestRest: string | undefined;
+  let bestSec = 0;
+  for (const p of block.prescriptions) {
+    const sec = parseRestSeconds(p.rest);
+    if (sec > bestSec) {
+      bestSec = sec;
+      bestRest = p.rest;
+    }
+  }
+  return bestRest;
+}
+
 // Rebuild the block scheme header from the actual prescriptions so it can't
 // drift from the individual set×rep rows. Keeps the "SUPERSET"/"CIRCUIT"
-// qualifier if the template had one.
+// qualifier if the template had one. Rest label reflects whether the block
+// groups exercises (between rounds) or is a single lift (between sets).
 function computeSchemeHeader(block: LoggedBlock): string {
   const staticScheme = (block as { scheme?: string }).scheme ?? "";
   const qualifiers = [
@@ -81,8 +128,19 @@ function computeSchemeHeader(block: LoggedBlock): string {
   const q = qualifiers.find((x) => staticScheme.toLowerCase().includes(x.key));
   const prefix = q ? `${q.label} · ` : "";
 
-  const rest = block.prescriptions[0]?.rest;
-  const restSuffix = rest ? ` — rest ${rest}` : "";
+  const rest = roundRestForBlock(block);
+  // Grouped (>1 exercise and some grouping scheme): put the "between rounds"
+  // rest in the header so the user knows it marks a full-round boundary (the
+  // connector lines between cards show the within-round transitions).
+  // Single exercise: rest is already shown on the card with "between sets",
+  // so don't repeat it here. Straight-sets with multiple exercises in order:
+  // rest is per-exercise, also shown on the card.
+  const isGroupedScheme =
+    staticScheme.toLowerCase().includes("round") ||
+    !!q;
+  const multi = block.prescriptions.length > 1;
+  const restSuffix =
+    rest && multi && isGroupedScheme ? ` — rest ${rest} between rounds` : "";
 
   if (block.prescriptions.length === 0) return staticScheme;
   // If all prescriptions share the same sets and reps, use a single summary.
@@ -454,12 +512,26 @@ export default function WorkoutForCategory({
           for (const b of session.blocks) {
             for (const p of b.prescriptions) usedInSession.add(p.exerciseId);
           }
+          // Cumulative sim time across prior blocks that have been recorded —
+          // used by the per-block timer to show a running total.
+          const cumulativePriorMs = (bi: number) => {
+            let total = 0;
+            for (let i = 0; i < bi; i++) {
+              const b = session.blocks[i];
+              if (typeof b.splitMs === "number" && typeof b.startedAtMs === "number") {
+                total += b.splitMs - b.startedAtMs;
+              }
+            }
+            return total;
+          };
           return session.blocks.map((block, bi) => (
             <BlockCard
               key={bi}
               block={block}
               units={profile.units}
               category={cat}
+              templateId={session.modifiers?.templateId}
+              cumulativePriorMs={cumulativePriorMs(bi)}
               availableEquipment={resolveEquipmentForUI(session.modifiers, profile.defaultEquipment)}
               usedInSession={usedInSession}
               forceExpanded={printExpandAll}
@@ -695,10 +767,30 @@ function resolveEquipmentForUI(
   return new Set(EQUIPMENT_PRESET_INCLUDES[preset]);
 }
 
+// Hyrox sim templates where per-block splits are worth capturing. The split
+// timer appears on race-pace / mini-race / station blocks only (never on
+// warmup or cooldown). Keep the list tight — pace feedback only matters for
+// sim intent, not for the strength-pull/push days.
+const SIM_TEMPLATE_IDS = new Set<string>([
+  "hyrox_sim_test",
+  "hyrox_sim_short",
+  "hyrox_sim_pairs",
+  "hyrox_sim_pairs_intro",
+  "hyrox_sim_pairs_light",
+  "hyrox_sim_race",
+  "hyrox_sim_intro",
+  "hyrox_sim_light",
+  "hyrox_sim_commercial",
+  "hyrox_sim_commercial_intro",
+  "hyrox_sim_commercial_light",
+]);
+
 function BlockCard({
   block,
   units,
   category,
+  templateId,
+  cumulativePriorMs,
   availableEquipment,
   usedInSession,
   forceExpanded,
@@ -710,6 +802,8 @@ function BlockCard({
   block: LoggedBlock;
   units: "kg" | "lb";
   category: Category;
+  templateId?: string;
+  cumulativePriorMs?: number;
   availableEquipment: Set<string>;
   usedInSession: Set<string>;
   forceExpanded: boolean;
@@ -742,6 +836,17 @@ function BlockCard({
     block.prescriptions.length > 1 &&
     !isWarmup &&
     !isCooldown;
+
+  // Show the per-block split timer on hyrox sim templates only (and never on
+  // warmup/cooldown or race-prep blocks). The timer is per-block self-contained:
+  // tap Start to anchor its stopwatch, Done to stamp its split.
+  const showSplitTimer =
+    category === "hyrox" &&
+    !!templateId &&
+    SIM_TEMPLATE_IDS.has(templateId) &&
+    !isWarmup &&
+    !isCooldown &&
+    !/race prep|prep/i.test(block.title);
 
   return (
     <section className="bg-bg-card border border-border rounded-2xl overflow-hidden print-block">
@@ -805,12 +910,20 @@ function BlockCard({
 
           {/* Actual-rounds adjuster — lets the user record "I did 3 instead of
               4" without digging into set-level logging. Hidden on warmup /
-              cooldown (not meaningful there). Adjusts every prescription in
-              the block in sync — one tap for circuits with 3+ exercises. */}
-          {!isWarmup && !isCooldown && block.prescriptions.length > 0 && (
+              cooldown. Also hidden on cardio sessions since a 45-min Z2 isn't
+              "rounds" — the modality picker + km input handle that case. */}
+          {!isWarmup && !isCooldown && category !== "cardio" && block.prescriptions.length > 0 && (
             <BlockRoundsAdjuster
               block={block}
               isGrouped={isGrouped || isSequential}
+              onUpdate={onUpdate}
+            />
+          )}
+
+          {showSplitTimer && (
+            <BlockSplitTimer
+              block={block}
+              cumulativePriorMs={cumulativePriorMs ?? 0}
               onUpdate={onUpdate}
             />
           )}
@@ -826,23 +939,54 @@ function BlockCard({
               />
             )}
 
-            {block.prescriptions.map((p, pi) => (
-              <ExerciseCard
-                key={pi}
-                prescription={p}
-                blockMode={mode}
-                position={pi}
-                totalInGroup={block.prescriptions.length}
-                isWarmup={isWarmup}
-                isCooldown={isCooldown}
-                isCore={isCore}
-                category={category}
-                availableEquipment={availableEquipment}
-                usedInSession={usedInSession}
-                onSwap={(newId) => onSwap(pi, newId)}
-                onSkip={() => onSkip(pi)}
-              />
-            ))}
+            {block.prescriptions.map((p, pi) => {
+              const isLast = pi === block.prescriptions.length - 1;
+              // Grouped/sequential connectors: show the transition between
+              // consecutive exercises so the user doesn't have to guess
+              // whether to rest or continue straight into the next one.
+              // Suppressed on warmup/cooldown (irrelevant) and on the last
+              // exercise (that rest is the "between rounds/sets" already
+              // in the block header).
+              const showConnector =
+                !isWarmup && !isCooldown && !isLast && (isGrouped || isSequential);
+              const restSec = parseRestSeconds(p.rest);
+              const connectorLabel =
+                restSec === 0 ? "↓ straight into" : `↓ rest ${p.rest}`;
+              return (
+                <div key={pi} className={clsx(isGrouped && "pl-0")}>
+                  <ExerciseCard
+                    prescription={p}
+                    blockMode={mode}
+                    position={pi}
+                    totalInGroup={block.prescriptions.length}
+                    isWarmup={isWarmup}
+                    isCooldown={isCooldown}
+                    isCore={isCore}
+                    category={category}
+                    units={units}
+                    hideRestStat={isGrouped || isSequential}
+                    availableEquipment={availableEquipment}
+                    usedInSession={usedInSession}
+                    onSwap={(newId) => onSwap(pi, newId)}
+                    onSkip={() => onSkip(pi)}
+                    onUpdate={(nextPresc) => {
+                      const next = { ...block, prescriptions: [...block.prescriptions] };
+                      next.prescriptions[pi] = nextPresc;
+                      onUpdate(next);
+                    }}
+                  />
+                  {showConnector && (
+                    <div className={clsx(
+                      "mt-2 mb-1 text-[10px] uppercase tracking-widest font-semibold",
+                      restSec === 0 ? "text-text-dim" : "text-accent",
+                      isGrouped && "pl-5"
+                    )}>
+                      {connectorLabel}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -911,6 +1055,229 @@ function CardioModalityPicker({
   );
 }
 
+// Autoreg helper: picks the next working-weight from the last RPE value.
+// Menno/Autoregulation logic — if the last top set was 6–7, you had reserve,
+// bump up. 8 is the target; hold the load. 9–10 was a grinder; back off.
+function autoregNudge(prevWeight: number | undefined, prevRpe: number | undefined, step: number): {
+  advice: string;
+  suggestion?: number;
+} {
+  if (!prevWeight || !prevRpe) return { advice: "" };
+  if (prevRpe <= 7) {
+    return { advice: `Last was RPE ${prevRpe} — try +${step}`, suggestion: prevWeight + step };
+  }
+  if (prevRpe === 8) {
+    return { advice: `Last was RPE 8 — hold the load`, suggestion: prevWeight };
+  }
+  return { advice: `Last was RPE ${prevRpe} — back off ~${step}`, suggestion: Math.max(0, prevWeight - step) };
+}
+
+// Inline autoregulation for compound lifts. Shows previous top set + RPE,
+// gives a weight suggestion, lets the user record today's number. Saves back
+// to the LoggedPrescription's actualRpe / actualTopSetWeight. Loads the last
+// finished session that contains the same exerciseId — one fetch per card.
+function TopSetAutoreg({
+  prescription,
+  units,
+  onUpdate,
+}: {
+  prescription: LoggedPrescription;
+  units: "kg" | "lb";
+  onUpdate: (next: LoggedPrescription) => void;
+}) {
+  const [prev, setPrev] = useState<{ weight?: number; rpe?: number; date: string } | null>(null);
+  const [weight, setWeight] = useState<string>(
+    prescription.actualTopSetWeight !== undefined ? String(prescription.actualTopSetWeight) : ""
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const all = await db.sessions.toArray();
+      // Newest finished session that holds the same exerciseId with an
+      // actual rating or weight written down. Keeps the nudge current.
+      const candidates = all
+        .filter((s) => s.finishedAt)
+        .sort((a, b) => (b.finishedAt ?? 0) - (a.finishedAt ?? 0));
+      for (const s of candidates) {
+        for (const b of s.blocks ?? []) {
+          for (const p of b.prescriptions ?? []) {
+            if (p.exerciseId !== prescription.exerciseId) continue;
+            if (p.actualTopSetWeight === undefined && p.actualRpe === undefined) continue;
+            if (cancelled) return;
+            setPrev({ weight: p.actualTopSetWeight, rpe: p.actualRpe, date: s.date });
+            return;
+          }
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [prescription.exerciseId]);
+
+  const step = units === "kg" ? 2.5 : 5;
+  const nudge = autoregNudge(prev?.weight, prev?.rpe, step);
+  const saveWeight = (raw: string) => {
+    setWeight(raw);
+    const num = raw === "" ? undefined : Number(raw);
+    onUpdate({ ...prescription, actualTopSetWeight: Number.isFinite(num) ? num : undefined });
+  };
+  const pickRpe = (rpe: number) => {
+    const nextRpe = prescription.actualRpe === rpe ? undefined : rpe;
+    onUpdate({ ...prescription, actualRpe: nextRpe });
+  };
+
+  return (
+    <div className="mt-2 mb-2 p-3 bg-bg rounded-lg border border-border/60 space-y-2 no-print">
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold">
+          Top set — autoreg
+        </div>
+        {prev ? (
+          <div className="text-[10px] text-text-dim">
+            Last: {prev.weight ? `${prev.weight}${units}` : "—"}
+            {prev.rpe ? ` · RPE ${prev.rpe}` : ""}
+          </div>
+        ) : (
+          <div className="text-[10px] text-text-dim">First time logging</div>
+        )}
+      </div>
+
+      {nudge.advice && (
+        <div className="text-[11px] text-accent">
+          {nudge.advice}
+          {nudge.suggestion !== undefined && ` → try ${nudge.suggestion}${units}`}
+        </div>
+      )}
+
+      <div className="flex items-center gap-2">
+        <input
+          type="number"
+          inputMode="decimal"
+          step={step}
+          value={weight}
+          onChange={(e) => saveWeight(e.target.value)}
+          placeholder={nudge.suggestion !== undefined ? String(nudge.suggestion) : units}
+          className="flex-1 h-10 px-3 bg-bg-card border border-border rounded-lg text-center tabular-nums focus:outline-none focus:border-accent"
+        />
+        <span className="text-xs text-text-muted">{units}</span>
+      </div>
+
+      <div className="grid grid-cols-5 gap-1.5">
+        {[6, 7, 8, 9, 10].map((r) => {
+          const active = prescription.actualRpe === r;
+          return (
+            <button
+              key={r}
+              onClick={() => pickRpe(r)}
+              className={clsx(
+                "h-9 rounded-md text-xs font-semibold transition-colors",
+                active
+                  ? "bg-accent text-black"
+                  : "bg-bg-card text-text-muted border border-border"
+              )}
+            >
+              RPE {r}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Per-block stopwatch split for hyrox sim sessions. Each block owns its own
+// timer: tap Start to anchor, Done to stamp its split. Cumulative total
+// across prior recorded blocks is shown alongside. Letting athletes see
+// station splits turns a 25-min sim into a measurable thing — pace-feedback
+// is the point.
+function BlockSplitTimer({
+  block,
+  cumulativePriorMs,
+  onUpdate,
+}: {
+  block: LoggedBlock;
+  cumulativePriorMs: number;
+  onUpdate: (b: LoggedBlock) => void;
+}) {
+  const started = typeof block.startedAtMs === "number";
+  const recorded = typeof block.splitMs === "number";
+  // Live clock while running — ticks the displayed time.
+  const [now, setNow] = useState<number>(() => Date.now());
+  useEffect(() => {
+    if (!started || recorded) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [started, recorded]);
+
+  const anchor = block.startedAtMs ?? 0;
+  const endMs = block.splitMs ?? now;
+  const perBlock = started ? endMs - anchor : 0;
+  const cumulative = cumulativePriorMs + perBlock;
+
+  const start = () => onUpdate({ ...block, startedAtMs: Date.now() });
+  const done = () => onUpdate({ ...block, splitMs: Date.now() });
+  const reset = () => {
+    const next = { ...block };
+    delete next.startedAtMs;
+    delete next.splitMs;
+    onUpdate(next);
+  };
+
+  return (
+    <div className="px-4 pt-3 flex items-center justify-between gap-3 no-print">
+      <div className="flex items-baseline gap-3">
+        <div>
+          <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold">
+            Block split
+          </div>
+          <div className="text-xl font-bold tabular-nums leading-none mt-0.5">
+            {fmtMsClock(perBlock)}
+          </div>
+        </div>
+        {(started || cumulativePriorMs > 0) && (
+          <div className="text-[10px] text-text-dim">
+            Total {fmtMsClock(cumulative)}
+          </div>
+        )}
+      </div>
+      {!started && (
+        <button
+          onClick={start}
+          className="h-9 px-4 rounded-lg text-xs font-bold bg-accent text-black"
+        >
+          Start
+        </button>
+      )}
+      {started && !recorded && (
+        <button
+          onClick={done}
+          className="h-9 px-4 rounded-lg text-xs font-bold bg-accent text-black"
+        >
+          Done
+        </button>
+      )}
+      {recorded && (
+        <button
+          onClick={reset}
+          className="h-9 px-3 rounded-lg text-xs font-semibold text-text-dim border border-border"
+        >
+          Reset
+        </button>
+      )}
+    </div>
+  );
+}
+
+function fmtMsClock(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) ms = 0;
+  const total = Math.floor(ms / 1000);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 function BlockRoundsAdjuster({
   block,
   isGrouped,
@@ -971,10 +1338,13 @@ function ExerciseCard({
   isWarmup,
   isCooldown,
   category,
+  units,
+  hideRestStat,
   availableEquipment,
   usedInSession,
   onSwap,
   onSkip,
+  onUpdate,
 }: {
   prescription: LoggedPrescription;
   blockMode: BlockMode;
@@ -984,10 +1354,16 @@ function ExerciseCard({
   isCooldown: boolean;
   isCore: boolean;
   category: Category;
+  units: "kg" | "lb";
+  // When true, suppress the per-exercise "rest" Stat — a grouped block
+  // shows the rest on the between-exercise connector and in the block
+  // header, so duplicating it on the card is noise.
+  hideRestStat?: boolean;
   availableEquipment: Set<string>;
   usedInSession: Set<string>;
   onSwap: (newExerciseId: string) => void;
   onSkip: () => void;
+  onUpdate: (next: LoggedPrescription) => void;
 }) {
   const [showSwaps, setShowSwaps] = useState(false);
   const [showHowTo, setShowHowTo] = useState(false);
@@ -1078,10 +1454,10 @@ function ExerciseCard({
           big={`${prescription.prescribedSets} × ${prescription.prescribedReps}`}
           label="sets × reps"
         />
-        {prescription.rest && (
+        {prescription.rest && !hideRestStat && (
           <Stat
             big={prescription.rest}
-            label="rest"
+            label={totalInGroup === 1 ? "rest between sets" : "rest"}
           />
         )}
         {prescription.rpe !== undefined && (
@@ -1098,6 +1474,17 @@ function ExerciseCard({
         <div className="text-sm text-accent font-medium mb-1.5">
           {prescription.loadHint}
         </div>
+      )}
+
+      {/* Top-set autoregulation: only on the tracked compound lifts, only
+          outside warmup/cooldown. Shows last session's weight × RPE as a
+          nudge and lets the user log today's number inline. */}
+      {!isWarmup && !isCooldown && TRACKED_LIFT_IDS.has(prescription.exerciseId) && (
+        <TopSetAutoreg
+          prescription={prescription}
+          units={units}
+          onUpdate={onUpdate}
+        />
       )}
 
       {/* Prescription notes */}

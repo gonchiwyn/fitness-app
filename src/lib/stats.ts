@@ -461,7 +461,11 @@ export type Pillar = {
   unit: string;
 };
 
-const STRENGTH_CATEGORIES = new Set<Category>(["strength", "hypertrophy", "split", "hyrox", "athlete"]);
+// Attia's "strength" pillar is heavy resistance work. Hyrox + athlete sessions
+// are conditioning-forward even when they include loaded carries — counting
+// them here inflates the ring and hides a genuine strength gap. Pure lifting
+// categories only.
+const STRENGTH_CATEGORIES = new Set<Category>(["strength", "hypertrophy", "split"]);
 const STABILITY_CATEGORIES = new Set<Category>(["core", "stretching", "recovery"]);
 
 export function computeAttiaPillars(
