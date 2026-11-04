@@ -1165,9 +1165,10 @@ export async function generateWorkout(
       if (!p) continue;
       // Hyrox templates are hand-crafted race-sim structures — repeating
       // the same movement (runs between stations, same station across pairs)
-      // is the whole point. Skip dedupe so "run 4×400m" in Block 1 doesn't
-      // get swapped to pogo hops in Block 2.
-      if (category !== "hyrox") {
+      // is the whole point. Same for cardio: a Z2 easy-bike warm-up into a
+      // 45-min easy-bike main is intentional — don't swap the main to
+      // "jump rope" just because easy_bike was used in warmup.
+      if (category !== "hyrox" && category !== "cardio") {
         p = dedupeAgainstUsed(p, usedExerciseIds, available, rng);
       }
 

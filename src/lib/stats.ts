@@ -143,18 +143,48 @@ export function cardioIntensityForSession(session: Session): "easy" | "moderate"
   return "easy"; // Z2 / long / easy / unlabeled default to easy
 }
 
-/** Current day-streak: how many consecutive days up to today have a finished session. */
+/** Current day-streak: consecutive training days. One day of grace: if today
+ *  has no session yet we start counting from yesterday, so an active streak
+ *  doesn't read "0" just because it's 9am and you haven't trained yet. */
 export function computeStreakDays(sessions: Session[], today: Date = new Date()): number {
   const finished = sessions.filter((s) => s.finishedAt);
   if (finished.length === 0) return 0;
   const dates = new Set(finished.map((s) => s.date));
-  let streak = 0;
+  const todayStr = today.toISOString().slice(0, 10);
   const cursor = new Date(today);
+  // If no session today, step back one day — we grant until end-of-day today.
+  if (!dates.has(todayStr)) cursor.setDate(cursor.getDate() - 1);
+  let streak = 0;
   while (dates.has(cursor.toISOString().slice(0, 10))) {
     streak++;
     cursor.setDate(cursor.getDate() - 1);
   }
   return streak;
+}
+
+/** Rough duration in minutes for a single session. Priority:
+ *  1) real elapsed (finishedAt - startedAt) if plausibly in session range,
+ *  2) sum of cardio prescription minutes (for cardio only),
+ *  3) category default. */
+function sessionDurationMinutes(s: Session): number {
+  if (s.finishedAt && s.startedAt) {
+    const elapsedMin = (s.finishedAt - s.startedAt) / 60000;
+    if (elapsedMin >= 10 && elapsedMin <= 180) return elapsedMin;
+  }
+  if (s.category === "cardio") {
+    let m = 0;
+    for (const b of s.blocks ?? []) {
+      for (const p of b.prescriptions ?? []) {
+        m += parseMinutesFromReps(p.prescribedReps) * (p.prescribedSets ?? 1);
+      }
+    }
+    if (m > 0) return m;
+  }
+  // Category defaults — rough but useful for Spotify-Wrapped stats.
+  if (s.category === "stretching" || s.category === "recovery" || s.category === "core") return 20;
+  if (s.category === "burn") return 30;
+  if (s.category === "sport") return 60;
+  return 45; // strength/hypertrophy/split/hyrox/athlete/surf default
 }
 
 export function computeStats(
@@ -174,6 +204,9 @@ export function computeStats(
   let minutes = 0;
   for (const s of inPeriod) {
     categoryCounts.set(s.category, (categoryCounts.get(s.category) ?? 0) + 1);
+    // Count minutes for ALL sessions, not just cardio — the "total time trained"
+    // KPI should include strength + stretching + sport too.
+    minutes += sessionDurationMinutes(s);
     if (s.category === "cardio") {
       // Km priority: 1) user-entered actualKm, 2) modality-aware estimation
       // (run pace, bike/row speed ratios), 3) parsed km from reps.
@@ -184,12 +217,6 @@ export function computeStats(
       km += sessionKm;
       const intensity = cardioIntensityForSession(s);
       kmByIntensity[intensity] += sessionKm;
-      // Minutes parsed from reps since most cardio prescriptions are time-based.
-      for (const b of s.blocks ?? []) {
-        for (const p of b.prescriptions ?? []) {
-          minutes += parseMinutesFromReps(p.prescribedReps) * (p.prescribedSets ?? 1);
-        }
-      }
     }
   }
 
@@ -398,5 +425,139 @@ export function computeMuscleCoverage(sessions: Session[], period: Period, today
   return Object.keys(MUSCLE_GROUP_LABELS)
     .map((g) => ({ group: g, label: MUSCLE_GROUP_LABELS[g], sets: setsByGroup.get(g) ?? 0 }))
     .sort((a, b) => b.sets - a.sets);
+}
+
+// Delta vs the equivalent previous period. Used to show "Chest +4" / "Back −6"
+// next to each muscle bar so the user sees trajectory, not just level.
+export function computeMuscleDeltas(
+  sessions: Session[],
+  period: Period,
+  today: Date = new Date()
+): Record<string, number> {
+  // Compute the "previous" window of equivalent length ending the day before
+  // the current window starts.
+  const { from } = periodRange(period, today);
+  const prevEnd = new Date(from + "T00:00:00");
+  prevEnd.setDate(prevEnd.getDate() - 1);
+  const previous = computeMuscleCoverage(sessions, period, prevEnd);
+  const current = computeMuscleCoverage(sessions, period, today);
+  const deltas: Record<string, number> = {};
+  for (const c of current) {
+    const p = previous.find((x) => x.group === c.group);
+    deltas[c.group] = c.sets - (p?.sets ?? 0);
+  }
+  return deltas;
+}
+
+// --- Attia 4 pillars -------------------------------------------------------
+// Peter Attia's weekly non-negotiables for longevity. Targets are fixed per
+// week; when period ≠ "week" we normalize (target × periodDays/7) so the
+// ring reads correctly on monthly/yearly views.
+export type Pillar = {
+  id: "z2" | "vo2" | "strength" | "stability";
+  label: string;
+  current: number;
+  target: number;
+  unit: string;
+};
+
+const STRENGTH_CATEGORIES = new Set<Category>(["strength", "hypertrophy", "split", "hyrox", "athlete"]);
+const STABILITY_CATEGORIES = new Set<Category>(["core", "stretching", "recovery"]);
+
+export function computeAttiaPillars(
+  sessions: Session[],
+  period: Period,
+  profile: Profile | null | undefined = null,
+  today: Date = new Date()
+): Pillar[] {
+  const { from, to } = periodRange(period, today);
+  const inPeriod = sessions.filter(
+    (s) => s.finishedAt && s.date >= from && s.date <= to
+  );
+  const weeksInPeriod =
+    period === "week" ? 1 :
+    period === "month" ? 4 :
+    period === "year" ? 52 :
+    Math.max(1, Math.round((today.getTime() - new Date("2000-01-01").getTime()) / (7 * 86400000)));
+
+  let z2Minutes = 0;
+  let vo2Count = 0;
+  let strengthCount = 0;
+  let stabilityCount = 0;
+
+  for (const s of inPeriod) {
+    const intensity = s.category === "cardio" ? cardioIntensityForSession(s) : null;
+    if (s.category === "cardio" && (intensity === "easy" || intensity === "moderate")) {
+      // Z2 time: minutes from reps on easy/moderate cardio sessions.
+      for (const b of s.blocks ?? []) {
+        for (const p of b.prescriptions ?? []) {
+          z2Minutes += parseMinutesFromReps(p.prescribedReps) * (p.prescribedSets ?? 1);
+        }
+      }
+    }
+    if (s.category === "cardio" && intensity === "hard") vo2Count++;
+    if (STRENGTH_CATEGORIES.has(s.category)) strengthCount++;
+    if (STABILITY_CATEGORIES.has(s.category)) stabilityCount++;
+  }
+  // Also unused `profile` reference prevented by the void expression.
+  void profile;
+
+  return [
+    { id: "z2",        label: "Zone 2",    current: Math.round(z2Minutes),  target: 180 * weeksInPeriod, unit: "min" },
+    { id: "vo2",       label: "VO2 max",   current: vo2Count,               target: 1 * weeksInPeriod,   unit: "sessions" },
+    { id: "strength",  label: "Strength",  current: strengthCount,          target: 2 * weeksInPeriod,   unit: "sessions" },
+    { id: "stability", label: "Stability", current: stabilityCount,         target: 2 * weeksInPeriod,   unit: "sessions" },
+  ];
+}
+
+// --- Strength PRs ----------------------------------------------------------
+// Pulls the latest benchmark value per tracked lift and (when there's a prior
+// entry) the delta from the previous entry. Fuels the "PR board" on the
+// Profile page.
+export type PrRow = {
+  type: BenchmarkType;
+  label: string;
+  unit: string;
+  current: number;
+  deltaFromPrevious: number | null; // null if only 1 entry
+  lastDate: string;
+  higherIsBetter: boolean;
+};
+
+const PR_PRIORITY: BenchmarkType[] = [
+  "bench_1rm",
+  "squat_1rm",
+  "deadlift_1rm",
+  "pullup_max",
+  "ohp_1rm",
+  "5k_time_sec",
+];
+
+export function computePrBoard(benchmarks: Benchmark[]): PrRow[] {
+  const byType = new Map<BenchmarkType, Benchmark[]>();
+  for (const b of benchmarks) {
+    const arr = byType.get(b.type) ?? [];
+    arr.push(b);
+    byType.set(b.type, arr);
+  }
+  const rows: PrRow[] = [];
+  for (const type of PR_PRIORITY) {
+    const entries = byType.get(type);
+    if (!entries || entries.length === 0) continue;
+    const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date));
+    const latest = sorted[sorted.length - 1];
+    const previous = sorted.length > 1 ? sorted[sorted.length - 2] : null;
+    const meta = BENCHMARK_META[type];
+    rows.push({
+      type,
+      label: meta.label,
+      unit: meta.unit,
+      current: latest.value,
+      deltaFromPrevious: previous ? latest.value - previous.value : null,
+      lastDate: latest.date,
+      higherIsBetter: meta.higherIsBetter,
+    });
+  }
+  return rows;
 }
 

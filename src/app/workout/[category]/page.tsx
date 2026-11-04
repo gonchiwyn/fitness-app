@@ -426,6 +426,26 @@ export default function WorkoutForCategory({
         />
       </div>
 
+      {/* Cardio modality picker — Z2 doesn't care which modality you choose,
+          but your body does. Pick run / bike / row / ski-erg and all cardio
+          exercises in the session swap to match. */}
+      {cat === "cardio" && (
+        <CardioModalityPicker
+          session={session}
+          onPick={(exerciseId) => {
+            update((s) => ({
+              ...s,
+              blocks: s.blocks.map((b) => ({
+                ...b,
+                prescriptions: b.prescriptions.map((p) =>
+                  CARDIO_SWAPPABLE.has(p.exerciseId) ? { ...p, exerciseId } : p
+                ),
+              })),
+            }));
+          }}
+        />
+      )}
+
       {/* BLOCKS */}
       <div className="space-y-4">
         {(() => {
@@ -833,6 +853,64 @@ function BlockCard({
 // Inline adjuster that lets the user record how many rounds/sets they
 // actually did on this block. Writes back to prescribedSets on every
 // prescription in sync so History reflects reality, not the plan.
+// IDs of cardio exercises that are interchangeable modalities — swap one for
+// another on a Z2/long-run day and nothing else needs to change. Run / Bike /
+// Row / Ski-erg cover 95% of the Z2 toolbox.
+const CARDIO_SWAPPABLE = new Set<string>([
+  "run", "easy_bike", "bike_erg", "easy_row", "row_500", "ski_erg",
+]);
+const CARDIO_OPTIONS: { id: string; label: string }[] = [
+  { id: "run",       label: "Run" },
+  { id: "easy_bike", label: "Bike" },
+  { id: "easy_row",  label: "Row" },
+  { id: "ski_erg",   label: "Ski-erg" },
+];
+
+function CardioModalityPicker({
+  session,
+  onPick,
+}: {
+  session: Session;
+  onPick: (exerciseId: string) => void;
+}) {
+  // Current modality = the first swappable exercise found in the session.
+  let current = "run";
+  outer: for (const b of session.blocks) {
+    for (const p of b.prescriptions) {
+      if (CARDIO_SWAPPABLE.has(p.exerciseId)) {
+        current = p.exerciseId === "row_500" ? "easy_row"
+                : p.exerciseId === "bike_erg" ? "easy_bike"
+                : p.exerciseId;
+        break outer;
+      }
+    }
+  }
+  return (
+    <div className="no-print bg-bg-card border border-border rounded-xl p-3 space-y-2">
+      <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold">
+        Modality
+      </div>
+      <div className="grid grid-cols-4 gap-1.5">
+        {CARDIO_OPTIONS.map((opt) => {
+          const active = opt.id === current;
+          return (
+            <button
+              key={opt.id}
+              onClick={() => onPick(opt.id)}
+              className={clsx(
+                "h-10 rounded-lg text-xs font-semibold transition-colors",
+                active ? "bg-accent text-black" : "bg-bg-elevated text-text-muted border border-border"
+              )}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function BlockRoundsAdjuster({
   block,
   isGrouped,
