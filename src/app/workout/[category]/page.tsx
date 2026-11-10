@@ -15,6 +15,7 @@ import {
   CATEGORY_LABELS,
   CORE_FOCUS_LABELS,
   EQUIPMENT_PRESET_INCLUDES,
+  EQUIPMENT_PRESET_LABELS,
   getBlockPhase,
   EXERCISE_TO_BENCHMARK,
   INTENSITY_LABELS,
@@ -126,7 +127,11 @@ function computeSchemeHeader(block: LoggedBlock): string {
     { key: "for time", label: "For Time" },
   ];
   const q = qualifiers.find((x) => staticScheme.toLowerCase().includes(x.key));
-  const prefix = q ? `${q.label} · ` : "";
+  // The block header's SUPERSET / CIRCUIT / etc. badge is rendered as its
+  // own pill in the JSX — don't also prepend the word to the scheme text or
+  // we end up with "SUPERSETSuperset · 3 rounds: …". `q` is still needed
+  // below as a signal for isGroupedScheme.
+  const prefix = "";
 
   const rest = roundRestForBlock(block);
   // Grouped (>1 exercise and some grouping scheme): put the "between rounds"
@@ -163,11 +168,24 @@ function computeSchemeHeader(block: LoggedBlock): string {
   if (allSame) {
     return `${prefix}${first.prescribedSets} × ${first.prescribedReps}${restSuffix}`;
   }
-  // Otherwise return the range across the block.
+  // Multi-exercise block with varying reps. Two shapes:
+  //  - Grouped (circuit / superset / "N rounds of" scheme): the shared sets
+  //    number is a round count — show as "N rounds: A → B → C" so the
+  //    sequence reads as a flow.
+  //  - Sequential (DO IN ORDER, no grouping scheme): each exercise has its
+  //    own sets/reps and the user does them to completion one after the
+  //    other — the block header would just invent a summary, so stay quiet
+  //    and let each card speak for itself.
   const reps = block.prescriptions.map((p) => String(p.prescribedReps));
   const sets = block.prescriptions.map((p) => p.prescribedSets);
-  const setsSummary = sets.every((s) => s === sets[0]) ? `${sets[0]}` : `${Math.min(...sets)}-${Math.max(...sets)}`;
-  return `${prefix}${setsSummary} × ${[...new Set(reps)].join("/")}${restSuffix}`;
+  if (isGroupedScheme) {
+    const setsSummary = sets.every((s) => s === sets[0]) ? `${sets[0]}` : `${Math.min(...sets)}-${Math.max(...sets)}`;
+    const roundsWord = sets[0] === 1 ? "round" : "rounds";
+    return `${prefix}${setsSummary} ${roundsWord}: ${reps.join(" → ")}${restSuffix}`;
+  }
+  // Sequential: just the qualifier prefix (if any), nothing else. The
+  // "DO IN ORDER" badge the UI adds + each card's own sets×reps is enough.
+  return prefix.replace(/\s*·\s*$/, "");
 }
 
 export default function WorkoutForCategory({
@@ -403,27 +421,27 @@ export default function WorkoutForCategory({
         </div>
 
         <div>
-          <div className="text-[11px] uppercase tracking-[0.2em] text-accent font-semibold flex items-center gap-2">
+          <div className="text-[11px] uppercase tracking-[0.22em] text-accent font-medium flex items-center gap-2">
             <span>{CATEGORY_LABELS[cat]}</span>
             {session.finishedAt && (
               <span className="text-success font-normal normal-case tracking-normal text-xs">
-                · ✓ Done
+                · Done
               </span>
             )}
           </div>
-          <h1 className="text-3xl font-bold mt-1.5 leading-tight">
+          <h1 className="font-display text-[2rem] font-semibold mt-2 leading-[1.1] tracking-tight text-text">
             {session.name.split(" — ")[1] ?? session.name}
           </h1>
-          <div className="text-sm text-text-dim mt-1">
+          <div className="text-sm text-text-muted mt-1.5">
             {format(new Date(session.date), "EEEE, MMM d")}
             {session.modifiers?.timeMinutes ? ` · ${session.modifiers.timeMinutes} min` : ""}
           </div>
         </div>
 
         {/* READINESS CHECK-IN — front and center. 3 modes, gut choice. */}
-        <div className="bg-bg-card border border-border rounded-2xl p-3">
-          <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold mb-2 px-1">
-            How do you feel today?
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium mb-3">
+            How do you feel today
           </div>
           <div className="grid grid-cols-3 gap-2">
             {(["easy", "normal", "push"] as Intensity[]).map((i) => (
@@ -456,45 +474,27 @@ export default function WorkoutForCategory({
 
       </header>
 
-      {/* PHILOSOPHY */}
+      {/* Today's shape — one compact strip collapsing cycle + adjust + philosophy.
+          Previously three stacked blocks of meta before the first exercise. */}
       {(() => {
-        // Prefer the LIVE focus block phase over the phase stamped on the
-        // session (which may be stale — e.g. block duration was later
-        // upgraded from 4 → 6 weeks).
         const focus = profile.currentFocus;
         const livePhase =
           focus?.startedAt && focus.durationWeeks
             ? getBlockPhase(focus.startedAt, focus.durationWeeks, new Date())
             : session.phase;
         const totalWeeks = focus?.durationWeeks ?? 4;
-        return livePhase ? (
-          <div className="bg-bg-card border-l-2 border-accent rounded-r-xl px-4 py-3 no-print">
-            <div className="text-[10px] uppercase tracking-widest text-accent font-semibold mb-1">
-              Cycle · Week {livePhase.weekInCycle} of {totalWeeks} · {livePhase.label}
-            </div>
-            <p className="text-sm text-text-muted leading-relaxed">{livePhase.description}</p>
-          </div>
-        ) : null;
+        return (
+          <TodayShapeStrip
+            phase={livePhase}
+            totalWeeks={totalWeeks}
+            philosophy={session.philosophy}
+            influences={session.influences}
+            modifiers={session.modifiers ?? {}}
+            defaultEquipment={profile.defaultEquipment}
+            onApply={regenerateWithModifiers}
+          />
+        );
       })()}
-
-      {session.philosophy && (
-        <div className="bg-bg-card border-l-2 border-accent rounded-r-xl px-4 py-3 no-print">
-          <div className="text-[10px] uppercase tracking-widest text-accent font-semibold mb-1">
-            {session.influences && session.influences.length > 0
-              ? `Influenced by ${session.influences.map((c) => INFLUENCE_LABELS[c]).join(" + ")}`
-              : "Today's protocol"}
-          </div>
-          <p className="text-sm text-text-muted leading-relaxed">{session.philosophy}</p>
-        </div>
-      )}
-
-      <div className="no-print">
-        <ModifierPanel
-          initial={session.modifiers ?? {}}
-          defaultEquipment={profile.defaultEquipment}
-          onApply={regenerateWithModifiers}
-        />
-      </div>
 
       {/* Cardio modality picker — Z2 doesn't care which modality you choose,
           but your body does. Pick run / bike / row / ski-erg and all cardio
@@ -659,6 +659,80 @@ export default function WorkoutForCategory({
   );
 }
 
+// Compact meta strip replacing cycle card + philosophy card + full-width
+// ModifierPanel. Three signals on one line (phase, influence, equipment+
+// intensity summary); tap the middle button to open the full modifier
+// sheet when you actually want to change something.
+function TodayShapeStrip({
+  phase,
+  totalWeeks,
+  philosophy,
+  influences,
+  modifiers,
+  defaultEquipment,
+  onApply,
+}: {
+  phase?: { weekInCycle: number; label: string; description: string } | null;
+  totalWeeks: number;
+  philosophy?: string;
+  influences?: CoachInfluence[];
+  modifiers: WorkoutModifiers;
+  defaultEquipment?: EquipmentPreset;
+  onApply: (m: WorkoutModifiers) => Promise<void> | void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const intensity = modifiers.intensity ?? "normal";
+  const eq = modifiers.equipmentPreset ?? defaultEquipment ?? "full_gym";
+  return (
+    <section className="no-print space-y-3">
+      <div className="flex items-stretch gap-2">
+        {phase && (
+          <div className="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl border border-border-strong/40 bg-bg-elevated">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+              Week {phase.weekInCycle}/{totalWeeks}
+            </div>
+            <div className="text-[13px] font-medium text-accent leading-tight truncate mt-1">
+              {phase.label}
+            </div>
+          </div>
+        )}
+        <button
+          onClick={() => setExpanded((x) => !x)}
+          className="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl border border-border-strong/40 bg-bg-elevated text-left hover:border-text-dim transition-colors"
+        >
+          <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+            Adjust
+          </div>
+          <div className="text-[13px] font-medium leading-tight truncate mt-1 text-text">
+            {INTENSITY_LABELS[intensity].label} · {EQUIPMENT_PRESET_LABELS[eq as EquipmentPreset] ?? eq}
+          </div>
+        </button>
+      </div>
+      {phase && (
+        <p className="text-[12px] text-text-muted leading-relaxed">{phase.description}</p>
+      )}
+      {philosophy && (
+        <p className="text-[12px] text-text-dim leading-relaxed italic">
+          {influences && influences.length > 0
+            ? `${influences.map((c) => INFLUENCE_LABELS[c]).join(" + ")} — `
+            : ""}
+          {philosophy}
+        </p>
+      )}
+      {expanded && (
+        <ModifierPanel
+          initial={modifiers}
+          defaultEquipment={defaultEquipment}
+          onApply={async (m) => {
+            await onApply(m);
+            setExpanded(false);
+          }}
+        />
+      )}
+    </section>
+  );
+}
+
 // Quick km capture on cardio-session finish. Optional — most prescriptions
 // are time-based ("45 min Z2") so we can't infer distance from the plan.
 // What the user types here feeds the Profile page's km counter directly.
@@ -714,14 +788,19 @@ function ReadinessChip({
     <button
       onClick={onClick}
       className={clsx(
-        "px-1.5 py-3 rounded-xl border transition-all text-center",
+        "px-2 py-3 rounded-xl border transition-colors text-center",
         active
-          ? "bg-accent text-black border-accent"
-          : "bg-bg border-border text-text-muted hover:border-border/60"
+          ? "bg-text/5 border-accent/60 text-text"
+          : "bg-transparent border-border-strong/40 text-text-muted hover:border-text-dim"
       )}
     >
-      <div className="text-sm font-bold">{label}</div>
-      <div className={clsx("text-[9px] mt-1 leading-tight uppercase tracking-wider", active ? "opacity-70" : "text-text-dim")}>
+      <div className={clsx("text-sm font-medium tracking-tight", active && "text-text")}>
+        {label}
+      </div>
+      <div className={clsx(
+        "text-[9px] mt-1 leading-tight uppercase tracking-[0.2em]",
+        active ? "text-text-dim" : "text-text-dim/70"
+      )}>
         {sublabel}
       </div>
     </button>
@@ -801,7 +880,10 @@ function BlockCard({
   // static template string — block bias / week rotation / phase change the
   // sets and reps and the old "3×12-15" summary drifts out of sync.
   const scheme = computeSchemeHeader(block);
-  const mode = detectBlockMode(scheme, block.prescriptions.length);
+  // Detect from the ORIGINAL template scheme — the rebuilt header above has
+  // stripped the "Superset"/"Circuit" qualifier, so running detectBlockMode
+  // on it would misclassify a superset-with-rounds as a circuit.
+  const mode = detectBlockMode((block as { scheme?: string }).scheme, block.prescriptions.length);
   const isGrouped = mode !== "straight" && block.prescriptions.length > 1;
   // Multiple straight-set exercises in one block → clarify they're sequential,
   // not paired. Showing "DO IN ORDER" removes the ambiguity with supersets.
@@ -836,7 +918,7 @@ function BlockCard({
                 </span>
               )}
             </div>
-            {scheme && (
+            {(scheme || isGrouped || isSequential) && (
               <div className={clsx(
                 "text-sm font-semibold mt-1",
                 isGrouped ? "text-accent" : "text-text"
@@ -880,7 +962,7 @@ function BlockCard({
           {!isWarmup && !isCooldown && category !== "cardio" && block.prescriptions.length > 0 && (
             <BlockRoundsAdjuster
               block={block}
-              isGrouped={isGrouped || isSequential}
+              isGrouped={isGrouped}
               onUpdate={onUpdate}
             />
           )}
@@ -898,14 +980,13 @@ function BlockCard({
 
             {block.prescriptions.map((p, pi) => {
               const isLast = pi === block.prescriptions.length - 1;
-              // Grouped/sequential connectors: show the transition between
-              // consecutive exercises so the user doesn't have to guess
-              // whether to rest or continue straight into the next one.
-              // Suppressed on warmup/cooldown (irrelevant) and on the last
-              // exercise (that rest is the "between rounds/sets" already
-              // in the block header).
+              // Grouped (circuit/superset/etc.): show the per-transition rest
+              // so the user knows whether to go straight into the next move
+              // or pause. Sequential (DO IN ORDER) is independent exercises
+              // done to completion — no connector needed; each card speaks
+              // for itself with its own sets×reps×rest.
               const showConnector =
-                !isWarmup && !isCooldown && !isLast && (isGrouped || isSequential);
+                !isWarmup && !isCooldown && !isLast && isGrouped;
               const restSec = parseRestSeconds(p.rest);
               const connectorLabel =
                 restSec === 0 ? "↓ straight into" : `↓ rest ${p.rest}`;
@@ -921,7 +1002,16 @@ function BlockCard({
                     isCore={isCore}
                     category={category}
                     units={units}
-                    hideRestStat={isGrouped || isSequential}
+                    // Hide the per-card rest Stat when a grouped block puts
+                    // rest on the between-exercise connector (circuit style).
+                    // For DO IN ORDER (sequential) the card's rest IS the
+                    // between-sets rest the user needs to see per exercise.
+                    hideRestStat={isGrouped}
+                    // Only in true grouped blocks (circuit/superset/AMRAP/
+                    // EMOM/For Time) is prescribedSets a shared round count.
+                    // In DO IN ORDER sequential blocks it's a real per-
+                    // exercise set count — keep "N × reps" visible there.
+                    hideSetsCount={isGrouped}
                     availableEquipment={availableEquipment}
                     usedInSession={usedInSession}
                     onSwap={(newId) => onSwap(pi, newId)}
@@ -1211,6 +1301,7 @@ function ExerciseCard({
   category,
   units,
   hideRestStat,
+  hideSetsCount,
   availableEquipment,
   usedInSession,
   onSwap,
@@ -1230,6 +1321,9 @@ function ExerciseCard({
   // shows the rest on the between-exercise connector and in the block
   // header, so duplicating it on the card is noise.
   hideRestStat?: boolean;
+  // When true, the prescription's "sets" value is a round count shared
+  // across the whole block, not a per-exercise set count. Show reps only.
+  hideSetsCount?: boolean;
   availableEquipment: Set<string>;
   usedInSession: Set<string>;
   onSwap: (newExerciseId: string) => void;
@@ -1322,8 +1416,12 @@ function ExerciseCard({
       {/* Big stat row: SETS × REPS · REST · RPE */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2">
         <Stat
-          big={`${prescription.prescribedSets} × ${prescription.prescribedReps}`}
-          label="sets × reps"
+          big={
+            hideSetsCount
+              ? String(prescription.prescribedReps)
+              : `${prescription.prescribedSets} × ${prescription.prescribedReps}`
+          }
+          label={hideSetsCount ? "per round" : "sets × reps"}
         />
         {prescription.rest && !hideRestStat && (
           <Stat

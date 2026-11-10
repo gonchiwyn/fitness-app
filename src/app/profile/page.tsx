@@ -23,9 +23,11 @@ import {
 } from "@/lib/stats";
 
 const PERIODS: Period[] = ["week", "month", "year", "all"];
+type ProfileTab = "now" | "journey";
 
 export default function ProfilePage() {
   const [period, setPeriod] = useState<Period>("month");
+  const [tab, setTab] = useState<ProfileTab>("now");
 
   const sessions = useLiveQuery(() => db.sessions.toArray(), [], []);
   const completedBlocks = useLiveQuery(() => db.completedBlocks.toArray(), [], []);
@@ -67,44 +69,70 @@ export default function ProfilePage() {
     <div className="max-w-3xl mx-auto px-5 py-6 space-y-6">
       <header className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-widest text-text-dim">You</p>
-          <h1 className="text-3xl font-bold mt-1">{name}</h1>
+          <p className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">You</p>
+          <h1 className="font-display text-[2.25rem] font-semibold tracking-tight mt-1.5 leading-[1.05] text-text">
+            {name}
+          </h1>
         </div>
         <Link
           href="/settings"
-          className="text-xs uppercase tracking-widest text-text-dim hover:text-accent pt-2"
+          className="text-[11px] uppercase tracking-[0.22em] text-text-dim hover:text-accent pt-2 font-medium"
         >
-          Settings ›
+          Settings
         </Link>
       </header>
 
-      {/* Period picker — drives every tile below */}
-      <div className="grid grid-cols-4 gap-1.5 bg-bg-card border border-border rounded-xl p-1">
-        {PERIODS.map((p) => (
+      {/* Now / Journey tabs — short-horizon metrics vs long-horizon record */}
+      <div className="flex gap-6 border-b border-border-strong/40">
+        {(["now", "journey"] as ProfileTab[]).map((t) => (
           <button
-            key={p}
-            onClick={() => setPeriod(p)}
+            key={t}
+            onClick={() => setTab(t)}
             className={clsx(
-              "py-2 rounded-lg text-xs font-semibold transition-colors",
-              period === p ? "bg-accent text-black" : "text-text-muted"
+              "pb-3 text-sm font-medium transition-colors relative",
+              tab === t ? "text-text" : "text-text-dim hover:text-text-muted"
             )}
           >
-            {PERIOD_LABELS[p]}
+            {t === "now" ? "Now" : "Journey"}
+            {tab === t && (
+              <span className="absolute left-0 right-0 bottom-0 h-px bg-accent" aria-hidden />
+            )}
           </button>
         ))}
       </div>
 
+      {/* Period picker — Now view only. Journey view shows all-time record. */}
+      {tab === "now" && (
+        <div className="flex gap-4 text-xs">
+          {PERIODS.map((p) => (
+            <button
+              key={p}
+              onClick={() => setPeriod(p)}
+              className={clsx(
+                "uppercase tracking-[0.18em] font-medium transition-colors",
+                period === p ? "text-accent" : "text-text-dim hover:text-text-muted"
+              )}
+            >
+              {PERIOD_LABELS[p]}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {tab === "now" && <>
       {/* Athlete archetype — the 30k-foot read on how you've been training.
           Updates as your category mix shifts. */}
-      <section className="bg-gradient-to-br from-accent/20 via-accent/5 to-bg-card border border-accent/40 rounded-2xl p-5">
-        <div className="text-[10px] uppercase tracking-widest text-accent font-semibold">
+      <section className="border border-border-strong/40 bg-bg-elevated rounded-2xl p-5">
+        <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
           You train like a
         </div>
-        <div className="flex items-baseline gap-3 mt-1">
-          <span className="text-4xl">{archetype.icon}</span>
-          <h2 className="text-3xl font-bold">{archetype.name}</h2>
+        <div className="flex items-baseline gap-3 mt-2">
+          <span className="text-3xl opacity-80">{archetype.icon}</span>
+          <h2 className="font-display text-[1.75rem] font-semibold tracking-tight leading-[1.05]">
+            {archetype.name}
+          </h2>
         </div>
-        <p className="text-sm text-text-muted mt-2 leading-relaxed">
+        <p className="text-sm text-text-muted mt-3 leading-relaxed">
           {archetype.tagline}
         </p>
       </section>
@@ -270,6 +298,9 @@ export default function ProfilePage() {
         </section>
       )}
 
+      </>}
+
+      {tab === "journey" && <>
       {/* Completed block badges — the gold-ring wall */}
       <section className="space-y-3">
         <h2 className="text-xs uppercase tracking-widest text-text-dim font-semibold">
@@ -413,6 +444,7 @@ export default function ProfilePage() {
         />
         <p className="text-[10px] text-text-dim">Screenshot the card above to share.</p>
       </section>
+      </>}
     </div>
   );
 }
@@ -560,15 +592,20 @@ function KpiTile({
   accent?: boolean;
 }) {
   return (
-    <div className={clsx(
-      "border rounded-2xl p-4",
-      accent ? "bg-accent/10 border-accent/40" : "bg-bg-card border-border"
-    )}>
+    <div className="border border-border-strong/40 bg-bg-elevated rounded-2xl p-4">
       <div className="flex items-baseline gap-1.5">
-        <span className={clsx("text-4xl font-bold tabular-nums", accent && "text-accent")}>{big}</span>
-        <span className="text-sm text-text-muted">{unit}</span>
+        <span
+          className={clsx(
+            "font-display font-semibold tabular-nums leading-none tracking-tight",
+            accent ? "text-accent" : "text-text",
+            big.length >= 4 ? "text-[2.5rem]" : "text-[3rem]"
+          )}
+        >
+          {big}
+        </span>
+        <span className="text-xs text-text-dim font-medium uppercase tracking-[0.15em]">{unit}</span>
       </div>
-      <div className="text-[10px] uppercase tracking-widest text-text-dim mt-1.5">{sub}</div>
+      <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim mt-3 font-medium">{sub}</div>
     </div>
   );
 }

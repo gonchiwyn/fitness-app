@@ -272,43 +272,45 @@ export default function SettingsPage() {
         </div>
       </Section>
 
-      <Section title="Current concerns">
+      <Section title="How you train">
         <p className="text-sm text-text-muted -mt-2">
-          Only tick what&apos;s <em>currently</em> bothering you. Ticking triggers swaps
-          (e.g. bench → incline DB). Untick when it heals.
-        </p>
-        <div className="space-y-2">
-          {(["shoulder", "knee", "elbow", "hip", "neck", "lower_back"] as RehabZone[]).map((zone) => {
-            const active = (profile.activeConcerns ?? []).includes(zone);
-            return (
-              <button
-                key={zone}
-                onClick={() => {
-                  const cur = new Set(profile.activeConcerns ?? []);
-                  if (cur.has(zone)) cur.delete(zone);
-                  else cur.add(zone);
-                  update({ activeConcerns: Array.from(cur) });
-                }}
-                className={clsx(
-                  "w-full text-left p-3 rounded-xl border transition-colors flex items-center justify-between",
-                  active ? "bg-accent/10 border-accent/40" : "bg-bg-card border-border"
-                )}
-              >
-                <span className="font-medium">{REHAB_ZONE_LABELS[zone]}</span>
-                <Check active={active} />
-              </button>
-            );
-          })}
-        </div>
-      </Section>
-
-      <Section title="Training constraints">
-        <p className="text-sm text-text-muted -mt-2">
-          Always-on preferences that shape every workout — core block focus
-          and lumbar-friendly intensity caps.
+          What&apos;s nagging now, how the core block runs, and spine-friendly
+          intensity caps. All feed the generator.
         </p>
 
         <div>
+          <div className="text-[11px] uppercase tracking-widest text-text-dim font-medium mb-2">
+            Current concerns
+          </div>
+          <p className="text-xs text-text-dim -mt-1 mb-2">
+            Only tick what&apos;s bothering you now. Ticks trigger swaps; untick when it heals.
+          </p>
+          <div className="space-y-2">
+            {(["shoulder", "knee", "elbow", "hip", "neck", "lower_back"] as RehabZone[]).map((zone) => {
+              const active = (profile.activeConcerns ?? []).includes(zone);
+              return (
+                <button
+                  key={zone}
+                  onClick={() => {
+                    const cur = new Set(profile.activeConcerns ?? []);
+                    if (cur.has(zone)) cur.delete(zone);
+                    else cur.add(zone);
+                    update({ activeConcerns: Array.from(cur) });
+                  }}
+                  className={clsx(
+                    "w-full text-left p-3 rounded-xl border transition-colors flex items-center justify-between",
+                    active ? "bg-accent/10 border-accent/40" : "bg-bg-card border-border"
+                  )}
+                >
+                  <span className="font-medium">{REHAB_ZONE_LABELS[zone]}</span>
+                  <Check active={active} />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="pt-4">
           <div className="text-[11px] uppercase tracking-widest text-text-dim font-medium mb-2">
             Core block focus
           </div>
@@ -429,50 +431,76 @@ export default function SettingsPage() {
         </button>
       </Section>
 
-      <Section title="Dev tools">
-        <p className="text-sm text-text-muted -mt-2">
-          Not shown to end-users in a real release. Kept here for testing
-          the cold-start experience and re-seeding your setup.
-        </p>
-        <button
-          onClick={exportData}
-          className="w-full h-12 rounded-xl border border-accent/40 text-accent font-semibold hover:bg-accent/10"
-        >
-          Export all data (JSON)
-        </button>
-        <p className="text-xs text-text-dim -mt-1">
-          Share sheet on phone (AirDrop / Notes / email); clipboard on desktop.
-          For pulling training history off-device.
-        </p>
-        <button
-          onClick={clearFutureDrafts}
-          className="w-full h-12 rounded-xl border border-border text-text-muted font-medium"
-        >
-          Clear all draft workouts
-        </button>
-        <p className="text-xs text-text-dim -mt-1">
-          Deletes any unfinished workouts you peeked at but never started.
-          Next time you open those days, they regenerate from the latest
-          templates. Finished sessions are untouched.
-        </p>
-        <button
-          onClick={loadGonzalo}
-          className="w-full h-12 rounded-xl border border-border text-text-muted font-medium"
-        >
-          Load Gonzalo&apos;s dev profile
-        </button>
-        <button
-          onClick={wipeEverything}
-          className="w-full h-12 rounded-xl border border-danger/40 text-danger font-semibold hover:bg-danger/10"
-        >
-          Reset to blank slate
-        </button>
-      </Section>
+      <DevToolsSection
+        exportData={exportData}
+        clearFutureDrafts={clearFutureDrafts}
+        loadGonzalo={loadGonzalo}
+        wipeEverything={wipeEverything}
+      />
 
       <div className="text-xs text-text-dim text-center pt-4">
         {saving ? "Saving…" : "Saved"} · v0.2
       </div>
     </div>
+  );
+}
+
+// Dev tools gated behind a 5-tap on the version line. Keeps the Settings page
+// looking shippable instead of flagged with internal plumbing on every open.
+function DevToolsSection({
+  exportData,
+  clearFutureDrafts,
+  loadGonzalo,
+  wipeEverything,
+}: {
+  exportData: () => void;
+  clearFutureDrafts: () => void;
+  loadGonzalo: () => void;
+  wipeEverything: () => void;
+}) {
+  const [tapCount, setTapCount] = useState(0);
+  const unlocked = tapCount >= 5;
+  return (
+    <Section title={unlocked ? "Dev tools" : "Advanced"}>
+      {!unlocked && (
+        <button
+          onClick={() => setTapCount((n) => n + 1)}
+          className="text-xs text-text-dim hover:text-text-muted"
+        >
+          {tapCount === 0
+            ? "Tap 5 times to reveal export + reset."
+            : `${5 - tapCount} more…`}
+        </button>
+      )}
+      {unlocked && (
+        <>
+          <button
+            onClick={exportData}
+            className="w-full h-12 rounded-xl border border-accent/40 text-accent font-semibold hover:bg-accent/10"
+          >
+            Export all data (JSON)
+          </button>
+          <button
+            onClick={clearFutureDrafts}
+            className="w-full h-12 rounded-xl border border-border text-text-muted font-medium"
+          >
+            Clear all draft workouts
+          </button>
+          <button
+            onClick={loadGonzalo}
+            className="w-full h-12 rounded-xl border border-border text-text-muted font-medium"
+          >
+            Load Gonzalo&apos;s dev profile
+          </button>
+          <button
+            onClick={wipeEverything}
+            className="w-full h-12 rounded-xl border border-danger/40 text-danger font-semibold hover:bg-danger/10"
+          >
+            Reset to blank slate
+          </button>
+        </>
+      )}
+    </Section>
   );
 }
 

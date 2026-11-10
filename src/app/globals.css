@@ -1,17 +1,36 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #000000;
-  --bg-elevated: #0c0c0c;
-  --bg-card: #141414;
-  --border: #232323;
-  --text: #ffffff;
-  --text-muted: #a3a3a3;
-  --text-dim: #6b6b6b;
-  --accent: #facc15;
-  --accent-dim: #ca8a04;
-  --success: #a3e635;
-  --danger: #ef4444;
+  /* Deep warm black + cream text. Biohacker-clinical, Nordic-quiet.
+     No pure #000, no pure #fff — both read cold and digital. */
+  --bg: #0a0a0b;
+  --bg-elevated: #0f0f11;
+  --bg-card: #141416;
+  --border: #22222530;      /* mostly hairlines; alpha keeps edges quiet */
+  --border-strong: #2a2a2d; /* when a real line is needed */
+  --text: #f2f0eb;
+  --text-muted: #9a9a93;
+  --text-dim: #5e5e58;
+  --accent: #d4b07a;         /* warm wheat — Oura/Levels register, no yellow scream */
+  --accent-dim: #8e7550;
+  --success: #a8b89a;        /* muted sage */
+  --danger: #c76a5a;         /* terracotta, not a Tesla red */
+
+  /* Category indicators — muted stone tones used ONLY as small dots on chips
+     and strip slots, never as card backgrounds or gradients. The app stays
+     monochrome; categories are a whisper, not a shout. */
+  --c-strength: #b5724a;    /* warm terracotta */
+  --c-cardio:   #7a9cb0;    /* dusted sky */
+  --c-hyrox:    #c09663;    /* aged brass */
+  --c-sport:    #96789c;    /* dusted plum */
+  --c-mobility: #8ea381;    /* muted sage */
+  --c-recovery: #7c7c76;    /* fog */
+  --c-strength-soft: color-mix(in oklab, var(--c-strength) 14%, transparent);
+  --c-cardio-soft:   color-mix(in oklab, var(--c-cardio)   14%, transparent);
+  --c-hyrox-soft:    color-mix(in oklab, var(--c-hyrox)    14%, transparent);
+  --c-sport-soft:    color-mix(in oklab, var(--c-sport)    14%, transparent);
+  --c-mobility-soft: color-mix(in oklab, var(--c-mobility) 14%, transparent);
+  --c-recovery-soft: color-mix(in oklab, var(--c-recovery) 14%, transparent);
 }
 
 @theme inline {
@@ -26,8 +45,15 @@
   --color-accent-dim: var(--accent-dim);
   --color-success: var(--success);
   --color-danger: var(--danger);
+  --color-cat-strength: var(--c-strength);
+  --color-cat-cardio: var(--c-cardio);
+  --color-cat-hyrox: var(--c-hyrox);
+  --color-cat-sport: var(--c-sport);
+  --color-cat-mobility: var(--c-mobility);
+  --color-cat-recovery: var(--c-recovery);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-fraunces);
 }
 
 html,

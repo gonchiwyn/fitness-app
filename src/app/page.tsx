@@ -10,6 +10,7 @@ import QuickLogModal from "@/components/QuickLogModal";
 import DayPreviewModal from "@/components/DayPreviewModal";
 import WeeklyReviewModal from "@/components/WeeklyReviewModal";
 import { templatesFor } from "@/lib/data/templates";
+import { categoryColor } from "@/lib/categoryTheme";
 import { recommendForToday, type Recommendation } from "@/lib/recommend";
 import {
   CATEGORY_BLURBS,
@@ -44,14 +45,18 @@ export default function HomePage() {
     cleanupStaleDrafts();
   }, []);
 
-  const todaysSession = useLiveQuery(
-    // Only show today's session if it's been actually started (not a draft preview)
+  const todaysSessions = useLiveQuery(
+    // Return ALL of today's real sessions, not just the first — a day can
+    // carry a planned workout + an extra run or sport session. Drafts are
+    // excluded.
     async () => {
       const all = await db.sessions.where("date").equals(today).toArray();
-      return all.find((s) => s.startedAt || s.finishedAt);
+      return all.filter((s) => s.startedAt || s.finishedAt);
     },
-    [today]
+    [today],
+    [] as Session[]
   );
+  const todaysSession = todaysSessions?.[0];
 
   const recent = useLiveQuery(
     // Exclude drafts entirely from history-style listings. Query the full
@@ -158,17 +163,19 @@ export default function HomePage() {
     <div className="max-w-3xl mx-auto px-5 py-6 space-y-7">
       <header className="flex items-end justify-between">
         <div>
-          <p className="text-xs uppercase tracking-widest text-text-dim">
+          <p className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">
             {format(new Date(), "EEEE, MMM d")}
           </p>
-          <h1 className="text-3xl font-bold mt-1">
+          <h1 className="font-display text-[2.25rem] leading-[1.1] font-semibold mt-1.5 tracking-tight text-text">
             {greet()}{profile?.name && profile.name !== "Athlete" ? `, ${profile.name}` : ""}.
           </h1>
         </div>
         {streak > 0 && (
           <div className="text-right">
-            <div className="text-2xl font-bold text-accent">{streak}</div>
-            <div className="text-[10px] uppercase tracking-widest text-text-dim">day streak</div>
+            <div className="font-display text-3xl font-semibold text-accent leading-none tabular-nums">
+              {streak}
+            </div>
+            <div className="text-[9px] uppercase tracking-[0.22em] text-text-dim mt-1.5 font-medium">day streak</div>
           </div>
         )}
       </header>
@@ -176,12 +183,12 @@ export default function HomePage() {
       {profile && !profile.onboarded && (
         <Link
           href="/onboarding"
-          className="block bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/30 rounded-2xl p-4"
+          className="block border border-border-strong/40 bg-bg-elevated rounded-2xl p-4"
         >
-          <div className="text-xs uppercase tracking-widest text-accent font-semibold">
-            Personalize your training →
+          <div className="text-[11px] uppercase tracking-[0.22em] text-accent font-medium">
+            Personalize your training
           </div>
-          <div className="text-sm text-text-muted mt-1.5 leading-snug">
+          <div className="text-sm text-text-muted mt-2 leading-relaxed">
             Set your goals, injuries, strength maxes, and running pace.
             Workouts get tailored loads and safer swaps. 2 min.
           </div>
@@ -191,12 +198,12 @@ export default function HomePage() {
       {showReviewPrompt && (
         <button
           onClick={() => setReviewOpen(true)}
-          className="w-full text-left block bg-gradient-to-br from-accent/25 to-accent/5 border border-accent/40 rounded-2xl p-4"
+          className="w-full text-left block border border-border-strong/40 bg-bg-elevated rounded-2xl p-4"
         >
-          <div className="text-xs uppercase tracking-widest text-accent font-semibold">
-            Weekly review →
+          <div className="text-[11px] uppercase tracking-[0.22em] text-accent font-medium">
+            Weekly review
           </div>
-          <div className="text-sm text-text-muted mt-1.5 leading-snug">
+          <div className="text-sm text-text-muted mt-2 leading-relaxed">
             How did the week go? A few quick chip questions. Your answers
             tune next week&apos;s workouts. 2 min.
           </div>
@@ -231,7 +238,7 @@ export default function HomePage() {
       {profile?.currentFocus?.pausedAt ? (
         <PausedTodayCard />
       ) : todaysSession ? (
-        <TodaysSessionCard session={todaysSession} />
+        <TodaysSessionsStack sessions={todaysSessions ?? [todaysSession]} />
       ) : plannedToday ? (
         <>
           <PlannedTodayCard day={plannedToday} />
@@ -245,6 +252,22 @@ export default function HomePage() {
         <RestDayCard />
       ) : (
         <NoPlanCard />
+      )}
+
+      {/* Fast path for "I did something different" or "I did an extra thing":
+          one-tap category chips that log a retroactive session for today.
+          Visible in every Today state — if you planned Z2 but ran strength,
+          or did your planned workout plus an afternoon sport session, you
+          don't need to dig into the Plan page. */}
+      {!profile?.currentFocus?.pausedAt && (
+        <QuickLogRow
+          hasSessionToday={!!todaysSession}
+          onPickCategory={async (cat, label) => {
+            const { logRetroactiveSession } = await import("@/lib/db");
+            await logRetroactiveSession(today, cat, label);
+          }}
+          onOpenPicker={() => setLogDate(today)}
+        />
       )}
 
       {/* Week strip — navigable across weeks so the block outlook is visible */}
@@ -297,30 +320,6 @@ export default function HomePage() {
           }}
         />
       )}
-
-      <section>
-        <h2 className="text-xs font-semibold uppercase tracking-widest text-text-dim mb-3">
-          Quick start
-        </h2>
-        <div className="grid grid-cols-2 gap-3">
-          {(["split", "hypertrophy", "strength", "hyrox", "athlete", "cardio"] as const).map((cat) => (
-            <Link
-              key={cat}
-              href={`/workout/${cat}`}
-              className="bg-bg-card border border-border rounded-2xl p-4 hover:border-accent/40 transition-colors"
-            >
-              <div className="font-semibold">{CATEGORY_LABELS[cat]}</div>
-              <div className="text-xs text-text-dim mt-1">Tap to generate</div>
-            </Link>
-          ))}
-        </div>
-        <Link
-          href="/workout"
-          className="block text-center mt-4 text-sm text-accent font-medium"
-        >
-          See all categories →
-        </Link>
-      </section>
 
     </div>
   );
@@ -548,29 +547,37 @@ function PlannedTodayCard({ day }: { day: NonNullable<PlannedDay> }) {
     await logRetroactiveSession(today, day.category, name, day.templateId);
   };
 
+  const color = categoryColor(day.category);
   return (
     <Link
       href={href}
-      className="block bg-gradient-to-br from-accent/25 to-accent/5 border border-accent/40 rounded-2xl p-5"
+      className="block border border-accent/25 bg-bg-elevated rounded-2xl p-5"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <div className="text-xs uppercase tracking-widest text-accent font-semibold">
+          <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] font-semibold text-accent">
+            <span
+              className="w-1.5 h-1.5 rounded-full"
+              style={{ background: color.solid }}
+              aria-hidden
+            />
             Today's session
           </div>
-          <div className="text-2xl font-bold mt-2">{title}</div>
-          <div className="text-sm text-text-muted mt-1">{subtitle}</div>
+          <div className="font-display text-3xl font-semibold tracking-tight mt-2 leading-[1.05] text-text">
+            {title}
+          </div>
+          <div className="text-sm text-text-muted mt-1.5 leading-relaxed">{subtitle}</div>
         </div>
         <button
           onClick={markDone}
-          className="shrink-0 w-11 h-11 rounded-xl bg-accent/20 border border-accent/50 text-accent flex items-center justify-center text-xl font-bold hover:bg-accent hover:text-black transition-colors"
+          className="shrink-0 w-11 h-11 rounded-full border border-accent/40 bg-transparent text-accent flex items-center justify-center text-base hover:bg-accent hover:text-bg transition-colors"
           aria-label="Mark today done — I already did this"
           title="I already did this"
         >
           ✓
         </button>
       </div>
-      <div className="mt-4 text-sm text-accent font-medium">
+      <div className="mt-4 text-sm font-medium text-accent">
         Open workout →
       </div>
     </Link>
@@ -699,21 +706,126 @@ function NoPlanCard() {
   );
 }
 
-function TodaysSessionCard({ session }: { session: Session }) {
+function TodaysSessionsStack({ sessions }: { sessions: Session[] }) {
+  if (sessions.length === 1) {
+    return <TodaysSessionCard session={sessions[0]} />;
+  }
+  return (
+    <div className="space-y-2">
+      <div className="text-xs uppercase tracking-widest text-accent font-semibold">
+        Today — {sessions.length} sessions
+      </div>
+      {sessions.map((s, i) => (
+        <TodaysSessionCard key={s.id ?? i} session={s} compact />
+      ))}
+    </div>
+  );
+}
+
+function TodaysSessionCard({ session, compact }: { session: Session; compact?: boolean }) {
   const done = Boolean(session.finishedAt);
+  const tid = session.modifiers?.templateId;
+  const href = tid
+    ? `/workout/${session.category}?template=${tid}`
+    : `/workout/${session.category}`;
+  const color = categoryColor(session.category);
   return (
     <Link
-      href={`/workout/${session.category}`}
-      className="block bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/30 rounded-2xl p-5"
+      href={href}
+      className={clsx(
+        "block border border-border-strong/40 bg-bg-elevated rounded-2xl",
+        compact ? "p-4" : "p-5"
+      )}
     >
-      <div className="text-xs uppercase tracking-widest text-accent font-semibold">
-        Today's session {done ? "· ✓ Done" : ""}
+      <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] font-semibold text-text-muted">
+        <span
+          className="w-1.5 h-1.5 rounded-full"
+          style={{ background: color.solid }}
+          aria-hidden
+        />
+        <span>{compact ? CATEGORY_LABELS[session.category] : "Today's session"}</span>
+        {done && <span className="text-text-dim">· Done</span>}
       </div>
-      <div className="text-xl font-bold mt-2">{session.name}</div>
-      <div className="mt-4 text-sm text-accent font-medium">
-        {done ? "Review →" : "Open workout →"}
+      <div
+        className={clsx(
+          "font-display font-semibold tracking-tight mt-2 leading-[1.05] text-text",
+          compact ? "text-xl" : "text-3xl"
+        )}
+      >
+        {session.name}
       </div>
+      {!compact && (
+        <div className="mt-4 text-sm font-medium text-accent">
+          {done ? "Review →" : "Open workout →"}
+        </div>
+      )}
     </Link>
+  );
+}
+
+// One-tap retroactive logging row. Keeps the top-5 most-useful categories
+// as pills; tapping saves a bare retroactive session (no template picker).
+// "More" opens the full modal for anything else. Shown on Home in every
+// Today state so the user never has to go hunt for a change path.
+function QuickLogRow({
+  hasSessionToday,
+  onPickCategory,
+  onOpenPicker,
+}: {
+  hasSessionToday: boolean;
+  onPickCategory: (cat: import("@/lib/types").Category, label: string) => Promise<void>;
+  onOpenPicker: () => void;
+}) {
+  const QUICK_CATS: { id: import("@/lib/types").Category; label: string }[] = [
+    { id: "strength", label: "Strength" },
+    { id: "cardio",   label: "Cardio" },
+    { id: "hyrox",    label: "Hyrox" },
+    { id: "sport",    label: "Sport" },
+    { id: "stretching", label: "Mobility" },
+  ];
+  const [pending, setPending] = useState<string | null>(null);
+  return (
+    <section className="space-y-2">
+      <div className="text-[11px] uppercase tracking-widest text-text-dim font-semibold">
+        {hasSessionToday ? "Did something else too?" : "I did something different →"}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {QUICK_CATS.map((c) => {
+          const color = categoryColor(c.id);
+          const active = pending === c.id;
+          return (
+            <button
+              key={c.id}
+              disabled={pending !== null}
+              onClick={async () => {
+                setPending(c.id);
+                await onPickCategory(c.id, c.label);
+                setPending(null);
+              }}
+              className={clsx(
+                "h-9 px-3.5 rounded-full border text-[13px] font-medium transition-colors flex items-center gap-2",
+                active
+                  ? "bg-text text-bg border-text"
+                  : "bg-transparent border-border-strong/60 text-text-muted hover:text-text hover:border-text-muted"
+              )}
+            >
+              <span
+                className="w-1.5 h-1.5 rounded-full"
+                style={{ background: color.solid, opacity: active ? 0.3 : 1 }}
+                aria-hidden
+              />
+              {c.label}
+            </button>
+          );
+        })}
+        <button
+          onClick={onOpenPicker}
+          className="h-9 px-3.5 rounded-full border border-border-strong/60 bg-transparent text-[13px] font-medium text-text-dim hover:text-text-muted"
+        >
+          More
+        </button>
+      </div>
+    </section>
   );
 }
 
@@ -823,38 +935,54 @@ function WeekStrip({
             ? chipShortLabel(displayCategory, displayTemplateId)
             : null;
 
+          const color = displayCategory ? categoryColor(displayCategory) : null;
           const chipClasses = clsx(
-            "rounded-xl px-1.5 py-2 text-center border transition-colors block min-h-[86px] flex flex-col",
-            isToday ? "border-accent/40 bg-accent/10" : "border-border bg-bg-card",
-            (isPast && !session) || isFuture ? "hover:border-accent/30" : ""
+            "rounded-xl px-1.5 py-2 text-center border transition-colors block min-h-[82px] flex flex-col bg-transparent",
+            isToday
+              ? "border-accent/60"
+              : "border-border-strong/40 hover:border-text-dim"
           );
 
           const inner = (
             <>
-              <div className="text-[11px] uppercase tracking-wider text-text-dim font-semibold">
+              <div className={clsx(
+                "text-[10px] uppercase tracking-[0.2em] font-semibold",
+                isToday ? "text-accent" : "text-text-dim"
+              )}>
                 {DAY_LABELS_SHORT[i]}
               </div>
-              <div className="text-[10px] tabular-nums text-text-dim mt-0.5">
+              <div className="text-[9px] tabular-nums text-text-dim/70 mt-0.5">
                 {format(date, "M/d")}
               </div>
               <div className="mt-2 flex-1 flex flex-col items-center justify-center w-full min-w-0">
                 {session ? (
                   <>
-                    <span className="text-accent text-base leading-none font-bold">✓</span>
+                    <span
+                      className="w-2 h-2 rounded-full"
+                      style={{ background: color?.solid ?? "var(--text-muted)" }}
+                      aria-hidden
+                    />
                     {label && (
-                      <span className="text-[10px] text-text-muted leading-tight mt-1 w-full px-0.5 truncate">
+                      <span className="text-[10px] font-medium text-text-muted leading-tight mt-1.5 w-full px-0.5 truncate">
                         {label}
                       </span>
                     )}
                   </>
                 ) : label ? (
-                  <span className="text-[10px] text-text leading-tight w-full px-0.5 truncate">
-                    {label}
-                  </span>
+                  <>
+                    <span
+                      className="w-1.5 h-1.5 rounded-full opacity-50"
+                      style={{ background: color?.solid ?? "var(--text-dim)" }}
+                      aria-hidden
+                    />
+                    <span className="text-[10px] text-text-dim leading-tight w-full px-0.5 truncate mt-1.5">
+                      {label}
+                    </span>
+                  </>
                 ) : isPast ? (
-                  <span className="text-[10px] text-accent leading-tight">+ Log</span>
+                  <span className="text-[10px] text-accent/70 leading-tight tracking-wide">+ Log</span>
                 ) : (
-                  <span className="text-text-dim text-sm">Rest</span>
+                  <span className="text-text-dim/60 text-xs tracking-wide">Rest</span>
                 )}
               </div>
             </>

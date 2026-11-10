@@ -3,8 +3,9 @@
 import { useState } from "react";
 import clsx from "clsx";
 import { format, parseISO } from "date-fns";
-import { logRetroactiveSession } from "@/lib/db";
-import { templatesFor } from "@/lib/data/templates";
+import { useLiveQuery } from "dexie-react-hooks";
+import { db, logRetroactiveSession } from "@/lib/db";
+import { templatesFor, findTemplate } from "@/lib/data/templates";
 import { useBodyScrollLock } from "@/lib/useBodyScrollLock";
 import {
   CATEGORIES,
@@ -29,6 +30,29 @@ export default function QuickLogModal({
 
   const templates = pickedCategory ? templatesFor(pickedCategory) : [];
   const dayLabel = format(parseISO(date), "EEEE, MMM d");
+
+  // Last 60 days of finished sessions, deduped by (category + templateId),
+  // top 5 most-used. One-tap re-log of what you actually do.
+  const recent = useLiveQuery(async () => {
+    const all = await db.sessions.toArray();
+    const cutoffMs = Date.now() - 60 * 86400000;
+    const finished = all.filter((s) => s.finishedAt && s.finishedAt >= cutoffMs);
+    const counts = new Map<string, { category: Category; templateId?: string; name: string; count: number }>();
+    for (const s of finished) {
+      const key = `${s.category}|${s.modifiers?.templateId ?? ""}`;
+      const prev = counts.get(key);
+      if (prev) prev.count++;
+      else counts.set(key, {
+        category: s.category,
+        templateId: s.modifiers?.templateId,
+        name: s.name,
+        count: 1,
+      });
+    }
+    return Array.from(counts.values())
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  }, [], []);
 
   const save = async (category: Category, templateId?: string) => {
     setSaving(true);
@@ -63,6 +87,30 @@ export default function QuickLogModal({
         <p className="text-sm text-text-muted mb-4">
           Log what you did on {dayLabel}. Just picks category — no set-by-set data.
         </p>
+
+        {stage === "category" && recent && recent.length > 0 && (
+          <div className="mb-4 space-y-1.5">
+            <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold">
+              Recent
+            </div>
+            {recent.map((r, i) => (
+              <button
+                key={i}
+                onClick={() => save(r.category, r.templateId)}
+                disabled={saving}
+                className="w-full text-left p-2.5 rounded-xl border bg-accent/10 border-accent/30 hover:border-accent/50 flex items-center justify-between gap-2"
+              >
+                <div className="min-w-0">
+                  <div className="font-medium text-sm truncate">{r.name}</div>
+                  <div className="text-[11px] text-text-dim">
+                    {CATEGORY_LABELS[r.category]}{r.templateId ? (findTemplate(r.templateId) ? ` · ${findTemplate(r.templateId)!.name}` : "") : ""}
+                  </div>
+                </div>
+                <span className="text-accent text-sm font-semibold shrink-0">Log</span>
+              </button>
+            ))}
+          </div>
+        )}
 
         {stage === "category" && (
           <div className="space-y-1.5">
