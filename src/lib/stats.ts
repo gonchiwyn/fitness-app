@@ -21,15 +21,32 @@ export const PERIOD_LABELS: Record<Period, string> = {
   all: "All time",
 };
 
-/** yyyy-MM-dd bounds (inclusive) of the given period relative to `today`. */
+/** yyyy-MM-dd bounds (inclusive) of the given period relative to `today`.
+ *  Calendar-based, not rolling: "this week" = Mon→Sun of the current week,
+ *  "this month" = 1st→last of the current month, etc. Rolling windows (past
+ *  N days) make Monday feel like last-week's workouts belong to this week,
+ *  which breaks the mental model the UI promises. We use LOCAL date parts
+ *  so a user in UTC-4 at 11pm doesn't see their session roll into tomorrow. */
 export function periodRange(period: Period, today: Date = new Date()): { from: string; to: string } {
-  const to = today.toISOString().slice(0, 10);
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const to = fmt(today);
   const from = new Date(today);
-  if (period === "week") from.setDate(from.getDate() - 6);
-  else if (period === "month") from.setDate(from.getDate() - 29);
-  else if (period === "year") from.setDate(from.getDate() - 364);
-  else from.setFullYear(2000); // all-time
-  return { from: from.toISOString().slice(0, 10), to };
+  if (period === "week") {
+    // Monday of this calendar week. JS getDay(): 0=Sun..6=Sat → Mon offset.
+    const dayOffsetFromMon = (today.getDay() + 6) % 7;
+    from.setDate(today.getDate() - dayOffsetFromMon);
+  } else if (period === "month") {
+    from.setDate(1);
+  } else if (period === "year") {
+    from.setMonth(0);
+    from.setDate(1);
+  } else {
+    from.setFullYear(2000);
+    from.setMonth(0);
+    from.setDate(1);
+  }
+  return { from: fmt(from), to };
 }
 
 // Km parser for cardio rep strings like "400m", "1000m", "5 km", "10km", "21.1 km".

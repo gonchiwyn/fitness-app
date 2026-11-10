@@ -139,8 +139,20 @@ function computeSchemeHeader(block: LoggedBlock): string {
     staticScheme.toLowerCase().includes("round") ||
     !!q;
   const multi = block.prescriptions.length > 1;
+  // "Between rounds" only makes sense when there IS more than one round —
+  // otherwise it's a single-round block where the rest sits between each
+  // movement (and the connectors already show that). Also skip it when
+  // every exercise has the same non-zero rest — the connectors already
+  // say it on every transition, so the header would just double-count.
+  const firstSets = block.prescriptions[0]?.prescribedSets ?? 1;
+  const multipleRounds = firstSets > 1;
+  const allRestsIdentical = block.prescriptions.every(
+    (p) => p.rest === block.prescriptions[0]?.rest
+  );
   const restSuffix =
-    rest && multi && isGroupedScheme ? ` — rest ${rest} between rounds` : "";
+    rest && multi && isGroupedScheme && multipleRounds && !allRestsIdentical
+      ? ` — rest ${rest} between rounds`
+      : "";
 
   if (block.prescriptions.length === 0) return staticScheme;
   // If all prescriptions share the same sets and reps, use a single summary.
