@@ -255,12 +255,6 @@ export type LoggedBlock = {
   scheme?: string;
   note?: string;
   prescriptions: LoggedPrescription[];
-  // Hyrox sim split timer. The user taps Start to anchor this block's stopwatch,
-  // then Done to stamp its split. Both are absolute Date.now() values; elapsed
-  // for the block is `splitMs - startedAtMs`. Cumulative sim time is the sum
-  // of elapsed across blocks.
-  startedAtMs?: number;
-  splitMs?: number;
 };
 
 // User's post-workout rating — how did it feel?

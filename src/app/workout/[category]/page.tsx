@@ -512,26 +512,12 @@ export default function WorkoutForCategory({
           for (const b of session.blocks) {
             for (const p of b.prescriptions) usedInSession.add(p.exerciseId);
           }
-          // Cumulative sim time across prior blocks that have been recorded —
-          // used by the per-block timer to show a running total.
-          const cumulativePriorMs = (bi: number) => {
-            let total = 0;
-            for (let i = 0; i < bi; i++) {
-              const b = session.blocks[i];
-              if (typeof b.splitMs === "number" && typeof b.startedAtMs === "number") {
-                total += b.splitMs - b.startedAtMs;
-              }
-            }
-            return total;
-          };
           return session.blocks.map((block, bi) => (
             <BlockCard
               key={bi}
               block={block}
               units={profile.units}
               category={cat}
-              templateId={session.modifiers?.templateId}
-              cumulativePriorMs={cumulativePriorMs(bi)}
               availableEquipment={resolveEquipmentForUI(session.modifiers, profile.defaultEquipment)}
               usedInSession={usedInSession}
               forceExpanded={printExpandAll}
@@ -767,30 +753,10 @@ function resolveEquipmentForUI(
   return new Set(EQUIPMENT_PRESET_INCLUDES[preset]);
 }
 
-// Hyrox sim templates where per-block splits are worth capturing. The split
-// timer appears on race-pace / mini-race / station blocks only (never on
-// warmup or cooldown). Keep the list tight — pace feedback only matters for
-// sim intent, not for the strength-pull/push days.
-const SIM_TEMPLATE_IDS = new Set<string>([
-  "hyrox_sim_test",
-  "hyrox_sim_short",
-  "hyrox_sim_pairs",
-  "hyrox_sim_pairs_intro",
-  "hyrox_sim_pairs_light",
-  "hyrox_sim_race",
-  "hyrox_sim_intro",
-  "hyrox_sim_light",
-  "hyrox_sim_commercial",
-  "hyrox_sim_commercial_intro",
-  "hyrox_sim_commercial_light",
-]);
-
 function BlockCard({
   block,
   units,
   category,
-  templateId,
-  cumulativePriorMs,
   availableEquipment,
   usedInSession,
   forceExpanded,
@@ -802,8 +768,6 @@ function BlockCard({
   block: LoggedBlock;
   units: "kg" | "lb";
   category: Category;
-  templateId?: string;
-  cumulativePriorMs?: number;
   availableEquipment: Set<string>;
   usedInSession: Set<string>;
   forceExpanded: boolean;
@@ -836,17 +800,6 @@ function BlockCard({
     block.prescriptions.length > 1 &&
     !isWarmup &&
     !isCooldown;
-
-  // Show the per-block split timer on hyrox sim templates only (and never on
-  // warmup/cooldown or race-prep blocks). The timer is per-block self-contained:
-  // tap Start to anchor its stopwatch, Done to stamp its split.
-  const showSplitTimer =
-    category === "hyrox" &&
-    !!templateId &&
-    SIM_TEMPLATE_IDS.has(templateId) &&
-    !isWarmup &&
-    !isCooldown &&
-    !/race prep|prep/i.test(block.title);
 
   return (
     <section className="bg-bg-card border border-border rounded-2xl overflow-hidden print-block">
@@ -916,14 +869,6 @@ function BlockCard({
             <BlockRoundsAdjuster
               block={block}
               isGrouped={isGrouped || isSequential}
-              onUpdate={onUpdate}
-            />
-          )}
-
-          {showSplitTimer && (
-            <BlockSplitTimer
-              block={block}
-              cumulativePriorMs={cumulativePriorMs ?? 0}
               onUpdate={onUpdate}
             />
           )}
@@ -1192,92 +1137,6 @@ function TopSetAutoreg({
 // across prior recorded blocks is shown alongside. Letting athletes see
 // station splits turns a 25-min sim into a measurable thing — pace-feedback
 // is the point.
-function BlockSplitTimer({
-  block,
-  cumulativePriorMs,
-  onUpdate,
-}: {
-  block: LoggedBlock;
-  cumulativePriorMs: number;
-  onUpdate: (b: LoggedBlock) => void;
-}) {
-  const started = typeof block.startedAtMs === "number";
-  const recorded = typeof block.splitMs === "number";
-  // Live clock while running — ticks the displayed time.
-  const [now, setNow] = useState<number>(() => Date.now());
-  useEffect(() => {
-    if (!started || recorded) return;
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, [started, recorded]);
-
-  const anchor = block.startedAtMs ?? 0;
-  const endMs = block.splitMs ?? now;
-  const perBlock = started ? endMs - anchor : 0;
-  const cumulative = cumulativePriorMs + perBlock;
-
-  const start = () => onUpdate({ ...block, startedAtMs: Date.now() });
-  const done = () => onUpdate({ ...block, splitMs: Date.now() });
-  const reset = () => {
-    const next = { ...block };
-    delete next.startedAtMs;
-    delete next.splitMs;
-    onUpdate(next);
-  };
-
-  return (
-    <div className="px-4 pt-3 flex items-center justify-between gap-3 no-print">
-      <div className="flex items-baseline gap-3">
-        <div>
-          <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold">
-            Block split
-          </div>
-          <div className="text-xl font-bold tabular-nums leading-none mt-0.5">
-            {fmtMsClock(perBlock)}
-          </div>
-        </div>
-        {(started || cumulativePriorMs > 0) && (
-          <div className="text-[10px] text-text-dim">
-            Total {fmtMsClock(cumulative)}
-          </div>
-        )}
-      </div>
-      {!started && (
-        <button
-          onClick={start}
-          className="h-9 px-4 rounded-lg text-xs font-bold bg-accent text-black"
-        >
-          Start
-        </button>
-      )}
-      {started && !recorded && (
-        <button
-          onClick={done}
-          className="h-9 px-4 rounded-lg text-xs font-bold bg-accent text-black"
-        >
-          Done
-        </button>
-      )}
-      {recorded && (
-        <button
-          onClick={reset}
-          className="h-9 px-3 rounded-lg text-xs font-semibold text-text-dim border border-border"
-        >
-          Reset
-        </button>
-      )}
-    </div>
-  );
-}
-
-function fmtMsClock(ms: number): string {
-  if (!Number.isFinite(ms) || ms < 0) ms = 0;
-  const total = Math.floor(ms / 1000);
-  const m = Math.floor(total / 60);
-  const s = total % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
-
 function BlockRoundsAdjuster({
   block,
   isGrouped,

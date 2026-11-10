@@ -115,7 +115,14 @@ export default function HomePage() {
     return !existing;
   }, [thisSunday]);
 
-  const plannedToday: PlannedDay = plan?.days[todayIdx] ?? null;
+  // Read the same source as the week strip — if the current week has a
+  // week override (e.g. W1/W2 learn-week, W5 realization, deload), the base
+  // plan's slot for today may say stretching/hyrox/etc. but the override
+  // says something else. The two must agree, or the chip and the card
+  // disagree and the user doesn't know which is real.
+  const plannedToday: PlannedDay =
+    (weekOffset === 0 ? displayedWeekDays?.[todayIdx] : null) ??
+    plan?.days[todayIdx] ?? null;
   // Always compute — used as primary CTA if no plan, or as secondary hint if plan disagrees
   const recommendation: Recommendation | null = recent
     ? recommendForToday(recent, new Date())
