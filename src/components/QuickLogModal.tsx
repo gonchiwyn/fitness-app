@@ -31,6 +31,23 @@ export default function QuickLogModal({
   const templates = pickedCategory ? templatesFor(pickedCategory) : [];
   const dayLabel = format(parseISO(date), "EEEE, MMM d");
 
+  // Sessions already logged on this date — shown at the top so the user
+  // can delete or view them. Makes the modal a mini day editor, not just
+  // an "add a log" form.
+  const existingForDate = useLiveQuery(
+    async () => {
+      const all = await db.sessions.where("date").equals(date).toArray();
+      return all.filter((s) => s.startedAt || s.finishedAt);
+    },
+    [date],
+    []
+  );
+
+  const removeSession = async (id: number) => {
+    if (!confirm("Remove this logged session?")) return;
+    await db.sessions.delete(id);
+  };
+
   // Last 60 days of finished sessions, deduped by (category + templateId),
   // top 5 most-used. One-tap re-log of what you actually do.
   const recent = useLiveQuery(async () => {
@@ -77,16 +94,47 @@ export default function QuickLogModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-bold">
-            What did you train?
+          <h3 className="font-display text-xl font-semibold tracking-tight text-text">
+            {dayLabel}
           </h3>
           <button onClick={onClose} className="text-text-dim text-2xl leading-none">
             ×
           </button>
         </div>
         <p className="text-sm text-text-muted mb-4">
-          Log what you did on {dayLabel}. Just picks category — no set-by-set data.
+          {existingForDate && existingForDate.length > 0
+            ? "Add another session, or remove one."
+            : "Log what you did — just picks category, no set-by-set data."}
         </p>
+
+        {stage === "category" && existingForDate && existingForDate.length > 0 && (
+          <div className="mb-4 space-y-1.5">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+              Already logged
+            </div>
+            {existingForDate.map((s) => (
+              <div
+                key={s.id}
+                className="w-full p-2.5 rounded-xl border border-border-strong/40 bg-bg-card flex items-center justify-between gap-2"
+              >
+                <div className="min-w-0">
+                  <div className="font-medium text-sm truncate text-text">{s.name}</div>
+                  <div className="text-[11px] text-text-dim">
+                    {CATEGORY_LABELS[s.category]}{s.finishedAt ? " · Done" : ""}
+                  </div>
+                </div>
+                <button
+                  onClick={() => s.id !== undefined && removeSession(s.id)}
+                  className="w-8 h-8 rounded-full text-text-dim hover:text-danger hover:bg-danger/10 flex items-center justify-center text-base"
+                  aria-label="Remove session"
+                  title="Remove"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
 
         {stage === "category" && recent && recent.length > 0 && (
           <div className="mb-4 space-y-1.5">

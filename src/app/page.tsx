@@ -729,15 +729,29 @@ function TodaysSessionCard({ session, compact }: { session: Session; compact?: b
     ? `/workout/${session.category}?template=${tid}`
     : `/workout/${session.category}`;
   const color = categoryColor(session.category);
+  const remove = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!confirm(`Remove "${session.name}" from today? Undoes the Done mark.`)) return;
+    if (session.id !== undefined) await db.sessions.delete(session.id);
+  };
   return (
     <Link
       href={href}
       className={clsx(
-        "block border border-border-strong/40 bg-bg-elevated rounded-2xl",
+        "block border border-border-strong/40 bg-bg-elevated rounded-2xl relative",
         compact ? "p-4" : "p-5"
       )}
     >
-      <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] font-semibold text-text-muted">
+      <button
+        onClick={remove}
+        aria-label="Remove session"
+        title="Remove"
+        className="absolute top-3 right-3 w-7 h-7 rounded-full text-text-dim hover:text-danger hover:bg-danger/10 flex items-center justify-center text-base leading-none"
+      >
+        ×
+      </button>
+      <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] font-semibold text-text-muted pr-8">
         <span
           className="w-1.5 h-1.5 rounded-full"
           style={{ background: color.solid }}
@@ -988,26 +1002,14 @@ function WeekStrip({
             </>
           );
 
-          // Past + no session → open quick log modal
-          if (isPast && !session) {
+          // Past day → always open the day modal (same surface whether there's
+          // a session or not). Modal lists existing sessions with × delete AND
+          // offers Add-another, so it doubles as a day editor.
+          if (isPast) {
             return (
               <button key={i} className={chipClasses} onClick={() => onLogPast(dateStr)}>
                 {inner}
               </button>
-            );
-          }
-
-          // Past + session logged → open the workout page for that day so
-          // you can review what you actually did (not the history summary).
-          if (isPast && session) {
-            const tid = session.modifiers?.templateId;
-            const pastHref = tid
-              ? `/workout/${session.category}?template=${tid}&date=${dateStr}`
-              : `/workout/${session.category}?date=${dateStr}`;
-            return (
-              <Link key={i} className={chipClasses} href={pastHref}>
-                {inner}
-              </Link>
             );
           }
 
@@ -1033,8 +1035,8 @@ function WeekStrip({
           );
         })}
       </div>
-      <p className="text-[10px] text-text-dim mt-2 leading-relaxed">
-        Tap a future day to preview it. Tap a past day to log what you did.
+      <p className="text-[10px] text-text-dim mt-3 leading-relaxed tracking-wide">
+        Tap a future day to preview. Tap a past day to add, edit, or remove.
       </p>
     </section>
   );

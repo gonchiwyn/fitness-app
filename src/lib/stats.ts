@@ -124,24 +124,56 @@ export function runPaceMinPerKm(profile: Profile | null | undefined): number {
   return 5.67; // 5:40/km default — matches the user's stated Z2 pace
 }
 
-/** Estimate km covered in a cardio session when `actualKm` wasn't logged.
- *  Uses the modality + minutes-in-prescriptions + the user's running pace. */
-export function estimateKmForCardioSession(session: Session, profile: Profile | null | undefined): number {
-  let minutes = 0;
+// Exercises that produce "aerobic km" for the km counter. Includes running,
+// rowing, biking, skiing, and swimming. Deliberately excludes loaded carries
+// (sled push/pull, farmer carry, sandbag lunge) — those are strength-endurance
+// work expressed in meters, not running distance.
+const DISTANCE_EXERCISES = new Set<string>([
+  "run", "sprint",
+  "easy_bike", "bike_erg",
+  "easy_row", "row_500", "row_2k",
+  "ski_erg",
+  "swim", "swim_easy",
+]);
+
+/** Km covered in a session when `actualKm` wasn't logged. Iterates ALL
+ *  prescriptions (every block, every category) and:
+ *   - adds explicit km / meters from reps strings on distance exercises;
+ *   - estimates km from minutes on time-based distance exercises using the
+ *     user's running pace × modality ratio.
+ *  Non-distance movements (sled push, farmer carry, wall ball, lifts) are
+ *  skipped entirely so hyrox sessions count the 400m runs but not the sled. */
+export function estimateKmForSession(session: Session, profile: Profile | null | undefined): number {
+  const runPace = runPaceMinPerKm(profile);
+  let km = 0;
   for (const b of session.blocks ?? []) {
     for (const p of b.prescriptions ?? []) {
-      // Count km that are explicitly in the reps string first — don't double
-      // count a "5km run" as both km AND time.
+      if (!DISTANCE_EXERCISES.has(p.exerciseId)) continue;
+      const sets = p.prescribedSets ?? 1;
+      // 1) Explicit distance in the reps string (e.g. "400m race pace", "5 km").
       const explicitKm = parseKmFromReps(p.prescribedReps);
-      if (explicitKm > 0) return explicitKm * (p.prescribedSets ?? 1);
-      minutes += parseMinutesFromReps(p.prescribedReps) * (p.prescribedSets ?? 1);
+      if (explicitKm > 0) {
+        km += explicitKm * sets;
+        continue;
+      }
+      // 2) Time-based → estimate via pace × modality.
+      const minutes = parseMinutesFromReps(p.prescribedReps) * sets;
+      if (minutes <= 0) continue;
+      const ratio =
+        p.exerciseId === "run" || p.exerciseId === "sprint" ? CARDIO_SPEED_RATIO.run
+        : p.exerciseId === "easy_bike" || p.exerciseId === "bike_erg" ? CARDIO_SPEED_RATIO.bike
+        : p.exerciseId === "easy_row" || p.exerciseId === "row_500" || p.exerciseId === "row_2k" || p.exerciseId === "ski_erg" ? CARDIO_SPEED_RATIO.row
+        : CARDIO_SPEED_RATIO.mixed;
+      km += minutes / (runPace / ratio);
     }
   }
-  if (minutes === 0) return 0;
-  const modality = cardioModalityForSession(session);
-  const runPace = runPaceMinPerKm(profile);          // min/km
-  const modalityPaceMinPerKm = runPace / CARDIO_SPEED_RATIO[modality];
-  return minutes / modalityPaceMinPerKm;
+  return km;
+}
+
+/** @deprecated Kept as an alias for backward compatibility; now delegates to
+ *  the category-agnostic estimateKmForSession. */
+export function estimateKmForCardioSession(session: Session, profile: Profile | null | undefined): number {
+  return estimateKmForSession(session, profile);
 }
 
 // Intensity bucket inferred from the session's reps/template. Simple keyword
@@ -158,6 +190,21 @@ export function cardioIntensityForSession(session: Session): "easy" | "moderate"
   if (/vo2|4x4|intervals|sprint|\bhard\b/.test(hayStack)) return "hard";
   if (/tempo|moderate|race pace|threshold/.test(hayStack)) return "moderate";
   return "easy"; // Z2 / long / easy / unlabeled default to easy
+}
+
+/** How to bucket distance accumulated in a session. Cardio reuses the standard
+ *  classifier. Hyrox sims are "hard" by default — the running inside them is
+ *  race-pace work, not Z2. For other categories (strength with a 3-min easy
+ *  bike warmup, etc.) the distance is incidental and reads as "easy". */
+function sessionIntensityForKm(session: Session): "easy" | "moderate" | "hard" {
+  if (session.category === "cardio") return cardioIntensityForSession(session);
+  if (session.category === "hyrox") {
+    // Light skill / deload sim variants should stay easy — check the template id.
+    const tid = session.modifiers?.templateId ?? "";
+    if (/light|intro|skill/i.test(tid)) return "easy";
+    return "hard";
+  }
+  return "easy";
 }
 
 /** Current day-streak: consecutive training days. One day of grace: if today
@@ -224,15 +271,20 @@ export function computeStats(
     // Count minutes for ALL sessions, not just cardio — the "total time trained"
     // KPI should include strength + stretching + sport too.
     minutes += sessionDurationMinutes(s);
-    if (s.category === "cardio") {
-      // Km priority: 1) user-entered actualKm, 2) modality-aware estimation
-      // (run pace, bike/row speed ratios), 3) parsed km from reps.
-      const sessionKm =
-        typeof s.actualKm === "number" && s.actualKm > 0
-          ? s.actualKm
-          : estimateKmForCardioSession(s, profile);
+    // Km from ANY session that has distance work in it. Hyrox has 400m/1000m
+    // runs, strength warmups sometimes have easy bike minutes, etc. — all
+    // should land in the counter. estimateKmForSession walks the blocks and
+    // only credits actual aerobic distance exercises (not sleds / carries).
+    const sessionKm =
+      typeof s.actualKm === "number" && s.actualKm > 0
+        ? s.actualKm
+        : estimateKmForSession(s, profile);
+    if (sessionKm > 0) {
       km += sessionKm;
-      const intensity = cardioIntensityForSession(s);
+      // Intensity bucket: cardio uses its own classifier; everything else
+      // with distance work defaults to the session's dominant quality —
+      // hyrox sims are "hard" by nature, strength incidentals are "easy".
+      const intensity = sessionIntensityForKm(s);
       kmByIntensity[intensity] += sessionKm;
     }
   }
