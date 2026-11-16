@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import clsx from "clsx";
 import { format, parseISO } from "date-fns";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, logRetroactiveSession } from "@/lib/db";
 import { templatesFor, findTemplate } from "@/lib/data/templates";
 import { useBodyScrollLock } from "@/lib/useBodyScrollLock";
+import { categoryColor } from "@/lib/categoryTheme";
 import {
   CATEGORIES,
   CATEGORY_BLURBS,
@@ -90,129 +90,176 @@ export default function QuickLogModal({
       onClick={onClose}
     >
       <div
-        className="bg-bg-elevated border border-border rounded-2xl p-5 max-w-md w-full max-h-[85vh] overflow-y-auto"
+        className="bg-bg-elevated border border-border-strong/50 rounded-2xl p-5 max-w-md w-full max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="font-display text-xl font-semibold tracking-tight text-text">
-            {dayLabel}
-          </h3>
-          <button onClick={onClose} className="text-text-dim text-2xl leading-none">
+        <div className="flex items-start justify-between mb-5">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+              {existingForDate && existingForDate.length > 0 ? "Edit the day" : "Log a session"}
+            </div>
+            <h3 className="font-display text-xl font-semibold tracking-tight text-text mt-1">
+              {dayLabel}
+            </h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-text-dim text-2xl leading-none hover:text-text"
+            aria-label="Close"
+          >
             ×
           </button>
         </div>
-        <p className="text-sm text-text-muted mb-4">
+        <p className="text-sm text-text-muted mb-5 leading-relaxed">
           {existingForDate && existingForDate.length > 0
             ? "Add another session, or remove one."
             : "Log what you did — just picks category, no set-by-set data."}
         </p>
 
         {stage === "category" && existingForDate && existingForDate.length > 0 && (
-          <div className="mb-4 space-y-1.5">
+          <div className="mb-5 space-y-2">
             <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
               Already logged
             </div>
-            {existingForDate.map((s) => (
-              <div
-                key={s.id}
-                className="w-full p-2.5 rounded-xl border border-border-strong/40 bg-bg-card flex items-center justify-between gap-2"
-              >
-                <div className="min-w-0">
-                  <div className="font-medium text-sm truncate text-text">{s.name}</div>
-                  <div className="text-[11px] text-text-dim">
-                    {CATEGORY_LABELS[s.category]}{s.finishedAt ? " · Done" : ""}
-                  </div>
-                </div>
-                <button
-                  onClick={() => s.id !== undefined && removeSession(s.id)}
-                  className="w-8 h-8 rounded-full text-text-dim hover:text-danger hover:bg-danger/10 flex items-center justify-center text-base"
-                  aria-label="Remove session"
-                  title="Remove"
+            {existingForDate.map((s) => {
+              const color = categoryColor(s.category);
+              return (
+                <div
+                  key={s.id}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-border-strong/40 bg-bg-elevated flex items-center justify-between gap-2"
                 >
-                  ×
-                </button>
-              </div>
-            ))}
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span
+                      className="w-1.5 h-1.5 rounded-full shrink-0"
+                      style={{ background: color.solid }}
+                      aria-hidden
+                    />
+                    <div className="min-w-0">
+                      <div className="font-medium text-sm truncate text-text">{s.name}</div>
+                      <div className="text-[11px] text-text-dim mt-0.5">
+                        {CATEGORY_LABELS[s.category]}
+                        {s.finishedAt && (
+                          <span className="uppercase tracking-[0.18em] ml-1.5">· Done</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => s.id !== undefined && removeSession(s.id)}
+                    className="w-8 h-8 rounded-full text-text-dim hover:text-danger hover:bg-danger/10 flex items-center justify-center text-base shrink-0"
+                    aria-label="Remove session"
+                    title="Remove"
+                  >
+                    ×
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
 
         {stage === "category" && recent && recent.length > 0 && (
-          <div className="mb-4 space-y-1.5">
-            <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold">
+          <div className="mb-5 space-y-2">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
               Recent
             </div>
-            {recent.map((r, i) => (
-              <button
-                key={i}
-                onClick={() => save(r.category, r.templateId)}
-                disabled={saving}
-                className="w-full text-left p-2.5 rounded-xl border bg-accent/10 border-accent/30 hover:border-accent/50 flex items-center justify-between gap-2"
-              >
-                <div className="min-w-0">
-                  <div className="font-medium text-sm truncate">{r.name}</div>
-                  <div className="text-[11px] text-text-dim">
-                    {CATEGORY_LABELS[r.category]}{r.templateId ? (findTemplate(r.templateId) ? ` · ${findTemplate(r.templateId)!.name}` : "") : ""}
+            {recent.map((r, i) => {
+              const color = categoryColor(r.category);
+              return (
+                <button
+                  key={i}
+                  onClick={() => save(r.category, r.templateId)}
+                  disabled={saving}
+                  className="w-full text-left px-3.5 py-2.5 rounded-xl border border-border-strong/40 hover:border-text-dim flex items-center justify-between gap-2 transition-colors"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span
+                      className="w-1.5 h-1.5 rounded-full shrink-0"
+                      style={{ background: color.solid }}
+                      aria-hidden
+                    />
+                    <div className="min-w-0">
+                      <div className="font-medium text-sm truncate text-text">{r.name}</div>
+                      <div className="text-[11px] text-text-dim mt-0.5">
+                        {CATEGORY_LABELS[r.category]}
+                        {r.templateId && findTemplate(r.templateId) ? ` · ${findTemplate(r.templateId)!.name}` : ""}
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <span className="text-accent text-sm font-semibold shrink-0">Log</span>
-              </button>
-            ))}
+                  <span className="text-[10px] uppercase tracking-[0.18em] text-accent font-medium shrink-0">
+                    Log
+                  </span>
+                </button>
+              );
+            })}
           </div>
         )}
 
         {stage === "category" && (
-          <div className="space-y-1.5">
-            {CATEGORIES.filter((c) => c !== "beach").map((cat) => (
-              <button
-                key={cat}
-                onClick={() => {
-                  setPickedCategory(cat);
-                  const tpl = templatesFor(cat);
-                  if (tpl.length > 1) {
-                    setStage("template");
-                  } else {
-                    save(cat);
-                  }
-                }}
-                disabled={saving}
-                className={clsx(
-                  "w-full text-left p-3 rounded-xl border transition-colors flex items-center justify-between",
-                  "bg-bg-card border-border hover:border-accent/40"
-                )}
-              >
-                <div>
-                  <div className="font-medium">{CATEGORY_LABELS[cat]}</div>
-                  <div className="text-xs text-text-dim mt-0.5">{CATEGORY_BLURBS[cat]}</div>
-                </div>
-                <span className="text-text-dim text-sm">›</span>
-              </button>
-            ))}
-          </div>
+          <>
+            <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium mb-2.5">
+              Or pick a category
+            </div>
+            <div className="space-y-2">
+              {CATEGORIES.filter((c) => c !== "beach").map((cat) => {
+                const color = categoryColor(cat);
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => {
+                      setPickedCategory(cat);
+                      const tpl = templatesFor(cat);
+                      if (tpl.length > 1) {
+                        setStage("template");
+                      } else {
+                        save(cat);
+                      }
+                    }}
+                    disabled={saving}
+                    className="w-full text-left p-3.5 rounded-xl border border-border-strong/40 hover:border-text-dim transition-colors flex items-center justify-between gap-3"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span
+                        className="w-1.5 h-1.5 rounded-full shrink-0"
+                        style={{ background: color.solid }}
+                        aria-hidden
+                      />
+                      <div className="min-w-0">
+                        <div className="font-medium text-text">{CATEGORY_LABELS[cat]}</div>
+                        <div className="text-xs text-text-dim mt-0.5">{CATEGORY_BLURBS[cat]}</div>
+                      </div>
+                    </div>
+                    <span className="text-text-dim text-sm shrink-0">›</span>
+                  </button>
+                );
+              })}
+            </div>
+          </>
         )}
 
         {stage === "template" && pickedCategory && (
           <>
             <button
               onClick={() => setStage("category")}
-              className="text-xs text-text-dim mb-3"
+              className="text-[11px] uppercase tracking-[0.18em] text-text-dim mb-3 hover:text-text font-medium"
             >
               ← Change category
             </button>
 
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <button
                 onClick={() => save(pickedCategory)}
                 disabled={saving}
-                className="w-full text-left p-3 rounded-xl border bg-accent/10 border-accent/40"
+                className="w-full text-left p-3.5 rounded-xl border bg-text/5 border-accent/60 transition-colors"
               >
-                <div className="font-medium">↻ Just the category — no specific session</div>
+                <div className="font-medium text-text">Just the category</div>
                 <div className="text-xs text-text-dim mt-0.5">
-                  Log as {CATEGORY_LABELS[pickedCategory]}, don&apos;t care which template
+                  Log as {CATEGORY_LABELS[pickedCategory]} — no specific template
                 </div>
               </button>
 
               {templates.length > 0 && (
-                <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold pt-3 pb-1 px-1">
+                <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium pt-3 pb-1 px-1">
                   Or pick the specific session
                 </div>
               )}
@@ -222,10 +269,10 @@ export default function QuickLogModal({
                   key={t.id}
                   onClick={() => save(pickedCategory, t.id)}
                   disabled={saving}
-                  className="w-full text-left p-3 rounded-xl border bg-bg-card border-border hover:border-accent/40 transition-colors"
+                  className="w-full text-left p-3.5 rounded-xl border border-border-strong/40 hover:border-text-dim transition-colors"
                 >
-                  <div className="font-medium">{t.name}</div>
-                  <div className="text-xs text-text-dim mt-0.5">{t.description}</div>
+                  <div className="font-medium text-text">{t.name}</div>
+                  <div className="text-xs text-text-dim mt-0.5 leading-relaxed">{t.description}</div>
                 </button>
               ))}
             </div>

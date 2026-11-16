@@ -8,7 +8,6 @@ import clsx from "clsx";
 import { archiveCurrentFocus, cleanupStaleDrafts, db, getProfile, getWeeklyPlan, saveProfile } from "@/lib/db";
 import QuickLogModal from "@/components/QuickLogModal";
 import DayPreviewModal from "@/components/DayPreviewModal";
-import WeeklyReviewModal from "@/components/WeeklyReviewModal";
 import { templatesFor } from "@/lib/data/templates";
 import { categoryColor } from "@/lib/categoryTheme";
 import { recommendForToday, type Recommendation } from "@/lib/recommend";
@@ -30,7 +29,6 @@ export default function HomePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [logDate, setLogDate] = useState<string | null>(null);
   const [previewDate, setPreviewDate] = useState<string | null>(null);
-  const [reviewOpen, setReviewOpen] = useState(false);
   // Offset in weeks from the current week (0 = this week, +1 = next, -1 = last).
   // Lets the user scan the block outlook without leaving Home.
   const [weekOffset, setWeekOffset] = useState(0);
@@ -99,26 +97,6 @@ export default function HomePage() {
       .first();
     return !!o;
   }, [displayedWeekStart]);
-
-  // Weekly review: prompt on Sunday (or later) if no review exists for the
-  // week that just ended. The week runs Mon-Sun; end date is this Sunday.
-  const thisSunday = useMemo(() => {
-    const d = new Date();
-    const day = d.getDay(); // 0=Sun ... 6=Sat
-    const daysToSunday = day === 0 ? 0 : 7 - day;
-    d.setDate(d.getDate() + daysToSunday);
-    return format(d, "yyyy-MM-dd");
-  }, []);
-  const showReviewPrompt = useLiveQuery(async () => {
-    const t = new Date();
-    // Only after Sunday morning — Saturday is still training
-    if (t.getDay() !== 0 && t.getDay() < 6) return false;
-    const existing = await db.weeklyReviews
-      .where("weekEndDate")
-      .equals(thisSunday)
-      .first();
-    return !existing;
-  }, [thisSunday]);
 
   // Read the same source as the week strip — if the current week has a
   // week override (e.g. W1/W2 learn-week, W5 realization, deload), the base
@@ -193,21 +171,6 @@ export default function HomePage() {
             Workouts get tailored loads and safer swaps. 2 min.
           </div>
         </Link>
-      )}
-
-      {showReviewPrompt && (
-        <button
-          onClick={() => setReviewOpen(true)}
-          className="w-full text-left block border border-border-strong/40 bg-bg-elevated rounded-2xl p-4"
-        >
-          <div className="text-[11px] uppercase tracking-[0.22em] text-accent font-medium">
-            Weekly review
-          </div>
-          <div className="text-sm text-text-muted mt-2 leading-relaxed">
-            How did the week go? A few quick chip questions. Your answers
-            tune next week&apos;s workouts. 2 min.
-          </div>
-        </button>
       )}
 
       {profile?.currentFocus && (
@@ -305,19 +268,6 @@ export default function HomePage() {
           }
           profile={profile}
           onClose={() => setPreviewDate(null)}
-        />
-      )}
-
-      {reviewOpen && profile && (
-        <WeeklyReviewModal
-          weekEndDate={thisSunday}
-          profile={profile}
-          onClose={() => setReviewOpen(false)}
-          onSaved={() => {
-            setReviewOpen(false);
-            // Refresh profile since bodyFlags may have toggled activeConcerns.
-            getProfile().then(setProfile);
-          }}
         />
       )}
 
@@ -494,27 +444,29 @@ function BlockCompleteCard({
   };
 
   return (
-    <section className="bg-gradient-to-br from-accent/25 to-accent/5 border border-accent/40 rounded-2xl p-5 space-y-3">
+    <section className="border border-accent/50 bg-text/5 rounded-2xl p-5 space-y-3">
       <div>
-        <div className="text-[10px] uppercase tracking-widest text-accent font-semibold">
+        <div className="text-[10px] uppercase tracking-[0.22em] text-accent font-medium">
           Block complete
         </div>
-        <div className="text-2xl font-bold mt-1">{focus.name} done.</div>
+        <div className="font-display text-2xl font-semibold tracking-tight mt-1.5 text-text">
+          {focus.name} done.
+        </div>
       </div>
-      <p className="text-sm text-text-muted">
+      <p className="text-sm text-text-muted leading-relaxed">
         {totalWeeks} weeks · {done} of ~{targetTotal} planned sessions logged.
         Nice work. Pick your next focus to keep the coach thinking in blocks.
       </p>
       <div className="flex gap-2 pt-1">
         <Link
           href="/plan"
-          className="flex-1 text-center bg-accent text-black font-semibold rounded-xl px-4 py-3 text-sm"
+          className="flex-1 text-center bg-accent text-bg font-semibold rounded-full px-4 h-11 text-sm hover:bg-accent-dim transition-colors flex items-center justify-center"
         >
           Pick next block →
         </Link>
         <button
           onClick={clear}
-          className="px-4 py-3 rounded-xl border border-border text-text-muted text-sm"
+          className="px-5 h-11 rounded-full border border-border-strong/40 text-text-muted text-sm font-medium hover:border-text-dim hover:text-text transition-colors"
         >
           Later
         </button>
@@ -637,18 +589,18 @@ function RecommendationCard({ rec }: { rec: Recommendation }) {
   return (
     <Link
       href={href}
-      className="block bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/40 rounded-2xl p-5"
+      className="block border border-accent/50 bg-text/5 rounded-2xl p-5 hover:border-accent transition-colors"
     >
-      <div className="text-[10px] uppercase tracking-widest text-accent font-semibold">
+      <div className="text-[10px] uppercase tracking-[0.22em] text-accent font-medium">
         Based on your week — try today
       </div>
-      <div className="text-2xl font-bold mt-2">
+      <div className="font-display text-2xl font-semibold tracking-tight mt-1.5 text-text">
         {CATEGORY_LABELS[rec.category]}{template ? ` — ${title}` : ""}
       </div>
-      <p className="text-sm text-text-muted mt-2 leading-relaxed">
+      <p className="text-sm text-text-muted mt-2.5 leading-relaxed">
         {rec.reasoning}
       </p>
-      <div className="mt-4 text-sm text-accent font-medium">
+      <div className="mt-4 text-[11px] uppercase tracking-[0.18em] text-accent font-medium">
         Start workout →
       </div>
     </Link>

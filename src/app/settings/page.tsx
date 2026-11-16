@@ -178,7 +178,9 @@ export default function SettingsPage() {
     <div className="max-w-3xl mx-auto px-5 py-6 space-y-8">
       <header>
         <p className="text-xs uppercase tracking-widest text-text-dim">You</p>
-        <h1 className="text-3xl font-bold mt-1">Profile</h1>
+        <h1 className="font-display text-[2.25rem] font-semibold tracking-tight leading-[1.05] mt-1.5 text-text">
+          Profile
+        </h1>
       </header>
 
       {!profile.onboarded && (

@@ -17,6 +17,7 @@ import {
   saveWeekOverride,
 } from "@/lib/db";
 import { templatesFor } from "@/lib/data/templates";
+import { categoryColor } from "@/lib/categoryTheme";
 import { useBodyScrollLock } from "@/lib/useBodyScrollLock";
 import {
   CATEGORIES,
@@ -508,39 +509,39 @@ function PlanPageInner() {
   return (
     <div className="max-w-3xl mx-auto px-5 py-6 space-y-6">
       <header>
-        <p className="text-xs uppercase tracking-widest text-text-dim">Your program</p>
-        <h1 className="text-3xl font-bold mt-1">Plan</h1>
+        <p className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">Your program</p>
+        <h1 className="font-display text-[2.25rem] font-semibold tracking-tight leading-[1.05] mt-1.5 text-text">Plan</h1>
       </header>
 
       {blockState === "active" && focus && (
         <section
           className={clsx(
-            "border rounded-2xl p-5 space-y-3",
-            isPaused ? "bg-bg-card border-text-dim/40" : "bg-bg-card border-accent/40"
+            "border rounded-2xl p-5 space-y-4 bg-bg-elevated",
+            isPaused ? "border-border-strong/40" : "border-accent/30"
           )}
         >
           <div className="flex items-baseline justify-between gap-3">
             <div>
               <div
                 className={clsx(
-                  "text-[10px] uppercase tracking-widest font-semibold flex items-center gap-2",
+                  "text-[10px] uppercase tracking-[0.22em] font-medium flex items-center gap-2",
                   isPaused ? "text-text-dim" : "text-accent"
                 )}
               >
                 {isPaused && (
-                  <span className="bg-text-dim/15 text-text-muted px-1.5 py-0.5 rounded">
-                    PAUSED
+                  <span className="bg-text-dim/15 text-text-muted px-1.5 py-0.5 rounded tracking-[0.2em]">
+                    Paused
                   </span>
                 )}
                 Current focus block
               </div>
-              <div className="text-2xl font-bold mt-1">{focus.name}</div>
+              <div className="font-display text-2xl font-semibold tracking-tight mt-1.5 text-text leading-[1.05]">{focus.name}</div>
             </div>
-            <div className="text-xs text-text-dim shrink-0">
-              Week {weekNum} of {focus.durationWeeks}
+            <div className="text-[11px] text-text-dim shrink-0 tracking-wide tabular-nums">
+              Wk {weekNum} / {focus.durationWeeks}
             </div>
           </div>
-          <div className="h-1 bg-border rounded-full overflow-hidden">
+          <div className="h-[2px] bg-border-strong/40 rounded-full overflow-hidden">
             <div
               className={clsx("h-full", isPaused ? "bg-text-dim/60" : "bg-accent")}
               style={{ width: `${progressPct}%` }}
@@ -552,27 +553,26 @@ function PlanPageInner() {
             currentWeek={weekNum}
           />
           {isPaused && focus.pausedAt && (
-            <p className="text-xs text-text-muted bg-bg-elevated border border-border rounded-lg p-3">
-              Paused since {format(new Date(focus.pausedAt + "T00:00:00"), "MMM d")}.
-              The week counter and phase will resume where they left off.
+            <p className="text-xs text-text-muted bg-bg-card border border-border-strong/30 rounded-lg p-3 leading-relaxed">
+              Paused since {format(new Date(focus.pausedAt + "T00:00:00"), "MMM d")}. The week counter and phase resume where they left off.
             </p>
           )}
           <button
             onClick={togglePause}
             className={clsx(
-              "w-full h-10 rounded-lg text-sm font-semibold border",
+              "w-full h-10 rounded-full text-sm font-medium border transition-colors",
               isPaused
-                ? "bg-accent text-black border-accent"
-                : "bg-bg-elevated text-text-muted border-border hover:border-accent/40"
+                ? "bg-text/5 border-accent/60 text-text"
+                : "bg-transparent border-border-strong/50 text-text-muted hover:border-text-dim"
             )}
           >
             {isPaused ? "Resume block" : "Pause block"}
           </button>
-          <div className="flex items-center justify-between text-xs text-text-dim">
+          <div className="flex items-center justify-between text-[11px] text-text-dim tracking-wide">
             <span>Started {format(new Date(focus.startedAt), "MMM d")}</span>
             <button
               onClick={endBlock}
-              className="text-[10px] text-text-dim hover:text-text-muted opacity-60"
+              className="text-text-dim hover:text-danger uppercase tracking-[0.18em] font-medium"
             >
               End block
             </button>
@@ -601,11 +601,11 @@ function PlanPageInner() {
       )}
 
       {blockState === "none" && (
-        <section className="bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/30 rounded-2xl p-5">
-          <div className="text-[10px] uppercase tracking-widest text-accent font-semibold">
+        <section className="border border-border-strong/40 bg-bg-elevated rounded-2xl p-5">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-accent font-medium">
             Pick a focus block
           </div>
-          <p className="text-sm text-text-muted mt-2 leading-snug">
+          <p className="text-sm text-text-muted mt-2.5 leading-relaxed">
             A block is 1–8 weeks with a clear intent — Hypertrophy, Cardio base,
             Athletic, Recovery. The whole app adapts to it. You can end early or
             switch anytime.
@@ -613,9 +613,6 @@ function PlanPageInner() {
           <button
             onClick={() => {
               setShowPresets(true);
-              // Presets are already rendered below in the "none" state — scroll
-              // them into view so the tap feels responsive. setTimeout(0) lets
-              // React commit any state change before we measure the layout.
               setTimeout(() => {
                 const el = document.getElementById("focus-presets");
                 if (!el) return;
@@ -623,16 +620,16 @@ function PlanPageInner() {
                 window.scrollTo(0, y);
               }, 0);
             }}
-            className="mt-3 text-sm text-accent font-semibold"
+            className="mt-4 text-[11px] uppercase tracking-[0.18em] text-accent font-medium"
           >
             Choose a block →
           </button>
         </section>
       )}
 
-      <section className="space-y-2">
+      <section className="space-y-3">
         <div className="flex items-baseline justify-between">
-          <h2 className="text-xs uppercase tracking-widest text-text-dim font-semibold">
+          <h2 className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">
             {blockState === "active" ? "This block's week" : "Weekly pattern"}
           </h2>
           {blockState === "active" && (
@@ -641,8 +638,6 @@ function PlanPageInner() {
                 const next = !showPresets;
                 setShowPresets(next);
                 if (next) {
-                  // Scroll to presets after React commits — same pattern as the
-                  // "Choose a block" button.
                   setTimeout(() => {
                     const el = document.getElementById("focus-presets");
                     if (!el) return;
@@ -651,13 +646,13 @@ function PlanPageInner() {
                   }, 0);
                 }
               }}
-              className="text-xs text-accent"
+              className="text-[11px] uppercase tracking-[0.18em] text-accent font-medium"
             >
               {showPresets ? "Hide" : "Change block"}
             </button>
           )}
         </div>
-        <p className="text-xs text-text-dim">{patternIntro}</p>
+        <p className="text-xs text-text-dim leading-relaxed">{patternIntro}</p>
 
         <div className="space-y-2 pt-1">
           {plan.days.map((day, i) => {
@@ -665,14 +660,15 @@ function PlanPageInner() {
             const lockedTemplate = day?.templateId
               ? templatesFor(day.category).find((t) => t.id === day.templateId)
               : null;
+            const color = day ? categoryColor(day.category) : null;
             return (
               <div
                 key={i}
                 className={clsx(
-                  "w-full rounded-2xl border transition-colors",
+                  "w-full rounded-2xl border bg-bg-elevated transition-colors",
                   isToday
-                    ? "bg-accent/10 border-accent/40"
-                    : "bg-bg-card border-border"
+                    ? "border-accent/50"
+                    : "border-border-strong/40"
                 )}
               >
                 <button
@@ -680,11 +676,11 @@ function PlanPageInner() {
                   className="w-full text-left flex items-center gap-4 p-4"
                 >
                   <div className={clsx("w-14 text-center", isToday ? "text-accent" : "text-text-dim")}>
-                    <div className="text-[10px] uppercase tracking-widest font-bold">
+                    <div className="text-[10px] uppercase tracking-[0.22em] font-medium">
                       {DAY_LABELS_LONG[i].slice(0, 3)}
                     </div>
                     {isToday && (
-                      <div className="text-[10px] mt-0.5 font-semibold uppercase tracking-widest">
+                      <div className="text-[10px] mt-1 font-medium uppercase tracking-[0.22em]">
                         Today
                       </div>
                     )}
@@ -692,12 +688,21 @@ function PlanPageInner() {
                   <div className="flex-1 min-w-0">
                     {day ? (
                       <>
-                        <div className="font-semibold">
-                          {lockedTemplate
-                            ? `${CATEGORY_LABELS[day.category]} — ${lockedTemplate.name}`
-                            : CATEGORY_LABELS[day.category]}
+                        <div className="flex items-center gap-2 text-text font-medium">
+                          {color && (
+                            <span
+                              className="w-1.5 h-1.5 rounded-full shrink-0"
+                              style={{ background: color.solid }}
+                              aria-hidden
+                            />
+                          )}
+                          <span className="truncate">
+                            {lockedTemplate
+                              ? `${CATEGORY_LABELS[day.category]} — ${lockedTemplate.name}`
+                              : CATEGORY_LABELS[day.category]}
+                          </span>
                         </div>
-                        <div className="text-xs text-text-dim mt-0.5">
+                        <div className="text-xs text-text-dim mt-1 leading-relaxed pl-3.5">
                           {lockedTemplate ? lockedTemplate.description : CATEGORY_BLURBS[day.category]}
                         </div>
                       </>
@@ -737,8 +742,8 @@ function PlanPageInner() {
                 <div
                   key={i}
                   className={clsx(
-                    "rounded-xl border transition-colors",
-                    isPreview ? "bg-bg-card border-accent/40" : "bg-bg-card border-border"
+                    "rounded-xl border bg-bg-elevated transition-colors",
+                    isPreview ? "border-accent/50" : "border-border-strong/40"
                   )}
                 >
                   <button
@@ -751,14 +756,14 @@ function PlanPageInner() {
                         setSelectedFrequency(p.defaultFrequency);
                       }
                     }}
-                    className="w-full text-left px-4 py-3"
+                    className="w-full text-left px-4 py-3.5"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
-                        <div className="font-semibold">{p.name}</div>
-                        <div className="text-xs text-text-dim mt-0.5">{p.tagline}</div>
+                        <div className="font-display text-base font-semibold tracking-tight text-text">{p.name}</div>
+                        <div className="text-xs text-text-dim mt-1 leading-relaxed">{p.tagline}</div>
                       </div>
-                      <div className="text-[10px] uppercase tracking-widest text-text-dim shrink-0">
+                      <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim shrink-0 tabular-nums font-medium">
                         {p.durationWeeks}w
                       </div>
                     </div>
@@ -784,7 +789,7 @@ function PlanPageInner() {
 
       <button
         onClick={reset}
-        className="w-full h-12 rounded-xl border border-border text-text-muted font-medium"
+        className="w-full h-11 rounded-full border border-border-strong/40 bg-transparent text-text-dim text-xs uppercase tracking-[0.18em] font-medium hover:border-text-dim hover:text-text-muted"
       >
         Reset to default plan
       </button>
@@ -839,9 +844,9 @@ function PresetPreview({
 }) {
   const week = patternForFrequency(preset.days, frequency);
   return (
-    <div className="border-t border-border/50 px-4 py-3 space-y-3">
+    <div className="border-t border-border-strong/30 px-4 py-4 space-y-4">
       <div>
-        <div className="text-[10px] uppercase tracking-widest text-text-dim mb-2">
+        <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim mb-2.5 font-medium">
           How many days per week?
         </div>
         <div className="grid grid-cols-4 gap-2">
@@ -852,10 +857,10 @@ function PresetPreview({
                 key={f}
                 onClick={() => onFrequencyChange(f)}
                 className={clsx(
-                  "h-10 rounded-lg border text-sm font-semibold transition-colors",
+                  "h-10 rounded-full border text-sm font-medium transition-colors tabular-nums",
                   active
-                    ? "bg-accent text-black border-accent"
-                    : "bg-bg-elevated border-border text-text-muted"
+                    ? "bg-text/5 border-accent/60 text-text"
+                    : "bg-transparent border-border-strong/40 text-text-muted hover:border-text-dim"
                 )}
               >
                 {f}
@@ -866,10 +871,10 @@ function PresetPreview({
       </div>
 
       <div>
-        <div className="text-[10px] uppercase tracking-widest text-text-dim mb-2">
+        <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim mb-2.5 font-medium">
           Your week
         </div>
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           {week.map((d, i) => {
             const tmpl = d?.templateId
               ? templatesFor(d.category).find((t) => t.id === d.templateId)
@@ -879,27 +884,37 @@ function PresetPreview({
               : tmpl
                 ? `${CATEGORY_LABELS[d.category]} — ${tmpl.name}`
                 : CATEGORY_LABELS[d.category];
+            const color = d ? categoryColor(d.category) : null;
             return (
-              <div key={i} className="flex items-baseline gap-2 text-xs">
-                <span className="w-10 shrink-0 text-text-dim uppercase tracking-widest text-[10px]">
+              <div key={i} className="flex items-baseline gap-3 text-xs">
+                <span className="w-10 shrink-0 text-text-dim uppercase tracking-[0.2em] text-[10px] font-medium">
                   {DAY_LABELS_LONG[i].slice(0, 3)}
                 </span>
-                <span className={clsx(!d && "text-text-dim")}>{label}</span>
+                <div className="flex items-baseline gap-2 min-w-0">
+                  {color && (
+                    <span
+                      className="w-1 h-1 rounded-full shrink-0 translate-y-[-1px]"
+                      style={{ background: color.solid }}
+                      aria-hidden
+                    />
+                  )}
+                  <span className={clsx(!d ? "text-text-dim" : "text-text-muted")}>{label}</span>
+                </div>
               </div>
             );
           })}
         </div>
       </div>
 
-      <div className="text-[10px] text-text-dim">
+      <div className="text-[10px] text-text-dim leading-relaxed">
         {preset.durationWeeks} weeks · progresses easy → harder → peak → deload. You can edit any day later.
       </div>
 
       <button
         onClick={onStart}
-        className="w-full h-11 rounded-lg bg-accent text-black font-semibold text-sm"
+        className="w-full h-11 rounded-full border border-accent/60 bg-text/5 text-text text-[11px] uppercase tracking-[0.18em] font-medium hover:bg-text/10"
       >
-        Start this block →
+        Start this block
       </button>
     </div>
   );
@@ -1007,37 +1022,43 @@ function DayPicker({
       onClick={onClose}
     >
       <div
-        className="bg-bg-elevated border border-border rounded-2xl p-5 max-w-md w-full max-h-[85vh] overflow-y-auto"
+        className="bg-bg-elevated border border-border-strong/50 rounded-2xl p-5 max-w-md w-full max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-lg font-bold">
-            {DAY_LABELS_LONG[day]}
-            {stage === "template" && pickedCategory && (
-              <span className="text-text-dim text-sm font-normal ml-2">
-                → {CATEGORY_LABELS[pickedCategory]}
-              </span>
-            )}
-          </h3>
-          <button onClick={onClose} className="text-text-dim text-2xl leading-none">
+        <div className="flex items-start justify-between mb-5">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+              Edit day
+            </div>
+            <h3 className="font-display text-xl font-semibold tracking-tight text-text mt-1">
+              {DAY_LABELS_LONG[day]}
+              {stage === "template" && pickedCategory && (
+                <span className="text-text-muted font-normal text-base ml-2">
+                  → {CATEGORY_LABELS[pickedCategory]}
+                </span>
+              )}
+            </h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-text-dim text-2xl leading-none hover:text-text"
+            aria-label="Close"
+          >
             ×
           </button>
         </div>
 
-        {/* Scope toggle — "just this week" is safe default, "every week"
-            changes the recurring pattern. Prevents small edits from
-            accidentally rewriting the whole itinerary. */}
-        <div className="mb-1 text-[10px] uppercase tracking-wider text-text-dim">
+        <div className="mb-2 text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
           Apply change to
         </div>
-        <div className="mb-4 grid grid-cols-2 gap-1.5 p-1 bg-bg-card border border-border rounded-xl">
+        <div className="mb-5 grid grid-cols-2 gap-2">
           <button
             onClick={() => setScope("this-week")}
             className={clsx(
-              "py-2 rounded-lg text-xs font-semibold transition-colors",
+              "py-2 rounded-full border text-xs font-medium transition-colors",
               scope === "this-week"
-                ? "bg-accent text-black"
-                : "text-text-muted"
+                ? "bg-text/5 border-accent/60 text-text"
+                : "bg-transparent border-border-strong/40 text-text-muted hover:border-text-dim"
             )}
           >
             Just this week
@@ -1045,52 +1066,62 @@ function DayPicker({
           <button
             onClick={() => setScope("every-week")}
             className={clsx(
-              "py-2 rounded-lg text-xs font-semibold transition-colors",
+              "py-2 rounded-full border text-xs font-medium transition-colors",
               scope === "every-week"
-                ? "bg-accent text-black"
-                : "text-text-muted"
+                ? "bg-text/5 border-accent/60 text-text"
+                : "bg-transparent border-border-strong/40 text-text-muted hover:border-text-dim"
             )}
           >
-            Every week (recurring)
+            Every week
           </button>
         </div>
 
         {stage === "category" && (
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <button
               onClick={() => onPick(null, scope)}
               className={clsx(
-                "w-full text-left p-3 rounded-xl border transition-colors",
+                "w-full text-left p-3.5 rounded-xl border transition-colors",
                 current === null
-                  ? "bg-accent/10 border-accent/40"
-                  : "bg-bg-card border-border"
+                  ? "bg-bg-card border-accent/50"
+                  : "bg-transparent border-border-strong/40 hover:border-text-dim"
               )}
             >
-              <div className="font-medium">Rest day</div>
+              <div className="font-medium text-text">Rest day</div>
               <div className="text-xs text-text-dim mt-0.5">Active recovery encouraged</div>
             </button>
 
-            {CATEGORIES.filter((c) => c !== "sport").map((cat) => (
-              <button
-                key={cat}
-                onClick={() => {
-                  setPickedCategory(cat);
-                  setStage("template");
-                }}
-                className={clsx(
-                  "w-full text-left p-3 rounded-xl border transition-colors flex items-center justify-between gap-2",
-                  current?.category === cat
-                    ? "bg-accent/10 border-accent/40"
-                    : "bg-bg-card border-border"
-                )}
-              >
-                <div>
-                  <div className="font-medium">{CATEGORY_LABELS[cat]}</div>
-                  <div className="text-xs text-text-dim mt-0.5">{CATEGORY_BLURBS[cat]}</div>
-                </div>
-                <span className="text-text-dim text-sm">›</span>
-              </button>
-            ))}
+            {CATEGORIES.filter((c) => c !== "sport").map((cat) => {
+              const color = categoryColor(cat);
+              return (
+                <button
+                  key={cat}
+                  onClick={() => {
+                    setPickedCategory(cat);
+                    setStage("template");
+                  }}
+                  className={clsx(
+                    "w-full text-left p-3.5 rounded-xl border transition-colors flex items-center justify-between gap-2",
+                    current?.category === cat
+                      ? "bg-bg-card border-accent/50"
+                      : "bg-transparent border-border-strong/40 hover:border-text-dim"
+                  )}
+                >
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <span
+                      className="w-1.5 h-1.5 rounded-full shrink-0 mt-1.5"
+                      style={{ background: color.solid }}
+                      aria-hidden
+                    />
+                    <div className="min-w-0">
+                      <div className="font-medium text-text">{CATEGORY_LABELS[cat]}</div>
+                      <div className="text-xs text-text-dim mt-0.5">{CATEGORY_BLURBS[cat]}</div>
+                    </div>
+                  </div>
+                  <span className="text-text-dim text-sm shrink-0">›</span>
+                </button>
+              );
+            })}
           </div>
         )}
 
@@ -1098,29 +1129,29 @@ function DayPicker({
           <>
             <button
               onClick={() => setStage("category")}
-              className="text-xs text-text-dim mb-3"
+              className="text-[11px] text-text-dim mb-3 uppercase tracking-[0.18em] font-medium hover:text-text-muted"
             >
               ← Change category
             </button>
 
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <button
                 onClick={() => onPick({ category: pickedCategory }, scope)}
                 className={clsx(
-                  "w-full text-left p-3 rounded-xl border transition-colors",
+                  "w-full text-left p-3.5 rounded-xl border transition-colors",
                   current?.category === pickedCategory && !current?.templateId
-                    ? "bg-accent/10 border-accent/40"
-                    : "bg-bg-card border-border"
+                    ? "bg-bg-card border-accent/50"
+                    : "bg-transparent border-border-strong/40 hover:border-text-dim"
                 )}
               >
-                <div className="font-medium">↻ Rotate (any template)</div>
+                <div className="font-medium text-text">Rotate (any template)</div>
                 <div className="text-xs text-text-dim mt-0.5">
                   Different session each time — variety guaranteed
                 </div>
               </button>
 
               {templates.length > 0 && (
-                <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold pt-3 pb-1 px-1">
+                <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium pt-3 pb-1 px-1">
                   Lock a specific template
                 </div>
               )}
@@ -1132,14 +1163,14 @@ function DayPicker({
                     key={t.id}
                     onClick={() => onPick({ category: pickedCategory, templateId: t.id }, scope)}
                     className={clsx(
-                      "w-full text-left p-3 rounded-xl border transition-colors",
+                      "w-full text-left p-3.5 rounded-xl border transition-colors",
                       isLocked
-                        ? "bg-accent/10 border-accent/40"
-                        : "bg-bg-card border-border"
+                        ? "bg-bg-card border-accent/50"
+                        : "bg-transparent border-border-strong/40 hover:border-text-dim"
                     )}
                   >
-                    <div className="font-medium">{t.name}</div>
-                    <div className="text-xs text-text-dim mt-0.5">{t.description}</div>
+                    <div className="font-medium text-text">{t.name}</div>
+                    <div className="text-xs text-text-dim mt-1 leading-relaxed">{t.description}</div>
                   </button>
                 );
               })}

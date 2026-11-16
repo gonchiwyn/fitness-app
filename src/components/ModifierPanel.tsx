@@ -29,33 +29,31 @@ export default function ModifierPanel({
   const summary = summarize(initial, defaultEquipment);
 
   return (
-    <section className="bg-bg-card border border-border rounded-2xl overflow-hidden">
+    <section className="bg-bg-elevated border border-border-strong/40 rounded-2xl overflow-hidden">
       <button
         onClick={() => setOpen((o) => !o)}
         className="w-full px-4 py-3 flex items-center justify-between text-left"
       >
-        <div className="flex items-center gap-2">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-accent">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L14 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 018 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
-          </svg>
-          <span className="text-sm font-medium">Adjust</span>
-          <span className="text-xs text-text-dim">{summary}</span>
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" aria-hidden />
+          <span className="text-sm font-medium text-text">Adjust</span>
+          <span className="text-[11px] text-text-dim truncate">{summary}</span>
         </div>
         <svg
-          className={clsx("w-5 h-5 text-text-dim transition-transform", open && "rotate-180")}
+          className={clsx("w-4 h-4 text-text-dim transition-transform shrink-0", open && "rotate-180")}
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          strokeWidth="2"
+          strokeWidth="1.5"
         >
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
       </button>
 
       {open && (
-        <div className="border-t border-border/50 p-4 space-y-5">
+        <div className="border-t border-border-strong/30 p-4 space-y-5">
           <div>
-            <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold mb-2">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium mb-2.5">
               Time available
             </div>
             <div className="flex gap-2 flex-wrap">
@@ -72,7 +70,7 @@ export default function ModifierPanel({
           </div>
 
           <div>
-            <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold mb-2">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium mb-2.5">
               Equipment
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -90,7 +88,7 @@ export default function ModifierPanel({
           </div>
 
           <div>
-            <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold mb-2">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium mb-2.5">
               Rehab mode (zone is bothering me)
             </div>
             <div className="flex gap-2 flex-wrap">
@@ -118,7 +116,7 @@ export default function ModifierPanel({
                 onApply({});
                 setOpen(false);
               }}
-              className="flex-1 h-11 rounded-xl border border-border text-text-muted font-medium"
+              className="flex-1 h-11 rounded-full border border-border-strong/40 text-text-muted font-medium text-sm hover:border-text-dim hover:text-text transition-colors"
             >
               Reset
             </button>
@@ -127,7 +125,7 @@ export default function ModifierPanel({
                 onApply(draft);
                 setOpen(false);
               }}
-              className="flex-1 h-11 rounded-xl bg-accent text-white font-semibold"
+              className="flex-1 h-11 rounded-full bg-accent text-bg font-semibold text-sm hover:bg-accent-dim transition-colors"
             >
               Apply &amp; regenerate
             </button>
@@ -162,11 +160,11 @@ function Chip({
     <button
       onClick={onClick}
       className={clsx(
-        "h-10 px-3 rounded-lg border text-xs font-medium transition-colors",
+        "h-10 px-3.5 rounded-full border text-xs font-medium transition-colors",
         fullWidth ? "w-full" : "",
         active
-          ? "bg-accent text-white border-accent"
-          : "bg-bg border-border text-text-muted hover:border-border/70"
+          ? "bg-text/5 border-accent/60 text-text"
+          : "bg-transparent border-border-strong/40 text-text-muted hover:border-text-dim"
       )}
     >
       {children}

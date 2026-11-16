@@ -84,17 +84,23 @@ export default function DayPreviewModal({
       onClick={onClose}
     >
       <div
-        className="bg-bg-elevated border border-border rounded-2xl p-5 max-w-md w-full max-h-[85vh] overflow-y-auto"
+        className="bg-bg-elevated border border-border-strong/50 rounded-2xl p-5 max-w-md w-full max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between mb-3">
+        <div className="flex items-start justify-between mb-5">
           <div>
-            <div className="text-[10px] uppercase tracking-widest text-accent font-semibold">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-accent font-medium">
               Preview
             </div>
-            <h3 className="text-xl font-bold mt-1">{dayLabel}</h3>
+            <h3 className="font-display text-xl font-semibold tracking-tight text-text mt-1">
+              {dayLabel}
+            </h3>
           </div>
-          <button onClick={onClose} className="text-text-dim text-2xl leading-none">
+          <button
+            onClick={onClose}
+            className="text-text-dim text-2xl leading-none hover:text-text"
+            aria-label="Close"
+          >
             ×
           </button>
         </div>
@@ -107,21 +113,20 @@ export default function DayPreviewModal({
           <p className="text-sm text-text-muted">Building preview…</p>
         ) : workout ? (
           <>
-            <div className="text-xs uppercase tracking-widest text-text-dim mb-1">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
               {CATEGORY_LABELS[day.category]}
             </div>
-            <div className="text-sm text-text-muted mb-4">{workout.name}</div>
+            <div className="text-sm text-text mt-1 mb-5 font-medium">{workout.name}</div>
 
             <div className="space-y-3">
               {workout.blocks
-                // Warmup is boilerplate — hide from previews to save room.
                 .filter((b) => !/warmup/i.test(b.title))
                 .map((block) => (
                   <div
                     key={block.id}
-                    className="bg-bg-card border border-border rounded-xl p-3"
+                    className="border border-border-strong/40 bg-bg-card rounded-xl p-3.5"
                   >
-                    <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold">
+                    <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
                       {block.title}
                     </div>
                     <div className="mt-2 space-y-1.5">
@@ -138,9 +143,9 @@ export default function DayPreviewModal({
                 ))}
             </div>
 
-            <p className="text-[10px] text-text-dim mt-4 leading-relaxed">
-              This is a projected session for {dayLabel}. Accessories rotate week-to-week
-              via the exercise pool — Monday next month won&apos;t be identical to Monday today.
+            <p className="text-[11px] text-text-dim mt-5 leading-relaxed">
+              Projected session for {dayLabel}. Accessories rotate week-to-week — this is
+              a snapshot, not a fixed script.
             </p>
           </>
         ) : (
@@ -150,10 +155,10 @@ export default function DayPreviewModal({
         {day && day.category === "sport" ? (
           <Link
             href="/workout"
-            className="block text-center mt-4 text-accent font-semibold text-sm"
+            className="block text-center mt-5 pt-4 border-t border-border-strong/30 text-[11px] uppercase tracking-[0.18em] text-accent font-medium"
             onClick={onClose}
           >
-            Log a sport →
+            Log a sport
           </Link>
         ) : day && (
           <Link
@@ -162,10 +167,10 @@ export default function DayPreviewModal({
                 ? `/workout/${day.category}?template=${day.templateId}&date=${date}`
                 : `/workout/${day.category}?date=${date}`
             }
-            className="block text-center mt-4 text-accent font-semibold text-sm"
+            className="block text-center mt-5 pt-4 border-t border-border-strong/30 text-[11px] uppercase tracking-[0.18em] text-accent font-medium"
             onClick={onClose}
           >
-            Open workout builder →
+            Open workout builder
           </Link>
         )}
       </div>
@@ -177,14 +182,13 @@ export default function DayPreviewModal({
 function SportDayPreview() {
   return (
     <div className="space-y-3">
-      <div className="text-xs uppercase tracking-widest text-text-dim">
+      <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
         Sport day
       </div>
-      <p className="text-sm text-text-muted">
-        No structured workout — just move. Log what you did after (or before,
-        for planning).
+      <p className="text-sm text-text-muted leading-relaxed">
+        No structured workout — just move. Log what you did after (or before, for planning).
       </p>
-      <div className="bg-bg-card border border-border rounded-xl p-3 text-sm text-text-muted">
+      <div className="border border-border-strong/40 bg-bg-card rounded-xl p-3.5 text-sm text-text-muted">
         Ideas: swim, surf, tennis, hike, bike ride, climb, ski, football…
       </div>
     </div>

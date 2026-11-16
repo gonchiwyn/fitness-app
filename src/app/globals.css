@@ -62,10 +62,19 @@ body {
   color: var(--text);
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
   font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  letter-spacing: -0.005em;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--accent) 45%, transparent);
+  color: var(--text);
 }
 
 button {
@@ -75,6 +84,12 @@ button {
 button:disabled {
   cursor: not-allowed;
   opacity: 0.5;
+}
+
+:focus-visible {
+  outline: 1px solid color-mix(in oklab, var(--accent) 70%, transparent);
+  outline-offset: 2px;
+  border-radius: 6px;
 }
 
 input[type="number"]::-webkit-outer-spin-button,

@@ -16,7 +16,8 @@ import Link from "next/link";
 import clsx from "clsx";
 import { db, deleteSession } from "@/lib/db";
 import { getExercise } from "@/lib/data/exercises";
-import { CATEGORY_LABELS, DAY_LABELS_SHORT, type Category, type Session, type WeeklyReview } from "@/lib/types";
+import { categoryColor } from "@/lib/categoryTheme";
+import { CATEGORY_LABELS, DAY_LABELS_SHORT, type Category, type Session } from "@/lib/types";
 
 export default function HistoryPage() {
   // Filter out drafts (previews that were never started)
@@ -44,22 +45,22 @@ export default function HistoryPage() {
 
   if (sessions.length === 0) {
     return (
-      <div className="max-w-3xl mx-auto px-5 py-10">
-        <h1 className="text-3xl font-bold">History</h1>
-        <p className="text-text-muted mt-4">
-          No sessions yet. Pick a category and start training.
+      <div className="max-w-3xl mx-auto px-5 py-10 space-y-5">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">
+            Your work
+          </p>
+          <h1 className="font-display text-[2.25rem] font-semibold tracking-tight leading-[1.05] mt-1.5 text-text">
+            History
+          </h1>
+        </div>
+        <p className="text-text-muted leading-relaxed">
+          No sessions yet. Open the Home tab and log what you trained.
         </p>
-        <Link
-          href="/workout"
-          className="inline-block mt-6 bg-accent text-white font-semibold px-5 py-3 rounded-xl"
-        >
-          Browse Categories
-        </Link>
       </div>
     );
   }
 
-  // Aggregate stats
   const totalWorkouts = sessions.filter((s) => s.finishedAt).length;
   const byCategory = sessions
     .filter((s) => s.finishedAt)
@@ -74,72 +75,84 @@ export default function HistoryPage() {
   return (
     <div className="max-w-3xl mx-auto px-5 py-6 space-y-6">
       <header>
-        <p className="text-xs uppercase tracking-widest text-text-dim">Your work</p>
-        <h1 className="text-3xl font-bold mt-1">History</h1>
+        <p className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">
+          Your work
+        </p>
+        <h1 className="font-display text-[2.25rem] font-semibold tracking-tight leading-[1.05] mt-1.5 text-text">
+          History
+        </h1>
       </header>
 
       <section className="grid grid-cols-2 gap-3">
-        <div className="bg-bg-card border border-border rounded-2xl p-4">
-          <div className="text-3xl font-bold text-accent">{totalWorkouts}</div>
-          <div className="text-xs text-text-dim mt-1 uppercase tracking-widest">
-            Workouts done
-          </div>
-        </div>
-        <div className="bg-bg-card border border-border rounded-2xl p-4">
-          <div className="text-3xl font-bold">{Object.keys(byCategory).length}</div>
-          <div className="text-xs text-text-dim mt-1 uppercase tracking-widest">
-            Categories
-          </div>
-        </div>
+        <StatTile value={totalWorkouts} label="Workouts done" accent />
+        <StatTile value={Object.keys(byCategory).length} label="Categories" />
       </section>
 
       <ConsistencyCalendar sessions={sessions} />
 
-      <WeeklyReviewsSection />
-
       {topCategories.length > 0 && (
         <section>
-          <h2 className="text-xs uppercase tracking-widest text-text-dim font-semibold mb-2">
+          <h2 className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium mb-3">
             Most trained
           </h2>
           <div className="space-y-2">
-            {topCategories.map(([cat, count]) => (
-              <div
-                key={cat}
-                className="flex items-center justify-between bg-bg-card border border-border rounded-xl px-4 py-3"
-              >
-                <span className="font-medium">{CATEGORY_LABELS[cat as keyof typeof CATEGORY_LABELS]}</span>
-                <span className="text-text-muted text-sm tabular-nums">{count}</span>
-              </div>
-            ))}
+            {topCategories.map(([cat, count]) => {
+              const color = categoryColor(cat as Category);
+              return (
+                <div
+                  key={cat}
+                  className="flex items-center justify-between border border-border-strong/40 bg-bg-elevated rounded-xl px-4 py-3"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span
+                      className="w-1.5 h-1.5 rounded-full"
+                      style={{ background: color.solid }}
+                      aria-hidden
+                    />
+                    <span className="text-text font-medium text-sm">
+                      {CATEGORY_LABELS[cat as keyof typeof CATEGORY_LABELS]}
+                    </span>
+                  </div>
+                  <span className="text-text-dim text-xs tabular-nums font-medium">{count}</span>
+                </div>
+              );
+            })}
           </div>
         </section>
       )}
 
       <section>
-        <h2 className="text-xs uppercase tracking-widest text-text-dim font-semibold mb-2">
+        <h2 className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium mb-3">
           All sessions
         </h2>
         <div className="space-y-2">
           {sessions.map((s) => {
+            const color = categoryColor(s.category);
             return (
               <details
                 key={s.id}
                 id={s.id?.toString()}
-                className="bg-bg-card border border-border rounded-xl overflow-hidden group"
+                className="border border-border-strong/40 bg-bg-elevated rounded-xl overflow-hidden group"
               >
                 <summary className="px-4 py-3 flex items-center justify-between cursor-pointer list-none">
-                  <div>
-                    <div className="font-medium">{s.name}</div>
-                    <div className="text-xs text-text-dim mt-0.5">
-                      {format(parseISO(s.date), "EEE, MMM d, yyyy")}
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span
+                      className="w-1.5 h-1.5 rounded-full shrink-0"
+                      style={{ background: color.solid }}
+                      aria-hidden
+                    />
+                    <div className="min-w-0">
+                      <div className="font-medium text-text truncate">{s.name}</div>
+                      <div className="text-[11px] text-text-dim mt-0.5 tracking-wide">
+                        {format(parseISO(s.date), "EEE, MMM d, yyyy")}
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 shrink-0">
                     {s.finishedAt ? (
-                      <span className="text-xs text-success">✓ done</span>
+                      <span className="text-[10px] uppercase tracking-[0.18em] text-text-dim font-medium">Done</span>
                     ) : (
-                      <span className="text-xs text-text-dim">in progress</span>
+                      <span className="text-[10px] uppercase tracking-[0.18em] text-text-dim/60 font-medium">Draft</span>
                     )}
                     <svg
                       className="w-4 h-4 text-text-dim transition-transform group-open:rotate-180"
@@ -152,7 +165,7 @@ export default function HistoryPage() {
                     </svg>
                   </div>
                 </summary>
-                <div className="border-t border-border/50 p-4 space-y-3 text-sm">
+                <div className="border-t border-border-strong/30 p-4 space-y-3 text-sm">
                   {s.blocks.length === 0 && (
                     <p className="text-xs text-text-dim italic">
                       Logged retroactively — no session breakdown.
@@ -160,7 +173,7 @@ export default function HistoryPage() {
                   )}
                   {s.blocks.map((b, bi) => (
                     <div key={bi}>
-                      <div className="text-xs uppercase tracking-widest text-text-dim mb-1">
+                      <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim mb-1.5 font-medium">
                         {b.title}
                       </div>
                       <div className="space-y-1">
@@ -197,7 +210,7 @@ export default function HistoryPage() {
                         e.preventDefault();
                         onDelete(s.id);
                       }}
-                      className="text-xs text-text-dim hover:text-danger px-2 py-1"
+                      className="text-[11px] text-text-dim hover:text-danger px-2 py-1 uppercase tracking-[0.18em] font-medium"
                     >
                       Delete
                     </button>
@@ -212,87 +225,25 @@ export default function HistoryPage() {
   );
 }
 
-// Category-family coloring so the calendar tells a story at a glance:
-// yellow = you lifted, blue = cardio, violet = mobility/recovery,
-// white outline = sport (outside movement), pale = benchmark day.
-// Kept to 4 hues so it stays quiet next to the mono palette.
-const CATEGORY_COLOR: Partial<Record<Category, string>> = {
-  split: "bg-accent",
-  hypertrophy: "bg-accent",
-  strength: "bg-accent",
-  athlete: "bg-accent",
-  hyrox: "bg-accent",
-  crossfit: "bg-accent",
-  burn: "bg-accent",
-  core: "bg-accent/70",
-  cardio: "bg-sky-400",
-  recovery: "bg-violet-400/70",
-  stretching: "bg-violet-400/70",
-  test: "bg-white/60",
-  sport: "bg-white",
-  beach: "bg-accent",
-  surf: "bg-sky-400",
-};
-
-function WeeklyReviewsSection() {
-  const reviews = useLiveQuery(async () => {
-    return db.weeklyReviews.orderBy("weekEndDate").reverse().limit(6).toArray();
-  }, []);
-
-  if (!reviews || reviews.length === 0) return null;
-
-  const energyLabel = (n: number) =>
-    ["Drained", "Low", "OK", "Good", "Charged"][n - 1] ?? String(n);
-
+function StatTile({ value, label, accent }: { value: number; label: string; accent?: boolean }) {
   return (
-    <section>
-      <div className="flex items-baseline justify-between mb-2">
-        <h2 className="text-xs uppercase tracking-widest text-text-dim font-semibold">
-          Weekly reviews
-        </h2>
-        <span className="text-[10px] text-text-dim">{reviews.length} logged</span>
+    <div className="border border-border-strong/40 bg-bg-elevated rounded-2xl p-4">
+      <div
+        className={clsx(
+          "font-display font-semibold tabular-nums leading-none tracking-tight text-5xl",
+          accent ? "text-accent" : "text-text"
+        )}
+      >
+        {value}
       </div>
-      <div className="space-y-2">
-        {reviews.map((r: WeeklyReview) => {
-          const week = format(parseISO(r.weekEndDate), "MMM d");
-          const summary = [
-            `Energy: ${energyLabel(r.energy)}`,
-            `Sleep: ${r.sleep}`,
-            r.hardExerciseIds.length > 0 && `${r.hardExerciseIds.length} hard`,
-            r.easyExerciseIds.length > 0 && `${r.easyExerciseIds.length} easy`,
-            r.bodyFlags.length > 0 && `flags: ${r.bodyFlags.join(", ")}`,
-          ]
-            .filter(Boolean)
-            .join(" · ");
-          return (
-            <div
-              key={r.id}
-              className="bg-bg-card border border-border rounded-xl px-4 py-3"
-            >
-              <div className="flex items-baseline justify-between gap-2">
-                <div className="text-sm font-medium">
-                  Week ending {week}
-                  {r.focusName && (
-                    <span className="text-text-dim font-normal ml-2 text-xs">
-                      · {r.focusName}
-                      {r.weekInBlock ? ` wk ${r.weekInBlock}` : ""}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="text-xs text-text-dim mt-1 leading-relaxed">
-                {summary}
-              </div>
-            </div>
-          );
-        })}
+      <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim mt-3 font-medium">
+        {label}
       </div>
-    </section>
+    </div>
   );
 }
 
 function ConsistencyCalendar({ sessions }: { sessions: Session[] }) {
-  // Single-month grid with prev/next nav. Current month by default.
   const today = new Date();
   const [viewMonth, setViewMonth] = useState<Date>(startOfMonth(today));
 
@@ -302,8 +253,6 @@ function ConsistencyCalendar({ sessions }: { sessions: Session[] }) {
     if (!byDate.has(s.date)) byDate.set(s.date, s);
   }
 
-  // Build the grid: start on the Monday of the week containing day 1,
-  // continue through the Sunday of the week containing the last day.
   const monthStart = startOfMonth(viewMonth);
   const monthEnd = endOfMonth(viewMonth);
   const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 });
@@ -316,7 +265,6 @@ function ConsistencyCalendar({ sessions }: { sessions: Session[] }) {
     }
     rows.push(week);
     cursor = addDays(cursor, 7);
-    // Safety cap — a month never spans more than 6 weeks in the grid.
     if (rows.length >= 6) break;
   }
 
@@ -331,27 +279,27 @@ function ConsistencyCalendar({ sessions }: { sessions: Session[] }) {
   return (
     <section>
       <div className="mb-3 space-y-2">
-        <h2 className="text-xs uppercase tracking-widest text-text-dim font-semibold">
+        <h2 className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">
           {monthSessions.length} session{monthSessions.length === 1 ? "" : "s"} this month
         </h2>
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setViewMonth((m) => addMonths(m, -1))}
               disabled={!canGoPrev}
               aria-label="Previous month"
-              className="w-7 h-7 rounded-lg border border-border text-text-muted flex items-center justify-center hover:border-accent/40 disabled:opacity-30"
+              className="w-7 h-7 rounded-full border border-border-strong/50 text-text-muted flex items-center justify-center hover:border-text-dim disabled:opacity-30"
             >
               ‹
             </button>
-            <div className="text-sm font-semibold tabular-nums min-w-[110px] text-center">
+            <div className="font-display text-base font-semibold tabular-nums min-w-[120px] text-center text-text">
               {format(viewMonth, "MMMM yyyy")}
             </div>
             <button
               onClick={() => setViewMonth((m) => addMonths(m, 1))}
               disabled={!canGoNext}
               aria-label="Next month"
-              className="w-7 h-7 rounded-lg border border-border text-text-muted flex items-center justify-center hover:border-accent/40 disabled:opacity-30"
+              className="w-7 h-7 rounded-full border border-border-strong/50 text-text-muted flex items-center justify-center hover:border-text-dim disabled:opacity-30"
             >
               ›
             </button>
@@ -359,19 +307,19 @@ function ConsistencyCalendar({ sessions }: { sessions: Session[] }) {
           {!isCurrentMonth && (
             <button
               onClick={() => setViewMonth(startOfMonth(today))}
-              className="text-[11px] uppercase tracking-wider text-accent font-semibold hover:underline"
+              className="text-[11px] uppercase tracking-[0.18em] text-accent font-medium hover:underline"
             >
               Today
             </button>
           )}
         </div>
       </div>
-      <div className="bg-bg-card border border-border rounded-2xl p-3">
+      <div className="border border-border-strong/40 bg-bg-elevated rounded-2xl p-3">
         <div className="grid grid-cols-7 gap-1">
           {DAY_LABELS_SHORT.map((d) => (
             <div
               key={d}
-              className="text-[9px] uppercase tracking-widest text-text-dim text-center pb-1"
+              className="text-[9px] uppercase tracking-[0.2em] text-text-dim text-center pb-1.5 font-medium"
             >
               {d[0]}
             </div>
@@ -385,11 +333,7 @@ function ConsistencyCalendar({ sessions }: { sessions: Session[] }) {
               const dateStr = format(date, "yyyy-MM-dd");
               const dayNum = date.getDate();
               const session = byDate.get(dateStr);
-              const cat = session?.category;
-              const filled = !!(session && cat);
-              const cellClass = filled
-                ? CATEGORY_COLOR[cat] ?? "bg-accent"
-                : "bg-bg border border-border";
+              const color = session ? categoryColor(session.category) : null;
               const title = session
                 ? `${session.name}${session.focusName ? ` · ${session.focusName}` : ""} · ${format(date, "EEE MMM d")}`
                 : format(date, "EEE, MMM d");
@@ -399,39 +343,27 @@ function ConsistencyCalendar({ sessions }: { sessions: Session[] }) {
                   href={session?.id ? `/history#${session.id}` : "#"}
                   title={title}
                   className={clsx(
-                    "aspect-square rounded-lg flex items-center justify-center text-xs tabular-nums font-medium transition-opacity",
+                    "aspect-square rounded-lg flex items-center justify-center text-[11px] tabular-nums font-medium transition-opacity border",
                     !inMonth && "opacity-25",
                     inFuture && !isToday && "opacity-20",
-                    cellClass,
-                    filled ? "text-black" : "text-text-dim",
                     isToday && "ring-1 ring-accent",
-                    !session && "pointer-events-none"
+                    !session && "pointer-events-none border-border-strong/30 text-text-dim",
                   )}
+                  style={
+                    session && color
+                      ? {
+                          background: color.soft,
+                          borderColor: `color-mix(in oklab, ${color.solid} 35%, var(--border-strong))`,
+                          color: color.solid,
+                        }
+                      : undefined
+                  }
                 >
                   {dayNum}
                 </Link>
               );
             })
           )}
-        </div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mt-3 pt-3 border-t border-border/50">
-          <span className="text-[9px] text-text-dim uppercase tracking-widest">Legend</span>
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-accent" />
-            <span className="text-[9px] text-text-dim">Lift</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-sky-400" />
-            <span className="text-[9px] text-text-dim">Cardio</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-violet-400/70" />
-            <span className="text-[9px] text-text-dim">Mobility</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-white" />
-            <span className="text-[9px] text-text-dim">Sport</span>
-          </div>
         </div>
       </div>
     </section>

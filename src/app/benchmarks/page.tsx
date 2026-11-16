@@ -47,19 +47,23 @@ export default function BenchmarksPage() {
   return (
     <div className="max-w-3xl mx-auto px-5 py-6 space-y-6">
       <header>
-        <div className="flex items-center gap-3 text-sm text-text-dim mb-2">
-          <Link href="/settings" className="hover:text-text-muted">← Profile</Link>
+        <div className="flex items-center gap-3 text-[11px] uppercase tracking-[0.18em] text-text-dim mb-3 font-medium">
+          <Link href="/settings" className="hover:text-text">← Profile</Link>
         </div>
-        <p className="text-xs uppercase tracking-widest text-text-dim">Retest to know</p>
-        <h1 className="text-3xl font-bold mt-1">Benchmarks</h1>
-        <p className="text-text-muted text-sm mt-2 leading-relaxed">
+        <p className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">
+          Retest to know
+        </p>
+        <h1 className="font-display text-[2.25rem] font-semibold tracking-tight leading-[1.05] mt-1.5 text-text">
+          Benchmarks
+        </h1>
+        <p className="text-text-muted text-sm mt-3 leading-relaxed">
           Track the tests that matter over time. Retest every 6-8 weeks. Without measurement, you&apos;re guessing.
         </p>
       </header>
 
       {groups.map((g) => (
-        <section key={g.name} className="space-y-2">
-          <h2 className="text-xs uppercase tracking-widest text-text-dim font-semibold">
+        <section key={g.name} className="space-y-3">
+          <h2 className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
             {g.name}
           </h2>
           <div className="space-y-2">
@@ -70,33 +74,37 @@ export default function BenchmarksPage() {
                 <button
                   key={t}
                   onClick={() => setLogType(t)}
-                  className="w-full text-left bg-bg-card border border-border rounded-2xl p-4 hover:border-accent/40 transition-colors"
+                  className="w-full text-left bg-bg-elevated border border-border-strong/40 rounded-2xl p-4 hover:border-text-dim transition-colors"
                 >
-                  <div className="flex items-baseline justify-between gap-3">
+                  <div className="flex items-baseline justify-between gap-4">
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold">{meta.label}</div>
-                      <div className="text-xs text-text-dim mt-0.5 leading-snug">
+                      <div className="font-medium text-text">{meta.label}</div>
+                      <div className="text-xs text-text-dim mt-1 leading-relaxed">
                         {meta.description}
                       </div>
                     </div>
                     <div className="text-right shrink-0">
                       {info ? (
                         <>
-                          <div className="text-xl font-bold text-accent tabular-nums">
+                          <div className="font-display text-2xl font-semibold text-text tabular-nums leading-none">
                             {info.best.value}
-                            <span className="text-xs text-text-dim ml-1 font-normal">{meta.unit}</span>
+                            <span className="text-[10px] uppercase tracking-[0.18em] text-text-dim ml-1.5 font-medium">
+                              {meta.unit}
+                            </span>
                           </div>
-                          <div className="text-[10px] text-text-dim mt-0.5">
+                          <div className="text-[10px] uppercase tracking-[0.18em] text-text-dim mt-1.5 font-medium">
                             best · {format(parseISO(info.best.date), "MMM d")}
                           </div>
                         </>
                       ) : (
-                        <span className="text-xs text-text-dim">not tested</span>
+                        <span className="text-[10px] uppercase tracking-[0.18em] text-text-dim font-medium">
+                          not tested
+                        </span>
                       )}
                     </div>
                   </div>
                   {info && info.count > 1 && (
-                    <div className="text-[10px] text-text-dim mt-2 pt-2 border-t border-border/50">
+                    <div className="text-[10px] text-text-dim mt-3 pt-3 border-t border-border-strong/30 leading-relaxed">
                       Latest: {info.latest.value}{meta.unit} on {format(parseISO(info.latest.date), "MMM d")}
                       {info.count > 2 && ` · ${info.count} tests logged`}
                     </div>
@@ -155,14 +163,21 @@ function LogModal({
       onClick={onClose}
     >
       <div
-        className="bg-bg-elevated border border-border rounded-2xl p-5 max-w-md w-full"
+        className="bg-bg-elevated border border-border-strong/50 rounded-2xl p-5 max-w-md w-full"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-bold">Log {meta.label}</h3>
-          <button onClick={onClose} className="text-text-dim text-2xl leading-none">×</button>
+        <div className="flex items-start justify-between mb-5">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+              New benchmark
+            </div>
+            <h3 className="font-display text-xl font-semibold tracking-tight text-text mt-1">
+              {meta.label}
+            </h3>
+          </div>
+          <button onClick={onClose} className="text-text-dim text-2xl leading-none hover:text-text" aria-label="Close">×</button>
         </div>
-        <p className="text-sm text-text-muted mb-4">{meta.description}</p>
+        <p className="text-sm text-text-muted mb-5 leading-relaxed">{meta.description}</p>
 
         <div className="space-y-3">
           <div className="flex items-center gap-2">
@@ -174,9 +189,11 @@ function LogModal({
               onChange={(e) => setValue(e.target.value)}
               placeholder="Value"
               autoFocus
-              className="flex-1 h-12 px-4 bg-bg-card border border-border rounded-xl text-center text-lg tabular-nums focus:outline-none focus:border-accent"
+              className="flex-1 h-12 px-4 bg-transparent border border-border-strong/40 rounded-full text-center text-base tabular-nums focus:outline-none focus:border-accent/60 placeholder:text-text-dim"
             />
-            <span className="text-text-muted text-sm">{meta.unit}</span>
+            <span className="text-[11px] uppercase tracking-[0.18em] text-text-dim font-medium">
+              {meta.unit}
+            </span>
           </div>
 
           <textarea
@@ -184,17 +201,17 @@ function LogModal({
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Notes (optional) — how it felt, conditions, etc."
             rows={2}
-            className="w-full p-3 bg-bg-card border border-border rounded-xl text-sm"
+            className="w-full p-3.5 bg-transparent border border-border-strong/40 rounded-xl text-sm leading-relaxed focus:outline-none focus:border-accent/60 placeholder:text-text-dim"
           />
 
           <button
             onClick={save}
             disabled={!value || saving}
             className={clsx(
-              "w-full h-12 rounded-xl font-bold transition-colors",
+              "w-full h-12 rounded-full font-semibold text-sm transition-colors",
               value && !saving
-                ? "bg-accent text-black hover:bg-accent-dim"
-                : "bg-bg-card text-text-dim"
+                ? "bg-accent text-bg hover:bg-accent-dim"
+                : "bg-transparent border border-border-strong/40 text-text-dim"
             )}
           >
             Save benchmark

@@ -50,6 +50,23 @@ const INFLUENCE_LABELS: Record<CoachInfluence, string> = {
 // Mirror of TRACKED_LIFTS — kept as a Set for O(1) lookup in the render loop.
 const TRACKED_LIFT_IDS = new Set<string>(TRACKED_LIFTS.map((l) => l.id));
 
+// Aerobic-cardio exercise ids. A block made exclusively of these is a cardio
+// block regardless of session category — a 20-min easy bike inside a Recovery
+// session shouldn't display "3 rounds done." Covers run, cycling, rowing,
+// skiing, swimming; deliberately excludes sled push/pull (strength-endurance).
+const CARDIO_EXERCISE_IDS = new Set<string>([
+  "run", "sprint",
+  "easy_bike", "bike_erg",
+  "easy_row", "row_500", "row_2k",
+  "ski_erg",
+  "swim", "swim_easy",
+]);
+
+function isCardioShapedBlock(block: LoggedBlock): boolean {
+  if (block.prescriptions.length === 0) return false;
+  return block.prescriptions.every((p) => CARDIO_EXERCISE_IDS.has(p.exerciseId));
+}
+
 // Block "mode" inferred from scheme string — drives visual grouping
 type BlockMode = "superset" | "circuit" | "amrap" | "emom" | "for_time" | "straight";
 
@@ -166,6 +183,11 @@ function computeSchemeHeader(block: LoggedBlock): string {
     (p) => p.prescribedSets === first.prescribedSets && p.prescribedReps === first.prescribedReps
   );
   if (allSame) {
+    // Cardio-shaped blocks are duration-based — "1 × 20 min Z2" reads weird
+    // when the "1" is implicit. Drop the sets prefix entirely in that case.
+    if (isCardioShapedBlock(block) && first.prescribedSets === 1) {
+      return `${prefix}${first.prescribedReps}${restSuffix}`;
+    }
     return `${prefix}${first.prescribedSets} × ${first.prescribedReps}${restSuffix}`;
   }
   // Multi-exercise block with varying reps. Two shapes:
@@ -634,20 +656,20 @@ export default function WorkoutForCategory({
             )}
             <button
               onClick={finish}
-              className="w-full bg-accent text-black font-bold py-4 rounded-2xl text-lg hover:bg-accent-dim transition-colors"
+              className="w-full bg-accent text-bg font-semibold py-4 rounded-full text-base tracking-tight hover:bg-accent-dim transition-colors"
             >
               I did this ✓
             </button>
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={regenerate}
-                className="text-text-muted text-sm py-2 border border-border rounded-lg hover:bg-bg-elevated"
+                className="text-text-muted text-xs py-2.5 border border-border-strong/40 rounded-full hover:border-text-dim hover:text-text transition-colors uppercase tracking-[0.18em] font-medium"
               >
                 ↻ Regenerate
               </button>
               <button
                 onClick={discard}
-                className="text-text-dim text-sm py-2"
+                className="text-text-dim text-xs py-2.5 border border-transparent hover:text-danger uppercase tracking-[0.18em] font-medium transition-colors"
               >
                 Discard
               </button>
@@ -957,9 +979,11 @@ function BlockCard({
 
           {/* Actual-rounds adjuster — lets the user record "I did 3 instead of
               4" without digging into set-level logging. Hidden on warmup /
-              cooldown. Also hidden on cardio sessions since a 45-min Z2 isn't
-              "rounds" — the modality picker + km input handle that case. */}
-          {!isWarmup && !isCooldown && category !== "cardio" && block.prescriptions.length > 0 && (
+              cooldown, on the cardio category (handled by modality + km input),
+              AND on any block that's itself cardio-shaped — an "Easy Bike
+              20 min" block inside a Recovery or Stretching session shouldn't
+              show "3 rounds done." */}
+          {!isWarmup && !isCooldown && category !== "cardio" && block.prescriptions.length > 0 && !isCardioShapedBlock(block) && (
             <BlockRoundsAdjuster
               block={block}
               isGrouped={isGrouped}
@@ -1012,6 +1036,10 @@ function BlockCard({
                     // In DO IN ORDER sequential blocks it's a real per-
                     // exercise set count — keep "N × reps" visible there.
                     hideSetsCount={isGrouped}
+                    // Cardio-shaped single-set duration blocks ("Easy Bike
+                    // 1 × 20 min Z2") should read as "20 min Z2 · duration"
+                    // instead of the strength-coded "SETS × REPS".
+                    durationOnly={isCardioShapedBlock(block) && p.prescribedSets === 1}
                     availableEquipment={availableEquipment}
                     usedInSession={usedInSession}
                     onSwap={(newId) => onSwap(pi, newId)}
@@ -1089,8 +1117,10 @@ function CardioModalityPicker({
               key={opt.id}
               onClick={() => onPick(opt.id)}
               className={clsx(
-                "h-10 rounded-lg text-xs font-semibold transition-colors",
-                active ? "bg-accent text-black" : "bg-bg-elevated text-text-muted border border-border"
+                "h-10 rounded-full border text-xs font-medium transition-colors",
+                active
+                  ? "bg-text/5 border-accent/60 text-text"
+                  : "bg-transparent border-border-strong/40 text-text-muted hover:border-text-dim"
               )}
             >
               {opt.label}
@@ -1219,10 +1249,10 @@ function TopSetAutoreg({
               key={r}
               onClick={() => pickRpe(r)}
               className={clsx(
-                "h-9 rounded-md text-xs font-semibold transition-colors",
+                "h-9 rounded-full border text-xs font-medium transition-colors",
                 active
-                  ? "bg-accent text-black"
-                  : "bg-bg-card text-text-muted border border-border"
+                  ? "bg-text/5 border-accent/60 text-text"
+                  : "bg-transparent border-border-strong/40 text-text-muted hover:border-text-dim"
               )}
             >
               RPE {r}
@@ -1302,6 +1332,7 @@ function ExerciseCard({
   units,
   hideRestStat,
   hideSetsCount,
+  durationOnly,
   availableEquipment,
   usedInSession,
   onSwap,
@@ -1324,6 +1355,10 @@ function ExerciseCard({
   // When true, the prescription's "sets" value is a round count shared
   // across the whole block, not a per-exercise set count. Show reps only.
   hideSetsCount?: boolean;
+  // When true, the card is a cardio-duration single-set block ("Easy Bike
+  // 20 min Z2"). The big stat is just the reps with a DURATION label —
+  // no "1 ×" prefix, no sets×reps microcopy.
+  durationOnly?: boolean;
   availableEquipment: Set<string>;
   usedInSession: Set<string>;
   onSwap: (newExerciseId: string) => void;
@@ -1417,11 +1452,15 @@ function ExerciseCard({
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2">
         <Stat
           big={
-            hideSetsCount
+            durationOnly || hideSetsCount
               ? String(prescription.prescribedReps)
               : `${prescription.prescribedSets} × ${prescription.prescribedReps}`
           }
-          label={hideSetsCount ? "per round" : "sets × reps"}
+          label={
+            durationOnly ? "duration"
+            : hideSetsCount ? "per round"
+            : "sets × reps"
+          }
         />
         {prescription.rest && !hideRestStat && (
           <Stat
@@ -1515,15 +1554,15 @@ function ExerciseCard({
                   value={benchmarkValue}
                   onChange={(e) => setBenchmarkValue(e.target.value)}
                   placeholder="Value"
-                  className="flex-1 h-10 px-3 bg-bg-card border border-border rounded-lg text-center tabular-nums focus:outline-none focus:border-accent"
+                  className="flex-1 h-10 px-3 bg-transparent border border-border-strong/40 rounded-full text-center tabular-nums text-sm focus:outline-none focus:border-accent/60 placeholder:text-text-dim"
                 />
-                <span className="text-sm text-text-muted">
+                <span className="text-[10px] uppercase tracking-[0.18em] text-text-dim font-medium">
                   {BENCHMARK_META[benchmarkType].unit}
                 </span>
                 <button
                   onClick={saveBenchmark}
                   disabled={!benchmarkValue}
-                  className="h-10 px-4 rounded-lg bg-accent text-black font-semibold text-sm disabled:bg-bg-card disabled:text-text-dim"
+                  className="h-10 px-5 rounded-full bg-accent text-bg font-semibold text-sm disabled:bg-transparent disabled:border disabled:border-border-strong/40 disabled:text-text-dim hover:bg-accent-dim transition-colors"
                 >
                   Save
                 </button>
@@ -1606,12 +1645,17 @@ function CoreFocusPicker({
       onClick={onClose}
     >
       <div
-        className="bg-bg-elevated border border-border rounded-2xl p-5 max-w-md w-full"
+        className="bg-bg-elevated border border-border-strong/50 rounded-2xl p-5 max-w-md w-full"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold">Core focus</h3>
-          <button onClick={onClose} className="text-text-dim text-2xl leading-none">×</button>
+        <div className="flex items-start justify-between mb-5">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+              Today
+            </div>
+            <h3 className="font-display text-xl font-semibold tracking-tight text-text mt-1">Core focus</h3>
+          </div>
+          <button onClick={onClose} className="text-text-dim text-2xl leading-none hover:text-text" aria-label="Close">×</button>
         </div>
         <p className="text-sm text-text-muted mb-4">
           Auto-injects a Core block at the end of every workout (Stretching / Recovery / Cardio excluded).

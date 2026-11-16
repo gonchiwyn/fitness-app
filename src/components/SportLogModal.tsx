@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { db, getProfile } from "@/lib/db";
 import { useBodyScrollLock } from "@/lib/useBodyScrollLock";
 import type { Session } from "@/lib/types";
@@ -63,33 +63,47 @@ export default function SportLogModal({
       onClick={onClose}
     >
       <div
-        className="bg-bg-elevated border border-border rounded-2xl p-5 max-w-md w-full max-h-[85vh] overflow-y-auto"
+        className="bg-bg-elevated border border-border-strong/50 rounded-2xl p-5 max-w-md w-full max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-bold">Log a sport</h3>
-          <button onClick={onClose} className="text-text-dim text-2xl leading-none">
+        <div className="flex items-start justify-between mb-5">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+              Log a sport
+            </div>
+            <h3 className="font-display text-xl font-semibold tracking-tight text-text mt-1">
+              {format(parseISO(logDate), "EEEE, MMM d")}
+            </h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-text-dim text-2xl leading-none hover:text-text"
+            aria-label="Close"
+          >
             ×
           </button>
         </div>
-        <p className="text-xs text-text-dim mb-4">
+        <p className="text-sm text-text-muted mb-5 leading-relaxed">
           Not part of your program — just marks that you moved. Counts on your calendar and streak.
         </p>
 
-        <div className="flex flex-wrap gap-2 mb-4">
+        <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium mb-2.5">
+          Common
+        </div>
+        <div className="flex flex-wrap gap-1.5 mb-5">
           {COMMON_SPORTS.map((s) => (
             <button
               key={s}
               disabled={saving}
               onClick={() => save(s)}
-              className="text-sm px-3 py-1.5 rounded-full bg-bg-card border border-border hover:border-accent/40 disabled:opacity-50"
+              className="text-xs px-3 h-9 rounded-full bg-transparent border border-border-strong/40 text-text-muted hover:border-text-dim hover:text-text transition-colors disabled:opacity-50"
             >
               {s}
             </button>
           ))}
         </div>
 
-        <div className="text-[10px] uppercase tracking-widest text-text-dim mb-1 font-semibold">
+        <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim mb-2.5 font-medium">
           Or type your own
         </div>
         <div className="flex gap-2">
@@ -98,7 +112,7 @@ export default function SportLogModal({
             value={sport}
             onChange={(e) => setSport(e.target.value)}
             placeholder="e.g. Kayak, Boxing…"
-            className="flex-1 bg-bg-card border border-border rounded-xl px-3 h-11 text-sm outline-none focus:border-accent/60"
+            className="flex-1 bg-transparent border border-border-strong/40 rounded-full px-4 h-11 text-sm outline-none focus:border-accent/60 placeholder:text-text-dim"
             onKeyDown={(e) => {
               if (e.key === "Enter") save(sport);
             }}
@@ -106,7 +120,7 @@ export default function SportLogModal({
           <button
             disabled={!sport.trim() || saving}
             onClick={() => save(sport)}
-            className="px-4 h-11 rounded-xl bg-accent text-black font-semibold disabled:opacity-40"
+            className="px-5 h-11 rounded-full bg-accent text-bg font-semibold text-sm hover:bg-accent-dim transition-colors disabled:opacity-40 disabled:bg-transparent disabled:border disabled:border-border-strong/40 disabled:text-text-dim"
           >
             Log
           </button>

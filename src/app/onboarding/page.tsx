@@ -70,17 +70,17 @@ export default function OnboardingPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-5 py-6 min-h-screen flex flex-col">
-      <div className="mb-6">
-        <div className="flex items-center justify-between text-xs text-text-dim mb-2">
-          <span>Step {step + 1} / {STEPS.length}</span>
+      <div className="mb-8">
+        <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.22em] text-text-dim mb-3 font-medium">
+          <span className="tabular-nums">Step {step + 1} / {STEPS.length}</span>
           <button
             onClick={skip}
-            className="text-text-dim hover:text-text-muted"
+            className="hover:text-text transition-colors"
           >
             Skip for now
           </button>
         </div>
-        <div className="h-1 bg-bg-card rounded-full overflow-hidden">
+        <div className="h-px bg-border-strong/40 overflow-hidden">
           <div
             className="h-full bg-accent transition-all duration-300"
             style={{ width: `${((step + 1) / STEPS.length) * 100}%` }}
@@ -103,7 +103,7 @@ export default function OnboardingPage() {
         {step > 0 && (
           <button
             onClick={back}
-            className="flex-1 h-12 rounded-xl border border-border text-text-muted font-medium hover:border-border/60"
+            className="flex-1 h-12 rounded-full border border-border-strong/40 text-text-muted font-medium text-sm hover:border-text-dim hover:text-text transition-colors"
           >
             Back
           </button>
@@ -111,14 +111,14 @@ export default function OnboardingPage() {
         {step < STEPS.length - 1 ? (
           <button
             onClick={next}
-            className="flex-1 h-12 rounded-xl bg-accent text-white font-semibold"
+            className="flex-1 h-12 rounded-full bg-accent text-bg font-semibold text-sm hover:bg-accent-dim transition-colors"
           >
             Continue
           </button>
         ) : (
           <button
             onClick={finish}
-            className="flex-1 h-12 rounded-xl bg-accent text-white font-semibold"
+            className="flex-1 h-12 rounded-full bg-accent text-bg font-semibold text-sm hover:bg-accent-dim transition-colors"
           >
             Pick my first block →
           </button>
@@ -130,21 +130,23 @@ export default function OnboardingPage() {
 
 function WelcomeStep() {
   return (
-    <div className="space-y-4">
-      <div className="text-xs uppercase tracking-widest text-accent font-semibold">
+    <div className="space-y-5">
+      <div className="text-[10px] uppercase tracking-[0.22em] text-accent font-medium">
         Welcome to Outwork
       </div>
-      <h1 className="text-3xl font-bold">Workouts that adapt to you.</h1>
+      <h1 className="font-display text-[2.5rem] font-semibold tracking-tight leading-[1.05] text-text">
+        Workouts that<br />adapt to you.
+      </h1>
       <p className="text-text-muted leading-relaxed">
         Tell us a few things about your body, goals, and gym — we&apos;ll build a weekly program around that. Every answer is optional and editable later.
       </p>
-      <div className="bg-bg-card border border-border rounded-2xl p-5 space-y-2">
-        <p className="text-sm font-semibold">You&apos;ll get:</p>
-        <ul className="text-sm text-text-muted space-y-1.5">
-          <li>· A multi-week training <span className="text-text">block</span> with a clear goal</li>
-          <li>· Warmups + loads tuned to your injuries and strength</li>
-          <li>· Safer swaps when something isn&apos;t right for you</li>
-          <li>· A reading of each session&apos;s intent, not just a list of exercises</li>
+      <div className="border border-border-strong/40 rounded-2xl p-5 space-y-2.5">
+        <p className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">You&apos;ll get</p>
+        <ul className="text-sm text-text-muted space-y-2 leading-relaxed">
+          <li>— A multi-week training <span className="text-text">block</span> with a clear goal</li>
+          <li>— Warmups + loads tuned to your injuries and strength</li>
+          <li>— Safer swaps when something isn&apos;t right for you</li>
+          <li>— A reading of each session&apos;s intent, not just a list of exercises</li>
         </ul>
       </div>
       <p className="text-[11px] text-text-dim leading-relaxed pt-1">
@@ -157,7 +159,7 @@ function WelcomeStep() {
 function ExperienceStep({ profile, update }: { profile: Profile; update: (c: Partial<Profile>) => void }) {
   return (
     <div className="space-y-5">
-      <h2 className="text-2xl font-bold">How much have you trained?</h2>
+      <h2 className="font-display text-[1.75rem] font-semibold tracking-tight leading-[1.1] text-text">How much have you trained?</h2>
       <p className="text-text-muted text-sm">
         Beginners get simpler lifts and lighter starting loads. Advanced gets the full exercise library.
       </p>
@@ -175,7 +177,7 @@ function ExperienceStep({ profile, update }: { profile: Profile; update: (c: Par
               onClick={() => update({ experience: o.v })}
               className={clsx(
                 "w-full text-left p-4 rounded-xl border transition-colors",
-                active ? "bg-accent/10 border-accent/40" : "bg-bg-card border-border"
+                active ? "bg-text/5 border-accent/60" : "border-border-strong/40"
               )}
             >
               <div className="font-semibold">{o.l}</div>
@@ -220,7 +222,7 @@ function HistoryStep({ profile, update }: { profile: Profile; update: (c: Partia
 
   return (
     <div className="space-y-5">
-      <h2 className="text-2xl font-bold">Anything bothering you?</h2>
+      <h2 className="font-display text-[1.75rem] font-semibold tracking-tight leading-[1.1] text-text">Anything bothering you?</h2>
       <p className="text-text-muted text-sm">
         Tap any area that&apos;s currently nagging — we&apos;ll swap risky lifts for safer alternatives. Leave empty if you&apos;re all good.
       </p>
@@ -234,7 +236,7 @@ function HistoryStep({ profile, update }: { profile: Profile; update: (c: Partia
               onClick={() => toggle(z.id)}
               className={clsx(
                 "p-4 rounded-xl border text-left transition-colors",
-                on ? "bg-accent/10 border-accent/40" : "bg-bg-card border-border"
+                on ? "bg-text/5 border-accent/60" : "border-border-strong/40"
               )}
             >
               <div className="font-medium">{z.label}</div>
@@ -248,7 +250,7 @@ function HistoryStep({ profile, update }: { profile: Profile; update: (c: Partia
           onClick={() => update({ chronicLumbarCare: !profile.chronicLumbarCare })}
           className={clsx(
             "w-full text-left p-4 rounded-xl border transition-colors flex items-center justify-between",
-            profile.chronicLumbarCare ? "bg-accent/10 border-accent/40" : "bg-bg-card border-border"
+            profile.chronicLumbarCare ? "bg-text/5 border-accent/60" : "border-border-strong/40"
           )}
         >
           <div>
@@ -257,12 +259,12 @@ function HistoryStep({ profile, update }: { profile: Profile; update: (c: Partia
           </div>
           <div
             className={clsx(
-              "w-5 h-5 rounded border-2 flex items-center justify-center shrink-0",
-              profile.chronicLumbarCare ? "bg-accent border-accent" : "border-border"
+              "w-4 h-4 rounded-sm border flex items-center justify-center shrink-0 transition-colors",
+              profile.chronicLumbarCare ? "bg-accent border-accent" : "border-border-strong/50"
             )}
           >
             {profile.chronicLumbarCare && (
-              <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" className="w-3 h-3">
+              <svg viewBox="0 0 24 24" fill="none" stroke="var(--bg)" strokeWidth="3" className="w-3 h-3">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             )}
@@ -276,7 +278,7 @@ function HistoryStep({ profile, update }: { profile: Profile; update: (c: Partia
           onChange={(e) => update({ injuryHistory: e.target.value })}
           rows={3}
           placeholder="e.g. tweaked lower back deadlifting in 2022, old ACL on left knee…"
-          className="w-full p-4 bg-bg-card border border-border rounded-xl text-sm leading-relaxed"
+          className="w-full p-4 bg-transparent border border-border-strong/40 rounded-xl text-sm leading-relaxed focus:outline-none focus:border-accent/60 placeholder:text-text-dim"
         />
       </Field>
     </div>
@@ -293,7 +295,7 @@ function GoalsStep({ profile, update }: { profile: Profile; update: (c: Partial<
 
   return (
     <div className="space-y-5">
-      <h2 className="text-2xl font-bold">What are you training for?</h2>
+      <h2 className="font-display text-[1.75rem] font-semibold tracking-tight leading-[1.1] text-text">What are you training for?</h2>
       <p className="text-text-muted text-sm">Pick any that apply — we&apos;ll bias your daily picks accordingly.</p>
 
       <div className="space-y-2">
@@ -303,7 +305,7 @@ function GoalsStep({ profile, update }: { profile: Profile; update: (c: Partial<
             onClick={() => toggle(g)}
             className={clsx(
               "w-full text-left p-4 rounded-xl border transition-colors flex items-start justify-between gap-3",
-              selected.has(g) ? "bg-accent/10 border-accent/40" : "bg-bg-card border-border"
+              selected.has(g) ? "bg-text/5 border-accent/60" : "border-border-strong/40"
             )}
           >
             <div className="flex-1 min-w-0">
@@ -312,12 +314,12 @@ function GoalsStep({ profile, update }: { profile: Profile; update: (c: Partial<
             </div>
             <div
               className={clsx(
-                "w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 mt-0.5",
-                selected.has(g) ? "bg-accent border-accent" : "border-border"
+                "w-4 h-4 rounded-sm border flex items-center justify-center shrink-0 mt-0.5 transition-colors",
+                selected.has(g) ? "bg-accent border-accent" : "border-border-strong/50"
               )}
             >
               {selected.has(g) && (
-                <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" className="w-3 h-3">
+                <svg viewBox="0 0 24 24" fill="none" stroke="var(--bg)" strokeWidth="3" className="w-3 h-3">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
               )}
@@ -340,7 +342,7 @@ function EquipmentStep({ profile, update }: { profile: Profile; update: (c: Part
 
   return (
     <div className="space-y-5">
-      <h2 className="text-2xl font-bold">Default equipment</h2>
+      <h2 className="font-display text-[1.75rem] font-semibold tracking-tight leading-[1.1] text-text">Default equipment</h2>
       <p className="text-text-muted text-sm">
         What do you usually train with? You can override this on any workout (e.g. on the road).
       </p>
@@ -354,7 +356,7 @@ function EquipmentStep({ profile, update }: { profile: Profile; update: (c: Part
               onClick={() => update({ defaultEquipment: p.id })}
               className={clsx(
                 "w-full text-left p-4 rounded-xl border transition-colors",
-                active ? "bg-accent/10 border-accent/40" : "bg-bg-card border-border"
+                active ? "bg-text/5 border-accent/60" : "border-border-strong/40"
               )}
             >
               <div className="flex items-center justify-between">
@@ -364,8 +366,8 @@ function EquipmentStep({ profile, update }: { profile: Profile; update: (c: Part
                 </div>
                 <div
                   className={clsx(
-                    "w-5 h-5 rounded-full border-2",
-                    active ? "bg-accent border-accent" : "border-border"
+                    "w-4 h-4 rounded-full border transition-colors",
+                    active ? "bg-accent border-accent" : "border-border-strong/50"
                   )}
                 />
               </div>
@@ -402,7 +404,7 @@ function StrengthStep({ profile, update }: { profile: Profile; update: (c: Parti
 
   return (
     <div className="space-y-5">
-      <h2 className="text-2xl font-bold">Your strength numbers</h2>
+      <h2 className="font-display text-[1.75rem] font-semibold tracking-tight leading-[1.1] text-text">Your strength numbers</h2>
       <p className="text-text-muted text-sm">
         For each lift, enter a weight you&apos;ve lifted recently and how many reps you did. We&apos;ll use it to pick safe starting loads.
         {" "}Any lift you don&apos;t know, leave blank.
@@ -412,7 +414,7 @@ function StrengthStep({ profile, update }: { profile: Profile; update: (c: Parti
         onClick={skipAll}
         className={clsx(
           "w-full p-3 rounded-xl border text-sm transition-colors",
-          !hasAnyMax ? "bg-accent/10 border-accent/40 text-text" : "bg-bg-card border-border text-text-muted"
+          !hasAnyMax ? "bg-text/5 border-accent/60 text-text" : "border-border-strong/40 text-text-muted"
         )}
       >
         I&apos;m new to lifting — use conservative starting loads
@@ -422,8 +424,8 @@ function StrengthStep({ profile, update }: { profile: Profile; update: (c: Parti
         {visibleLifts.map(({ id, label }) => {
           const cur = maxes[id];
           return (
-            <div key={id} className="bg-bg-card border border-border rounded-xl p-4">
-              <div className="text-sm font-medium mb-2">{label}</div>
+            <div key={id} className="border border-border-strong/40 rounded-xl p-4">
+              <div className="text-sm font-medium mb-3 text-text">{label}</div>
               <div className="flex items-center gap-2">
                 <NumberField
                   value={cur?.weight}
@@ -443,9 +445,9 @@ function StrengthStep({ profile, update }: { profile: Profile; update: (c: Parti
                   step={1}
                 />
                 {cur?.weight && cur?.reps && (
-                  <span className="ml-auto text-xs text-accent font-mono">
+                  <span className="ml-auto text-[11px] text-accent tabular-nums font-medium whitespace-nowrap">
                     1RM ≈ {Math.round(cur.weight * (1 + cur.reps / 30) * 10) / 10}
-                    {profile.units}
+                    <span className="text-[9px] uppercase tracking-[0.18em] text-text-dim ml-1">{profile.units}</span>
                   </span>
                 )}
               </div>
@@ -479,7 +481,7 @@ function RunningStep({ profile, update }: { profile: Profile; update: (c: Partia
 
   return (
     <div className="space-y-5">
-      <h2 className="text-2xl font-bold">Running capacity</h2>
+      <h2 className="font-display text-[1.75rem] font-semibold tracking-tight leading-[1.1] text-text">Running capacity</h2>
       <p className="text-text-muted text-sm">
         A recent solid effort — fastest pace you could hold without stopping. We&apos;ll use it to set your easy-cardio and interval paces.
       </p>
@@ -488,7 +490,7 @@ function RunningStep({ profile, update }: { profile: Profile; update: (c: Partia
         onClick={() => update({ runBenchmark: undefined })}
         className={clsx(
           "w-full p-3 rounded-xl border text-sm transition-colors",
-          !rb ? "bg-accent/10 border-accent/40 text-text" : "bg-bg-card border-border text-text-muted"
+          !rb ? "bg-text/5 border-accent/60 text-text" : "border-border-strong/40 text-text-muted"
         )}
       >
         I don&apos;t run — skip this
@@ -524,9 +526,12 @@ function RunningStep({ profile, update }: { profile: Profile; update: (c: Partia
       </div>
 
       {paceFmt && (
-        <div className="bg-accent/10 border border-accent/30 rounded-xl p-4 text-sm">
-          <div className="text-accent font-semibold">Your tempo pace: {paceFmt}</div>
-          <div className="text-text-muted text-xs mt-1">
+        <div className="border border-accent/50 rounded-xl p-4 text-sm bg-text/5">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium mb-1">
+            Tempo pace
+          </div>
+          <div className="font-display text-xl font-semibold text-text tabular-nums">{paceFmt}</div>
+          <div className="text-text-muted text-xs mt-1.5 leading-relaxed">
             We&apos;ll use this to suggest easy and hard paces in your cardio sessions.
           </div>
         </div>
@@ -538,26 +543,26 @@ function RunningStep({ profile, update }: { profile: Profile; update: (c: Partia
 function DoneStep() {
   return (
     <div className="space-y-5">
-      <div className="text-xs uppercase tracking-widest text-accent font-semibold">
+      <div className="text-[10px] uppercase tracking-[0.22em] text-accent font-medium">
         You&apos;re set
       </div>
-      <h2 className="text-3xl font-bold">Last thing: pick your first block.</h2>
+      <h2 className="font-display text-[2.25rem] font-semibold tracking-tight leading-[1.05] text-text">Last thing: pick your first block.</h2>
       <p className="text-text-muted leading-relaxed">
         A <span className="text-text font-semibold">block</span> is your training program for the next few weeks — the whole app adapts to it.
       </p>
 
-      <div className="bg-bg-card border border-border rounded-2xl p-5 space-y-3">
+      <div className="border border-border-strong/40 rounded-2xl p-5 space-y-4">
         <div>
-          <div className="text-xs uppercase tracking-widest text-accent font-semibold">Block</div>
-          <div className="text-sm mt-1">
-            Your <span className="font-semibold">program</span> for 4-8 weeks. Weekly pattern + progression (easy → harder → peak → deload). <span className="text-text-dim">Pick one in Plan.</span>
+          <div className="text-[10px] uppercase tracking-[0.22em] text-accent font-medium">Block</div>
+          <div className="text-sm mt-1.5 text-text leading-relaxed">
+            Your <span className="font-medium">program</span> for 4-8 weeks. Weekly pattern + progression (easy → harder → peak → deload). <span className="text-text-dim">Pick one in Plan.</span>
           </div>
         </div>
-        <div className="h-px bg-border" />
+        <div className="h-px bg-border-strong/30" />
         <div>
-          <div className="text-xs uppercase tracking-widest text-text-dim font-semibold">Category</div>
-          <div className="text-sm mt-1 text-text-muted">
-            A single <span className="font-semibold text-text">workout type</span> you can grab anytime (Strength, Cardio, Split…). Use it when you want to do something off-plan today.
+          <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">Category</div>
+          <div className="text-sm mt-1.5 text-text-muted leading-relaxed">
+            A single <span className="font-medium text-text">workout type</span> you can grab anytime (Strength, Cardio, Split…). Use it when you want to do something off-plan today.
           </div>
         </div>
       </div>
@@ -572,7 +577,7 @@ function DoneStep() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-2">
-      <label className="text-xs uppercase tracking-widest text-text-dim font-semibold">
+      <label className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
         {label}
       </label>
       {children}
@@ -599,7 +604,7 @@ function NumberField({
       onChange={(e) => onChange(e.target.value === "" ? undefined : Number(e.target.value))}
       step={step}
       placeholder={placeholder}
-      className="w-full h-12 px-3 bg-bg-card border border-border rounded-xl text-center tabular-nums focus:outline-none focus:border-accent"
+      className="w-full h-12 px-3 bg-transparent border border-border-strong/40 rounded-full text-center tabular-nums text-sm focus:outline-none focus:border-accent/60 placeholder:text-text-dim"
     />
   );
 }
@@ -617,10 +622,10 @@ function Pill({
     <button
       onClick={onClick}
       className={clsx(
-        "h-12 rounded-xl border text-sm font-medium transition-colors",
+        "h-11 rounded-full border text-sm font-medium transition-colors",
         active
-          ? "bg-accent text-white border-accent"
-          : "bg-bg-card border-border text-text-muted"
+          ? "bg-text/5 border-accent/60 text-text"
+          : "bg-transparent border-border-strong/40 text-text-muted hover:border-text-dim"
       )}
     >
       {children}

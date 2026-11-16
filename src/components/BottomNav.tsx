@@ -14,8 +14,12 @@ const ITEMS = [
 export default function BottomNav() {
   const pathname = usePathname();
 
+  // Hide on the onboarding flow — a full-screen wizard shouldn't have a
+  // "jump to Profile" trap door distracting from the one task at hand.
+  if (pathname.startsWith("/onboarding")) return null;
+
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-bg-elevated/95 backdrop-blur border-t border-border safe-bottom z-40">
+    <nav className="fixed bottom-0 left-0 right-0 bg-bg/95 backdrop-blur-xl border-t border-border-strong/40 safe-bottom z-40">
       <div className="max-w-3xl mx-auto grid grid-cols-4">
         {ITEMS.map((item) => {
           const active =
@@ -28,12 +32,25 @@ export default function BottomNav() {
               key={item.href}
               href={item.href}
               className={clsx(
-                "flex flex-col items-center justify-center gap-1 py-2.5 text-xs transition-colors",
-                active ? "text-accent" : "text-text-dim hover:text-text-muted"
+                "relative flex flex-col items-center justify-center gap-1 py-2.5 text-[11px] transition-colors",
+                active ? "text-text" : "text-text-dim hover:text-text-muted"
               )}
             >
-              <Icon className="w-6 h-6" />
-              <span className="font-medium">{item.label}</span>
+              <Icon className="w-[22px] h-[22px]" active={active} />
+              <span
+                className={clsx(
+                  "font-medium tracking-wide",
+                  active && "text-text"
+                )}
+              >
+                {item.label}
+              </span>
+              {active && (
+                <span
+                  className="absolute top-1 w-1 h-1 rounded-full bg-accent"
+                  aria-hidden
+                />
+              )}
             </Link>
           );
         })}
@@ -42,33 +59,33 @@ export default function BottomNav() {
   );
 }
 
-function HomeIcon({ className }: { className?: string }) {
+function HomeIcon({ className, active }: { className?: string; active?: boolean }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2 : 1.5} className={className}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M3 12L12 3l9 9M5 10v10a1 1 0 001 1h3v-6h6v6h3a1 1 0 001-1V10" />
     </svg>
   );
 }
 
-function ChartIcon({ className }: { className?: string }) {
+function ChartIcon({ className, active }: { className?: string; active?: boolean }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2 : 1.5} className={className}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v18h18M7 14l4-4 3 3 5-7" />
     </svg>
   );
 }
 
-function CalendarIcon({ className }: { className?: string }) {
+function CalendarIcon({ className, active }: { className?: string; active?: boolean }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2 : 1.5} className={className}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M8 3v3m8-3v3M3 9h18M5 5h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z" />
     </svg>
   );
 }
 
-function UserIcon({ className }: { className?: string }) {
+function UserIcon({ className, active }: { className?: string; active?: boolean }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2 : 1.5} className={className}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 12a4 4 0 100-8 4 4 0 000 8zM4 21c0-4 4-6 8-6s8 2 8 6" />
     </svg>
   );
