@@ -128,6 +128,20 @@ export default function HomePage() {
   const streak = computeStreak(recent ?? []);
   const currentWeekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
   const weekStart = addDays(currentWeekStart, weekOffset * 7);
+  // Weekly session glance — Strava / Apple Fitness pattern. The implicit
+  // target is the number of non-rest days in the user's base plan; "done"
+  // is sessions finished Mon–Sun of this calendar week.
+  const weekStartStr = format(currentWeekStart, "yyyy-MM-dd");
+  const weekEndStr = format(addDays(currentWeekStart, 7), "yyyy-MM-dd");
+  const doneThisWeek = (recent ?? []).filter(
+    (s) => s.finishedAt && s.date >= weekStartStr && s.date < weekEndStr
+  ).length;
+  const weekTarget = (plan?.days ?? []).filter((d) => d !== null).length || 5;
+  // Resume path — Hevy / Caliber / Peloton all pin a "Resume" banner when a
+  // workout is mid-flight so the user doesn't have to re-navigate to it.
+  const draftSession = (recent ?? []).find(
+    (s) => s.startedAt && !s.finishedAt && s.date === today
+  );
   // "Today" pill only lights up when the strip is viewing the current week.
   const displayedTodayIdx = weekOffset === 0 ? todayIdx : -1;
   // Map date → most recent finished session for that date
@@ -139,37 +153,57 @@ export default function HomePage() {
 
   return (
     <div className="max-w-3xl mx-auto px-5 py-6 space-y-7">
-      <header className="flex items-end justify-between gap-4">
-        <div className="min-w-0">
+      {/* Tight header. Date + name + streak share a baseline — no stacked
+          columns, no big accent number. Oura / Apple Fitness pattern: the
+          user is here for the verb below, not to admire their streak. */}
+      <header>
+        <div className="flex items-baseline justify-between gap-4">
           <p className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">
-            {format(new Date(), "EEEE, MMM d")}
+            {format(new Date(), "EEE, MMM d")}
           </p>
-          <h1 className="font-display text-[2.75rem] leading-[0.95] font-normal mt-1 tracking-tight text-text">
-            {greet()}{profile?.name && profile.name !== "Athlete" ? `, ${profile.name}` : ""}.
-          </h1>
-        </div>
-        {streak > 0 && (
-          <div className="text-right shrink-0 pb-1">
-            <span className="text-sm text-text-muted tabular-nums">
-              <span className="font-display text-xl text-accent align-baseline">{streak}</span>
-              <span className="text-[10px] uppercase tracking-[0.18em] text-text-dim ml-1.5 font-medium">day streak</span>
+          {streak > 0 && (
+            <span className="text-[11px] uppercase tracking-[0.18em] text-text-dim font-medium tabular-nums shrink-0">
+              <span className="text-accent">{streak}</span> day streak
             </span>
-          </div>
+          )}
+        </div>
+        <h1 className="text-[2rem] leading-[1] font-medium mt-2 tracking-[-0.03em] text-text">
+          {greet()}{profile?.name && profile.name !== "Athlete" ? `, ${profile.name}` : ""}.
+        </h1>
+        {/* Weekly session glance — Strava weekly goal + Apple ring hybrid.
+            Compact: "3 OF 5 THIS WEEK" + hairline fill bar. One of the few
+            metrics a fitness user genuinely wants to see at open. */}
+        {weekTarget > 0 && !profile?.currentFocus?.pausedAt && (
+          <WeekProgress done={doneThisWeek} target={weekTarget} />
         )}
       </header>
+
+      {draftSession && (
+        <Link
+          href={`/workout/${draftSession.category}`}
+          className="flex items-center justify-between gap-3 border border-accent/50 bg-text/5 rounded-2xl px-4 py-3"
+        >
+          <div className="min-w-0">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-accent font-medium">
+              In progress
+            </div>
+            <div className="text-sm text-text font-medium truncate mt-0.5">
+              {draftSession.name}
+            </div>
+          </div>
+          <span className="shrink-0 bg-accent text-bg rounded-full px-4 py-1.5 text-xs font-semibold">
+            Resume →
+          </span>
+        </Link>
+      )}
 
       {profile && !profile.onboarded && (
         <Link
           href="/onboarding"
-          className="block border border-border-strong/40 bg-bg-elevated rounded-2xl p-4"
+          className="flex items-center justify-between gap-3 border border-accent/40 rounded-full px-4 py-2.5 text-[11px] uppercase tracking-[0.18em] font-medium text-accent"
         >
-          <div className="text-[11px] uppercase tracking-[0.22em] text-accent font-medium">
-            Personalize your training
-          </div>
-          <div className="text-sm text-text-muted mt-2 leading-relaxed">
-            Set your goals, injuries, strength maxes, and running pace.
-            Workouts get tailored loads and safer swaps. 2 min.
-          </div>
+          <span>Finish setup — 2 min</span>
+          <span>›</span>
         </Link>
       )}
 
@@ -217,20 +251,16 @@ export default function HomePage() {
         <NoPlanCard />
       )}
 
-      {/* Fast path for "I did something different" or "I did an extra thing":
-          one-tap category chips that log a retroactive session for today.
-          Visible in every Today state — if you planned Z2 but ran strength,
-          or did your planned workout plus an afternoon sport session, you
-          don't need to dig into the Plan page. */}
+      {/* "I did something different" lives as a quiet text link now, not a
+          row of chips. Home's job is one verb; the escape hatch is a one-
+          tap link to the day's log modal, same surface as a past-day tap. */}
       {!profile?.currentFocus?.pausedAt && (
-        <QuickLogRow
-          hasSessionToday={!!todaysSession}
-          onPickCategory={async (cat, label) => {
-            const { logRetroactiveSession } = await import("@/lib/db");
-            await logRetroactiveSession(today, cat, label);
-          }}
-          onOpenPicker={() => setLogDate(today)}
-        />
+        <button
+          onClick={() => setLogDate(today)}
+          className="w-full text-[11px] uppercase tracking-[0.18em] text-text-dim hover:text-text font-medium transition-colors text-left"
+        >
+          Log something else ›
+        </button>
       )}
 
       {/* Week strip — navigable across weeks so the block outlook is visible */}
@@ -370,50 +400,33 @@ function FocusIndicator({
   return (
     <Link
       href="/plan"
-      className={clsx(
-        "block border rounded-2xl px-4 py-3 transition-colors",
-        isPaused
-          ? "bg-bg-card border-text-dim/40"
-          : "bg-bg-card border-border hover:border-accent/40"
-      )}
+      className="group flex items-center justify-between gap-3 px-1 py-1"
     >
-      <div className="flex items-baseline justify-between gap-3">
-        <div>
-          <div
-            className={clsx(
-              "text-[10px] uppercase tracking-widest font-semibold flex items-center gap-2",
-              isPaused ? "text-text-dim" : "text-text-dim"
-            )}
-          >
-            {isPaused && (
-              <span className="bg-text-dim/15 text-text-muted px-1.5 py-0.5 rounded">
-                PAUSED
-              </span>
-            )}
-            Focus block
-          </div>
-          <div className="text-sm font-medium mt-0.5">{focus.name}</div>
-        </div>
-        <div className="text-xs text-text-dim shrink-0 text-right">
-          {done ? (
-            "block complete →"
-          ) : (
-            <>
-              Week {weekNum} of {focus.durationWeeks}
-              {phase && (
-                <span className={clsx("block text-[10px] mt-0.5", isPaused ? "text-text-dim" : "text-accent")}>
-                  {phase.label}
-                </span>
-              )}
-            </>
-          )}
-        </div>
+      <div className="flex items-center gap-2.5 min-w-0">
+        {isPaused && (
+          <span className="text-[9px] uppercase tracking-[0.18em] text-text-dim border border-text-dim/40 px-1.5 py-0.5 rounded font-medium">
+            Paused
+          </span>
+        )}
+        <span className="text-sm text-text-muted group-hover:text-text transition-colors truncate">
+          {focus.name}
+        </span>
       </div>
-      <div className="mt-2 h-1 bg-border rounded-full overflow-hidden">
-        <div
-          className={clsx("h-full", isPaused ? "bg-text-dim/60" : "bg-accent")}
-          style={{ width: `${done ? 100 : pct}%` }}
-        />
+      <div className="flex items-center gap-2.5 shrink-0 text-[11px] tabular-nums text-text-dim">
+        <span>
+          {done ? "complete" : `Wk ${weekNum}/${focus.durationWeeks}`}
+        </span>
+        {phase && !done && !isPaused && (
+          <span className="text-accent uppercase tracking-[0.18em] text-[10px] font-medium">
+            {phase.label}
+          </span>
+        )}
+        <div className="w-16 h-[3px] bg-border-strong/40 rounded-full overflow-hidden">
+          <div
+            className={clsx("h-full", isPaused ? "bg-text-dim/60" : "bg-accent")}
+            style={{ width: `${done ? 100 : pct}%` }}
+          />
+        </div>
       </div>
     </Link>
   );
@@ -449,7 +462,7 @@ function BlockCompleteCard({
         <div className="text-[10px] uppercase tracking-[0.22em] text-accent font-medium">
           Block complete
         </div>
-        <div className="font-display text-3xl font-normal tracking-tight mt-1.5 text-text">
+        <div className="text-2xl font-medium tracking-[-0.02em] tracking-tight mt-1.5 text-text">
           {focus.name} done.
         </div>
       </div>
@@ -501,36 +514,39 @@ function PlannedTodayCard({ day }: { day: NonNullable<PlannedDay> }) {
 
   const color = categoryColor(day.category);
   return (
+    // Hero pattern from Hevy / Peloton / Caliber: the Today card is the
+    // loudest thing on screen. Tinted background (not just hairline),
+    // oversize headline, filled pill CTA inside the card. The whole card
+    // remains tappable; the pill is the unmissable visual verb.
     <Link
       href={href}
-      className="block border border-accent/25 bg-bg-elevated rounded-2xl p-5"
+      className="block border border-accent/40 bg-text/[0.04] rounded-2xl p-5 relative"
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] font-semibold text-accent">
-            <span
-              className="w-1.5 h-1.5 rounded-full"
-              style={{ background: color.solid }}
-              aria-hidden
-            />
-            Today's session
-          </div>
-          <div className="font-display text-4xl font-normal tracking-tight mt-2 leading-[1.05] text-text">
-            {title}
-          </div>
-          <div className="text-sm text-text-muted mt-1.5 leading-relaxed">{subtitle}</div>
+        <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] font-medium text-accent">
+          <span
+            className="w-1.5 h-1.5 rounded-full"
+            style={{ background: color.solid }}
+            aria-hidden
+          />
+          Today
         </div>
         <button
           onClick={markDone}
-          className="shrink-0 w-11 h-11 rounded-full border border-accent/40 bg-transparent text-accent flex items-center justify-center text-base hover:bg-accent hover:text-bg transition-colors"
+          className="shrink-0 w-9 h-9 -mt-1 -mr-1 rounded-full border border-border-strong/40 bg-transparent text-text-dim flex items-center justify-center text-sm hover:border-accent/60 hover:text-accent transition-colors"
           aria-label="Mark today done — I already did this"
           title="I already did this"
         >
           ✓
         </button>
       </div>
-      <div className="mt-4 text-sm font-medium text-accent">
-        Open workout →
+      <div className="text-[2rem] font-medium tracking-[-0.03em] mt-3 leading-[1] text-text">
+        {title}
+      </div>
+      <div className="text-sm text-text-muted mt-2 leading-relaxed">{subtitle}</div>
+      <div className="mt-5 inline-flex items-center justify-center gap-2 bg-accent text-bg rounded-full px-5 py-2.5 text-sm font-semibold hover:bg-accent-dim transition-colors">
+        Start workout
+        <span aria-hidden>→</span>
       </div>
     </Link>
   );
@@ -584,24 +600,27 @@ function RecommendationCard({ rec }: { rec: Recommendation }) {
   const template = rec.templateId
     ? templatesFor(rec.category).find((t) => t.id === rec.templateId)
     : null;
-  const title = template ? template.name : CATEGORY_LABELS[rec.category];
+  const title = template ? `${CATEGORY_LABELS[rec.category]} — ${template.name}` : CATEGORY_LABELS[rec.category];
+  const color = categoryColor(rec.category);
 
   return (
     <Link
       href={href}
-      className="block border border-accent/50 bg-text/5 rounded-2xl p-5 hover:border-accent transition-colors"
+      className="block border border-accent/40 bg-text/[0.04] rounded-2xl p-5"
     >
-      <div className="text-[10px] uppercase tracking-[0.22em] text-accent font-medium">
-        Based on your week — try today
+      <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-accent font-medium">
+        <span className="w-1.5 h-1.5 rounded-full" style={{ background: color.solid }} aria-hidden />
+        Suggested for today
       </div>
-      <div className="font-display text-3xl font-normal tracking-tight mt-1.5 text-text">
-        {CATEGORY_LABELS[rec.category]}{template ? ` — ${title}` : ""}
+      <div className="text-[2rem] font-medium tracking-[-0.03em] mt-3 leading-[1] text-text">
+        {title}
       </div>
-      <p className="text-sm text-text-muted mt-2.5 leading-relaxed">
+      <p className="text-sm text-text-muted mt-2 leading-relaxed">
         {rec.reasoning}
       </p>
-      <div className="mt-4 text-[11px] uppercase tracking-[0.18em] text-accent font-medium">
-        Start workout →
+      <div className="mt-5 inline-flex items-center justify-center gap-2 bg-accent text-bg rounded-full px-5 py-2.5 text-sm font-semibold hover:bg-accent-dim transition-colors">
+        Start workout
+        <span aria-hidden>→</span>
       </div>
     </Link>
   );
@@ -611,29 +630,36 @@ function PausedTodayCard() {
   return (
     <Link
       href="/plan"
-      className="block bg-bg-card border border-text-dim/30 rounded-2xl p-5"
+      className="block border border-border-strong/40 rounded-2xl p-5"
     >
-      <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold">
+      <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
         Block paused
       </div>
-      <div className="text-lg font-semibold mt-1">You&apos;re off-plan today.</div>
+      <div className="text-[2rem] font-medium tracking-[-0.03em] mt-3 leading-[1] text-text">
+        Off-plan today.
+      </div>
       <p className="text-sm text-text-muted mt-2 leading-relaxed">
-        Nothing scheduled while the block is paused. Train what fits — tap a category from the catalog, or resume from Plan.
+        Nothing scheduled while the block is paused. Train what fits — tap a category below, or resume your plan.
       </p>
-      <div className="text-xs text-accent mt-3">Open Plan →</div>
+      <div className="mt-5 inline-flex items-center justify-center gap-2 border border-border-strong/40 text-text rounded-full px-5 py-2.5 text-sm font-medium hover:border-text-dim transition-colors">
+        Resume plan
+        <span aria-hidden>→</span>
+      </div>
     </Link>
   );
 }
 
 function RestDayCard() {
   return (
-    <div className="bg-bg-card border border-border rounded-2xl p-5">
-      <div className="text-xs uppercase tracking-widest text-text-dim font-semibold">
+    <div className="border border-border-strong/40 rounded-2xl p-5">
+      <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
         Rest day
       </div>
-      <div className="text-xl font-semibold mt-2">No training scheduled today.</div>
+      <div className="text-[2rem] font-medium tracking-[-0.03em] mt-3 leading-[1] text-text">
+        Nothing scheduled.
+      </div>
       <div className="text-sm text-text-muted mt-2 leading-relaxed">
-        Active recovery counts. Stretch, walk, sleep well. Or tap a category below if you feel like moving.
+        Active recovery counts. Stretch, walk, sleep well — or tap a category below if you feel like moving.
       </div>
     </div>
   );
@@ -643,16 +669,20 @@ function NoPlanCard() {
   return (
     <Link
       href="/plan"
-      className="block bg-bg-card border border-border rounded-2xl p-5 hover:border-accent/40 transition-colors"
+      className="block border border-accent/40 bg-text/[0.04] rounded-2xl p-5"
     >
-      <div className="text-xs uppercase tracking-widest text-text-dim font-semibold">
-        No weekly plan yet
+      <div className="text-[10px] uppercase tracking-[0.22em] text-accent font-medium">
+        Set up your week
       </div>
-      <div className="text-lg font-semibold mt-2">
-        Set what you train each day →
+      <div className="text-[2rem] font-medium tracking-[-0.03em] mt-3 leading-[1] text-text">
+        No plan yet.
       </div>
-      <div className="text-sm text-text-muted mt-2">
-        Or pick a category below to train freely.
+      <div className="text-sm text-text-muted mt-2 leading-relaxed">
+        Pick a weekly pattern — what you train each day. Takes under a minute.
+      </div>
+      <div className="mt-5 inline-flex items-center justify-center gap-2 bg-accent text-bg rounded-full px-5 py-2.5 text-sm font-semibold hover:bg-accent-dim transition-colors">
+        Set my plan
+        <span aria-hidden>→</span>
       </div>
     </Link>
   );
@@ -687,12 +717,17 @@ function TodaysSessionCard({ session, compact }: { session: Session; compact?: b
     if (!confirm(`Remove "${session.name}" from today? Undoes the Done mark.`)) return;
     if (session.id !== undefined) await db.sessions.delete(session.id);
   };
+  // Done state: calm & complete — hairline border, no hero tint, "Review"
+  // secondary link. In-progress draft: full hero with filled Resume pill.
+  const isHero = !done && !compact;
   return (
     <Link
       href={href}
       className={clsx(
-        "block border border-border-strong/40 bg-bg-elevated rounded-2xl relative",
-        compact ? "p-4" : "p-5"
+        "block rounded-2xl relative",
+        isHero
+          ? "border border-accent/40 bg-text/[0.04] p-5"
+          : clsx("border border-border-strong/40", compact ? "p-4" : "p-5")
       )}
     >
       <button
@@ -703,26 +738,42 @@ function TodaysSessionCard({ session, compact }: { session: Session; compact?: b
       >
         ×
       </button>
-      <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] font-semibold text-text-muted pr-8">
+      <div
+        className={clsx(
+          "flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] font-medium pr-8",
+          done ? "text-success" : "text-accent"
+        )}
+      >
         <span
           className="w-1.5 h-1.5 rounded-full"
           style={{ background: color.solid }}
           aria-hidden
         />
-        <span>{compact ? CATEGORY_LABELS[session.category] : "Today's session"}</span>
-        {done && <span className="text-text-dim">· Done</span>}
+        <span>
+          {compact
+            ? CATEGORY_LABELS[session.category]
+            : done
+              ? "Today — done"
+              : "In progress"}
+        </span>
       </div>
       <div
         className={clsx(
-          "font-display font-normal tracking-tight mt-2 leading-[1.05] text-text",
-          compact ? "text-xl" : "text-3xl"
+          "font-medium tracking-[-0.03em] mt-3 leading-[1] text-text",
+          compact ? "text-xl" : done ? "text-2xl" : "text-[2rem]"
         )}
       >
         {session.name}
       </div>
-      {!compact && (
-        <div className="mt-4 text-sm font-medium text-accent">
-          {done ? "Review →" : "Open workout →"}
+      {!compact && !done && (
+        <div className="mt-5 inline-flex items-center justify-center gap-2 bg-accent text-bg rounded-full px-5 py-2.5 text-sm font-semibold hover:bg-accent-dim transition-colors">
+          Resume
+          <span aria-hidden>→</span>
+        </div>
+      )}
+      {!compact && done && (
+        <div className="mt-4 text-[11px] uppercase tracking-[0.18em] text-text-dim font-medium hover:text-text transition-colors">
+          Review →
         </div>
       )}
     </Link>
@@ -1072,10 +1123,33 @@ function WeekStrip({
           );
         })}
       </div>
-      <p className="text-[10px] text-text-dim mt-3 leading-relaxed tracking-wide">
-        Tap a future day to preview. Tap a past day to add, edit, or remove.
-      </p>
     </section>
+  );
+}
+
+// Week-progress strip: a single hairline row with "N of M this week" caption +
+// filled bar. Strava's weekly goal + Apple's Move-ring in Nordic clothing.
+// Target is derived from the user's plan (non-rest days); done is finished
+// sessions Mon–Sun this calendar week.
+function WeekProgress({ done, target }: { done: number; target: number }) {
+  const pct = Math.min(100, Math.round((done / target) * 100));
+  const complete = done >= target;
+  return (
+    <div className="mt-4 flex items-center gap-3">
+      <div className="flex-1 h-[3px] bg-border-strong/30 rounded-full overflow-hidden">
+        <div
+          className={clsx(
+            "h-full transition-all duration-500",
+            complete ? "bg-success" : "bg-accent"
+          )}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <div className="text-[10px] uppercase tracking-[0.18em] text-text-dim font-medium tabular-nums shrink-0">
+        <span className={clsx(complete ? "text-success" : "text-text")}>{done}</span>
+        <span className="text-text-dim"> of {target} this week</span>
+      </div>
+    </div>
   );
 }
 

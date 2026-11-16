@@ -92,7 +92,7 @@ export default function DayPreviewModal({
             <div className="text-[10px] uppercase tracking-[0.22em] text-accent font-medium">
               Preview
             </div>
-            <h3 className="font-display text-2xl font-normal tracking-tight text-text mt-1">
+            <h3 className="text-xl font-medium tracking-[-0.02em] tracking-tight text-text mt-1">
               {dayLabel}
             </h3>
           </div>
@@ -106,48 +106,40 @@ export default function DayPreviewModal({
         </div>
 
         {!day ? (
-          <p className="text-sm text-text-muted">Rest day — no session planned.</p>
+          <p className="text-sm text-text-muted leading-relaxed">
+            Rest day — no session planned.
+          </p>
         ) : day.category === "sport" ? (
           <SportDayPreview />
         ) : loading ? (
-          <p className="text-sm text-text-muted">Building preview…</p>
+          <p className="text-sm text-text-muted">Loading…</p>
         ) : workout ? (
-          <>
+          // Simplified preview: just WHAT the session is, in one block. The
+          // detailed exercise list belongs inside the workout page, not a
+          // peek modal. The user already knows what Push Day looks like —
+          // they don't want to read 8 block breakdowns here.
+          <div className="space-y-3">
             <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
               {CATEGORY_LABELS[day.category]}
             </div>
-            <div className="text-sm text-text mt-1 mb-5 font-medium">{workout.name}</div>
-
-            <div className="space-y-3">
-              {workout.blocks
-                .filter((b) => !/warmup/i.test(b.title))
-                .map((block) => (
-                  <div
-                    key={block.id}
-                    className="border border-border-strong/40 bg-bg-card rounded-xl p-3.5"
-                  >
-                    <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
-                      {block.title}
-                    </div>
-                    <div className="mt-2 space-y-1.5">
-                      {block.prescriptions.map((p, i) => (
-                        <div key={i} className="text-sm flex items-baseline justify-between gap-2">
-                          <span className="text-text">{exerciseName(p.exerciseId)}</span>
-                          <span className="text-xs text-text-dim tabular-nums shrink-0">
-                            {p.sets}×{p.reps}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+            <div className="text-xl font-medium tracking-[-0.02em] text-text leading-tight">
+              {workout.name}
             </div>
-
-            <p className="text-[11px] text-text-dim mt-5 leading-relaxed">
-              Projected session for {dayLabel}. Accessories rotate week-to-week — this is
-              a snapshot, not a fixed script.
-            </p>
-          </>
+            {workout.philosophy && (
+              <p className="text-sm text-text-muted leading-relaxed">
+                {workout.philosophy}
+              </p>
+            )}
+            <div className="text-[11px] uppercase tracking-[0.18em] text-text-dim pt-1 font-medium tabular-nums">
+              ~{workout.estimatedDurationMin ?? 60} min
+              {workout.blocks.filter((b) => !/warmup|cooldown/i.test(b.title)).length > 0 && (
+                <span>
+                  {" · "}
+                  {workout.blocks.filter((b) => !/warmup|cooldown/i.test(b.title)).length} blocks
+                </span>
+              )}
+            </div>
+          </div>
         ) : (
           <p className="text-sm text-text-muted">Couldn&apos;t build a preview.</p>
         )}
@@ -155,7 +147,7 @@ export default function DayPreviewModal({
         {day && day.category === "sport" ? (
           <Link
             href="/workout"
-            className="block text-center mt-5 pt-4 border-t border-border-strong/30 text-[11px] uppercase tracking-[0.18em] text-accent font-medium"
+            className="block text-center mt-6 w-full bg-accent text-bg rounded-full py-3 text-sm font-semibold hover:bg-accent-dim transition-colors"
             onClick={onClose}
           >
             Log a sport
@@ -167,10 +159,10 @@ export default function DayPreviewModal({
                 ? `/workout/${day.category}?template=${day.templateId}&date=${date}`
                 : `/workout/${day.category}?date=${date}`
             }
-            className="block text-center mt-5 pt-4 border-t border-border-strong/30 text-[11px] uppercase tracking-[0.18em] text-accent font-medium"
+            className="block text-center mt-6 w-full bg-accent text-bg rounded-full py-3 text-sm font-semibold hover:bg-accent-dim transition-colors"
             onClick={onClose}
           >
-            Open workout builder
+            Open workout
           </Link>
         )}
       </div>
@@ -229,10 +221,3 @@ function sessionToWorkoutShape(s: Session): Workout {
   };
 }
 
-// Turn an exercise id like "incline_db_press" into "Incline DB Press".
-function exerciseName(id: string): string {
-  return id
-    .split("_")
-    .map((w) => (w.length <= 3 ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1)))
-    .join(" ");
-}

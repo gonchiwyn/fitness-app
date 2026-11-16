@@ -71,7 +71,7 @@ export default function SportLogModal({
             <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
               Log a sport
             </div>
-            <h3 className="font-display text-2xl font-normal tracking-tight text-text mt-1">
+            <h3 className="text-xl font-medium tracking-[-0.02em] tracking-tight text-text mt-1">
               {format(parseISO(logDate), "EEEE, MMM d")}
             </h3>
           </div>

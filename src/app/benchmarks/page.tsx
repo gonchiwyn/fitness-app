@@ -53,7 +53,7 @@ export default function BenchmarksPage() {
         <p className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">
           Retest to know
         </p>
-        <h1 className="font-display text-[2.5rem] font-normal tracking-tight leading-[0.95] mt-1.5 text-text">
+        <h1 className="text-[2.125rem] font-medium tracking-[-0.03em] leading-[1] mt-1.5 text-text">
           Benchmarks
         </h1>
         <p className="text-text-muted text-sm mt-3 leading-relaxed">
@@ -86,7 +86,7 @@ export default function BenchmarksPage() {
                     <div className="text-right shrink-0">
                       {info ? (
                         <>
-                          <div className="font-display text-3xl font-normal text-text tabular-nums leading-none">
+                          <div className="text-2xl font-medium tracking-[-0.02em] text-text tabular-nums leading-none">
                             {info.best.value}
                             <span className="text-[10px] uppercase tracking-[0.18em] text-text-dim ml-1.5 font-medium">
                               {meta.unit}
@@ -171,7 +171,7 @@ function LogModal({
             <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
               New benchmark
             </div>
-            <h3 className="font-display text-2xl font-normal tracking-tight text-text mt-1">
+            <h3 className="text-xl font-medium tracking-[-0.02em] tracking-tight text-text mt-1">
               {meta.label}
             </h3>
           </div>

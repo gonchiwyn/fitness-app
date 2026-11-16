@@ -70,7 +70,7 @@ export default function ProfilePage() {
       <header className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">You</p>
-          <h1 className="font-display text-[2.25rem] font-semibold tracking-tight mt-1.5 leading-[1.05] text-text">
+          <h1 className="text-[2.25rem] font-semibold tracking-tight mt-1.5 leading-[1.05] text-text">
             {name}
           </h1>
         </div>
@@ -128,7 +128,7 @@ export default function ProfilePage() {
         </div>
         <div className="flex items-baseline gap-3 mt-2">
           <span className="text-3xl opacity-80">{archetype.icon}</span>
-          <h2 className="font-display text-[2rem] font-normal tracking-tight leading-[1]">
+          <h2 className="text-[1.625rem] font-medium tracking-[-0.025em] leading-[1.05]">
             {archetype.name}
           </h2>
         </div>
@@ -619,7 +619,7 @@ function KpiTile({
       <div className="flex items-baseline gap-1.5">
         <span
           className={clsx(
-            "font-display font-normal tabular-nums leading-none tracking-tight",
+            "font-normal tabular-nums leading-none tracking-tight",
             accent ? "text-accent" : "text-text",
             big.length >= 4 ? "text-[2.5rem]" : "text-[3rem]"
           )}

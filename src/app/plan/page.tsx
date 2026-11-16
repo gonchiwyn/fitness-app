@@ -1,10 +1,10 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
+import { useLiveQuery } from "dexie-react-hooks";
 import { useSearchParams } from "next/navigation";
 import clsx from "clsx";
 import { addDays, differenceInCalendarDays, format, startOfWeek } from "date-fns";
-import DayPreviewModal from "@/components/DayPreviewModal";
 import {
   archiveCurrentFocus,
   db,
@@ -77,8 +77,7 @@ function PlanPageInner() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const searchParams = useSearchParams();
   const [editingDay, setEditingDay] = useState<number | null>(null);
-  const [previewingDay, setPreviewingDay] = useState<number | null>(null);
-  // ?pick=1 → auto-expand the preset picker (used from end-of-onboarding CTA).
+  // ?pick=1 → auto-open the block picker modal (end-of-onboarding CTA).
   const [showPresets, setShowPresets] = useState(searchParams.get("pick") === "1");
   // Preset tapped once → show preview (expand); tapped again → apply.
   const [previewingPreset, setPreviewingPreset] = useState<string | null>(null);
@@ -89,6 +88,15 @@ function PlanPageInner() {
   // Monday of this week — used to compute a real date for each plan day
   // so DayPreviewModal can show the next upcoming occurrence of e.g. "Mon".
   const thisMonday = startOfWeek(new Date(), { weekStartsOn: 1 });
+
+  // Weekly completion signal — shown at the top of "This week" so the user
+  // knows where they stand without flipping back to Home.
+  const weekStartStr = format(thisMonday, "yyyy-MM-dd");
+  const weekEndStr = format(addDays(thisMonday, 7), "yyyy-MM-dd");
+  const doneThisWeek = useLiveQuery(async () => {
+    const all = await db.sessions.where("date").between(weekStartStr, weekEndStr, true, false).toArray();
+    return all.filter((s) => s.finishedAt).length;
+  }, [weekStartStr, weekEndStr], 0);
 
   const [viewMode, setViewMode] = useState<"this-week" | "base">("this-week");
   const [hasOverride, setHasOverride] = useState(false);
@@ -499,29 +507,35 @@ function PlanPageInner() {
     blockState = weekNum > focus.durationWeeks ? "completed" : "active";
   }
 
+  // Weekly target = non-rest days in the plan. Feeds the "N of M done"
+  // progress glance at the top of This Week.
+  const weekTarget = plan?.days.filter((d) => d !== null).length ?? 0;
+
   const patternIntro =
     blockState === "active"
-      ? "Your weekly pattern for this block. Tap a day to override just that day."
+      ? "Tap a day to swap the workout — just this week, or every week."
       : blockState === "completed"
       ? "Last block's pattern. Pick your next focus to reshape the week."
-      : "Tap a day to override. Or pick a focus block below to reshape the whole week.";
+      : "Tap a day to shape it. Or pick a block to shape the whole week at once.";
 
   return (
     <div className="max-w-3xl mx-auto px-5 py-6 space-y-6">
       <header>
         <p className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">Your program</p>
-        <h1 className="font-display text-[2.5rem] font-normal tracking-tight leading-[0.95] mt-1.5 text-text">Plan</h1>
+        <h1 className="text-[2.125rem] font-medium tracking-[-0.03em] leading-[1] mt-1.5 text-text">Plan</h1>
       </header>
 
       {blockState === "active" && focus && (
         <section
           className={clsx(
-            "border rounded-2xl p-5 space-y-4 bg-bg-elevated",
-            isPaused ? "border-border-strong/40" : "border-accent/30"
+            "border rounded-2xl p-5 space-y-4",
+            isPaused
+              ? "border-border-strong/40"
+              : "border-accent/40 bg-text/[0.04]"
           )}
         >
           <div className="flex items-baseline justify-between gap-3">
-            <div>
+            <div className="min-w-0">
               <div
                 className={clsx(
                   "text-[10px] uppercase tracking-[0.22em] font-medium flex items-center gap-2",
@@ -535,13 +549,15 @@ function PlanPageInner() {
                 )}
                 Current focus block
               </div>
-              <div className="font-display text-3xl font-normal tracking-tight mt-1.5 text-text leading-[1.05]">{focus.name}</div>
+              <div className="text-[1.75rem] font-medium tracking-[-0.03em] mt-2 text-text leading-[1]">
+                {focus.name}
+              </div>
             </div>
-            <div className="text-[11px] text-text-dim shrink-0 tracking-wide tabular-nums">
+            <div className="text-[11px] text-text-dim shrink-0 tracking-wide tabular-nums font-medium">
               Wk {weekNum} / {focus.durationWeeks}
             </div>
           </div>
-          <div className="h-[2px] bg-border-strong/40 rounded-full overflow-hidden">
+          <div className="h-[3px] bg-border-strong/30 rounded-full overflow-hidden">
             <div
               className={clsx("h-full", isPaused ? "bg-text-dim/60" : "bg-accent")}
               style={{ width: `${progressPct}%` }}
@@ -553,26 +569,29 @@ function PlanPageInner() {
             currentWeek={weekNum}
           />
           {isPaused && focus.pausedAt && (
-            <p className="text-xs text-text-muted bg-bg-card border border-border-strong/30 rounded-lg p-3 leading-relaxed">
+            <p className="text-xs text-text-muted leading-relaxed">
               Paused since {format(new Date(focus.pausedAt + "T00:00:00"), "MMM d")}. The week counter and phase resume where they left off.
             </p>
           )}
-          <button
-            onClick={togglePause}
-            className={clsx(
-              "w-full h-10 rounded-full text-sm font-medium border transition-colors",
-              isPaused
-                ? "bg-text/5 border-accent/60 text-text"
-                : "bg-transparent border-border-strong/50 text-text-muted hover:border-text-dim"
-            )}
-          >
-            {isPaused ? "Resume block" : "Pause block"}
-          </button>
-          <div className="flex items-center justify-between text-[11px] text-text-dim tracking-wide">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowPresets(true)}
+              className="flex-1 h-11 rounded-full bg-accent text-bg text-sm font-semibold hover:bg-accent-dim transition-colors"
+            >
+              Change block
+            </button>
+            <button
+              onClick={togglePause}
+              className="h-11 px-4 rounded-full border border-border-strong/40 text-text-muted text-xs uppercase tracking-[0.18em] font-medium hover:border-text-dim hover:text-text transition-colors"
+            >
+              {isPaused ? "Resume" : "Pause"}
+            </button>
+          </div>
+          <div className="flex items-center justify-between text-[10px] text-text-dim tracking-[0.18em] uppercase font-medium pt-1">
             <span>Started {format(new Date(focus.startedAt), "MMM d")}</span>
             <button
               onClick={endBlock}
-              className="text-text-dim hover:text-danger uppercase tracking-[0.18em] font-medium"
+              className="hover:text-danger"
             >
               End block
             </button>
@@ -581,77 +600,72 @@ function PlanPageInner() {
       )}
 
       {blockState === "completed" && focus && (
-        <section className="bg-bg-card border border-border rounded-2xl p-5 space-y-3">
-          <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold">
+        <section className="border border-accent/40 bg-text/[0.04] rounded-2xl p-5 space-y-4">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-accent font-medium">
             Block complete
           </div>
-          <div className="text-lg font-semibold">
-            {focus.name} — {focus.durationWeeks} weeks done.
+          <div className="text-[1.75rem] font-medium tracking-[-0.03em] text-text leading-[1]">
+            {focus.name}
           </div>
-          <p className="text-sm text-text-muted">
-            Pick your next focus below, or end the block to stay on this pattern without a target.
+          <p className="text-sm text-text-muted leading-relaxed">
+            {focus.durationWeeks} weeks done. Pick your next focus to reshape the week.
           </p>
           <button
-            onClick={endBlock}
-            className="text-xs text-text-dim underline"
+            onClick={() => setShowPresets(true)}
+            className="w-full h-11 rounded-full bg-accent text-bg text-sm font-semibold hover:bg-accent-dim transition-colors"
           >
-            End block
+            Pick next block
           </button>
         </section>
       )}
 
       {blockState === "none" && (
-        <section className="border border-border-strong/40 bg-bg-elevated rounded-2xl p-5">
+        <section className="border border-accent/40 bg-text/[0.04] rounded-2xl p-5">
           <div className="text-[10px] uppercase tracking-[0.22em] text-accent font-medium">
-            Pick a focus block
+            No block yet
           </div>
-          <p className="text-sm text-text-muted mt-2.5 leading-relaxed">
+          <div className="text-[1.75rem] font-medium tracking-[-0.03em] mt-2 text-text leading-[1]">
+            Shape your week.
+          </div>
+          <p className="text-sm text-text-muted mt-2 leading-relaxed">
             A block is 1–8 weeks with a clear intent — Hypertrophy, Cardio base,
-            Athletic, Recovery. The whole app adapts to it. You can end early or
-            switch anytime.
+            Athletic, Recovery. The whole app adapts to it. Switch anytime.
           </p>
           <button
-            onClick={() => {
-              setShowPresets(true);
-              setTimeout(() => {
-                const el = document.getElementById("focus-presets");
-                if (!el) return;
-                const y = el.getBoundingClientRect().top + window.scrollY - 12;
-                window.scrollTo(0, y);
-              }, 0);
-            }}
-            className="mt-4 text-[11px] uppercase tracking-[0.18em] text-accent font-medium"
+            onClick={() => setShowPresets(true)}
+            className="mt-5 inline-flex items-center justify-center gap-2 bg-accent text-bg rounded-full px-5 py-2.5 text-sm font-semibold hover:bg-accent-dim transition-colors"
           >
-            Choose a block →
+            Pick a block
+            <span aria-hidden>→</span>
           </button>
         </section>
       )}
 
       <section className="space-y-3">
-        <div className="flex items-baseline justify-between">
+        <div className="flex items-baseline justify-between gap-3">
           <h2 className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">
-            {blockState === "active" ? "This block's week" : "Weekly pattern"}
+            This week
           </h2>
-          {blockState === "active" && (
-            <button
-              onClick={() => {
-                const next = !showPresets;
-                setShowPresets(next);
-                if (next) {
-                  setTimeout(() => {
-                    const el = document.getElementById("focus-presets");
-                    if (!el) return;
-                    const y = el.getBoundingClientRect().top + window.scrollY - 12;
-                    window.scrollTo(0, y);
-                  }, 0);
-                }
-              }}
-              className="text-[11px] uppercase tracking-[0.18em] text-accent font-medium"
-            >
-              {showPresets ? "Hide" : "Change block"}
-            </button>
+          {weekTarget > 0 && (
+            <span className="text-[10px] uppercase tracking-[0.18em] text-text-dim font-medium tabular-nums">
+              <span className={clsx(doneThisWeek >= weekTarget ? "text-success" : "text-text")}>
+                {doneThisWeek}
+              </span>{" "}
+              of {weekTarget} done
+            </span>
           )}
         </div>
+        {weekTarget > 0 && (
+          <div className="h-[3px] bg-border-strong/30 rounded-full overflow-hidden">
+            <div
+              className={clsx(
+                "h-full transition-all",
+                doneThisWeek >= weekTarget ? "bg-success" : "bg-accent"
+              )}
+              style={{ width: `${Math.min(100, (doneThisWeek / weekTarget) * 100)}%` }}
+            />
+          </div>
+        )}
         <p className="text-xs text-text-dim leading-relaxed">{patternIntro}</p>
 
         <div className="space-y-2 pt-1">
@@ -662,137 +676,69 @@ function PlanPageInner() {
               : null;
             const color = day ? categoryColor(day.category) : null;
             return (
-              <div
+              <button
                 key={i}
+                onClick={() => setEditingDay(i)}
                 className={clsx(
-                  "w-full rounded-2xl border bg-bg-elevated transition-colors",
+                  "w-full text-left flex items-center gap-4 rounded-2xl border p-4 transition-colors",
                   isToday
-                    ? "border-accent/50"
-                    : "border-border-strong/40"
+                    ? "border-accent/50 bg-text/[0.03]"
+                    : "border-border-strong/40 hover:border-text-dim"
                 )}
               >
-                <button
-                  onClick={() => setPreviewingDay(i)}
-                  className="w-full text-left flex items-center gap-4 p-4"
-                >
-                  <div className={clsx("w-14 text-center", isToday ? "text-accent" : "text-text-dim")}>
-                    <div className="text-[10px] uppercase tracking-[0.22em] font-medium">
-                      {DAY_LABELS_LONG[i].slice(0, 3)}
+                <div className={clsx("w-12 text-center shrink-0", isToday ? "text-accent" : "text-text-dim")}>
+                  <div className="text-[10px] uppercase tracking-[0.22em] font-medium">
+                    {DAY_LABELS_LONG[i].slice(0, 3)}
+                  </div>
+                  {isToday && (
+                    <div className="text-[9px] mt-1 font-medium uppercase tracking-[0.18em] text-accent">
+                      Today
                     </div>
-                    {isToday && (
-                      <div className="text-[10px] mt-1 font-medium uppercase tracking-[0.22em]">
-                        Today
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    {day ? (
-                      <>
-                        <div className="flex items-center gap-2 text-text font-medium">
-                          {color && (
-                            <span
-                              className="w-1.5 h-1.5 rounded-full shrink-0"
-                              style={{ background: color.solid }}
-                              aria-hidden
-                            />
-                          )}
-                          <span className="truncate">
-                            {lockedTemplate
-                              ? `${CATEGORY_LABELS[day.category]} — ${lockedTemplate.name}`
-                              : CATEGORY_LABELS[day.category]}
-                          </span>
-                        </div>
-                        <div className="text-xs text-text-dim mt-1 leading-relaxed pl-3.5">
-                          {lockedTemplate ? lockedTemplate.description : CATEGORY_BLURBS[day.category]}
-                        </div>
-                      </>
-                    ) : (
-                      <div className="text-text-dim italic">Rest day</div>
-                    )}
-                  </div>
-                  <span className="text-xs text-text-dim">View ›</span>
-                </button>
-                <div className="border-t border-border/50 px-4 py-2 flex justify-end">
-                  <button
-                    onClick={() => setEditingDay(i)}
-                    className="text-[11px] text-text-dim hover:text-accent uppercase tracking-wider"
-                  >
-                    Edit day
-                  </button>
+                  )}
                 </div>
-              </div>
+                <div className="flex-1 min-w-0">
+                  {day ? (
+                    <>
+                      <div className="flex items-center gap-2 text-text font-medium">
+                        {color && (
+                          <span
+                            className="w-1.5 h-1.5 rounded-full shrink-0"
+                            style={{ background: color.solid }}
+                            aria-hidden
+                          />
+                        )}
+                        <span className="truncate">
+                          {lockedTemplate
+                            ? `${CATEGORY_LABELS[day.category]} — ${lockedTemplate.name}`
+                            : CATEGORY_LABELS[day.category]}
+                        </span>
+                      </div>
+                      <div className="text-xs text-text-dim mt-0.5 leading-relaxed pl-3.5 truncate">
+                        {lockedTemplate ? lockedTemplate.description : CATEGORY_BLURBS[day.category]}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-sm text-text-dim">Rest day</div>
+                  )}
+                </div>
+                <span className="text-text-dim text-sm shrink-0">›</span>
+              </button>
             );
           })}
         </div>
       </section>
 
-      {(blockState !== "active" || showPresets) && (
-        <section id="focus-presets" className="space-y-3 pt-2 scroll-mt-4">
-          <h2 className="text-xs uppercase tracking-widest text-text-dim font-semibold">
-            {blockState === "completed" ? "Pick your next block" : "Focus blocks"}
-          </h2>
-          <p className="text-xs text-text-dim">
-            Tap a block to preview it. Pick days/week, then start.
-          </p>
-          <div className="space-y-2">
-            {presets.map((p, i) => {
-              const isPreview = previewingPreset === p.focusName;
-              const freq = selectedFrequency ?? p.defaultFrequency;
-              return (
-                <div
-                  key={i}
-                  className={clsx(
-                    "rounded-xl border bg-bg-elevated transition-colors",
-                    isPreview ? "border-accent/50" : "border-border-strong/40"
-                  )}
-                >
-                  <button
-                    onClick={() => {
-                      if (isPreview) {
-                        setPreviewingPreset(null);
-                        setSelectedFrequency(null);
-                      } else {
-                        setPreviewingPreset(p.focusName);
-                        setSelectedFrequency(p.defaultFrequency);
-                      }
-                    }}
-                    className="w-full text-left px-4 py-3.5"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="font-display text-lg font-normal tracking-tight text-text">{p.name}</div>
-                        <div className="text-xs text-text-dim mt-1 leading-relaxed">{p.tagline}</div>
-                      </div>
-                      <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim shrink-0 tabular-nums font-medium">
-                        {p.durationWeeks}w
-                      </div>
-                    </div>
-                  </button>
-                  {isPreview && (
-                    <PresetPreview
-                      preset={p}
-                      frequency={freq}
-                      onFrequencyChange={setSelectedFrequency}
-                      onStart={() => {
-                        applyPreset(p, freq);
-                        setPreviewingPreset(null);
-                        setSelectedFrequency(null);
-                      }}
-                    />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      <button
-        onClick={reset}
-        className="w-full h-11 rounded-full border border-border-strong/40 bg-transparent text-text-dim text-xs uppercase tracking-[0.18em] font-medium hover:border-text-dim hover:text-text-muted"
-      >
-        Reset to default plan
-      </button>
+      {/* Reset is the only destructive escape hatch left on the page, and
+          it's intentionally quiet — a tiny text link, not a button. Users
+          rarely need this; it's here so the muscle memory still lands. */}
+      <div className="pt-4 text-center">
+        <button
+          onClick={reset}
+          className="text-[10px] uppercase tracking-[0.18em] text-text-dim hover:text-text-muted font-medium"
+        >
+          Reset plan to default
+        </button>
+      </div>
 
       {editingDay !== null && (
         <DayPicker
@@ -803,19 +749,30 @@ function PlanPageInner() {
         />
       )}
 
-      {previewingDay !== null && profile && (() => {
-        // Compute the next occurrence of this weekday for preview context.
-        // Index 0 is Monday — the thisMonday date lands at index 0.
-        const previewDateObj = addDays(thisMonday, previewingDay);
-        return (
-          <DayPreviewModal
-            date={format(previewDateObj, "yyyy-MM-dd")}
-            day={plan.days[previewingDay]}
-            profile={profile}
-            onClose={() => setPreviewingDay(null)}
-          />
-        );
-      })()}
+      {showPresets && (
+        <BlockPickerModal
+          presets={presets}
+          previewing={previewingPreset}
+          selectedFrequency={selectedFrequency}
+          onPreview={(name) => {
+            setPreviewingPreset(name);
+            const p = presets.find((x) => x.focusName === name);
+            setSelectedFrequency(p?.defaultFrequency ?? null);
+          }}
+          onFrequencyChange={setSelectedFrequency}
+          onStart={(p, freq) => {
+            applyPreset(p, freq);
+            setPreviewingPreset(null);
+            setSelectedFrequency(null);
+            setShowPresets(false);
+          }}
+          onClose={() => {
+            setShowPresets(false);
+            setPreviewingPreset(null);
+            setSelectedFrequency(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -824,6 +781,150 @@ function PlanPageInner() {
 // Lists the weekly pattern derived from the chosen frequency + a frequency
 // picker + a Start button. Frequency is required: picking it is what shapes
 // the actual week the user commits to.
+// Grouping for the block picker. Peloton / Nike group programs by intent so
+// the user doesn't scan 11 unlabeled cards. "intent" here is the user's goal,
+// not an exercise taxonomy — people pick a block by WHY, not by anatomy.
+// If a preset's focusName isn't listed here, it lands in "Specialty".
+const PRESET_GROUPS: { id: string; label: string; items: string[] }[] = [
+  { id: "strength", label: "Strength", items: ["Hypertrophy", "Menno Hypertrophy", "Strength peak", "PPL"] },
+  { id: "endurance", label: "Endurance", items: ["Cardio base"] },
+  { id: "hybrid", label: "Hybrid / Athletic", items: ["Athletic", "Longevity", "Hyrox prep"] },
+  { id: "reset", label: "Reset", items: ["Recovery", "Beginner"] },
+  { id: "specialty", label: "Specialty", items: ["Surf prep"] },
+];
+
+type PresetT = {
+  name: string;
+  tagline: string;
+  focusName: string;
+  durationWeeks: number;
+  defaultFrequency: number;
+  days: PlannedDay[];
+};
+
+// Full-screen block picker modal. Replaces the inline accordion that forced
+// the user to scroll past 11 cards to find one. Groups presets by intent
+// (Peloton / Nike pattern), expands a selected preset inline into a
+// frequency picker + weekly-shape preview + Start CTA.
+function BlockPickerModal({
+  presets,
+  previewing,
+  selectedFrequency,
+  onPreview,
+  onFrequencyChange,
+  onStart,
+  onClose,
+}: {
+  presets: PresetT[];
+  previewing: string | null;
+  selectedFrequency: number | null;
+  onPreview: (focusName: string) => void;
+  onFrequencyChange: (f: number) => void;
+  onStart: (preset: PresetT, frequency: number) => void;
+  onClose: () => void;
+}) {
+  useBodyScrollLock(true);
+  const byFocusName = new Map(presets.map((p) => [p.focusName, p]));
+  const unlisted = presets.filter(
+    (p) => !PRESET_GROUPS.some((g) => g.items.includes(p.focusName))
+  );
+
+  const renderCard = (p: PresetT) => {
+    const isPreview = previewing === p.focusName;
+    const freq = selectedFrequency ?? p.defaultFrequency;
+    return (
+      <div
+        key={p.focusName}
+        className={clsx(
+          "rounded-xl border transition-colors",
+          isPreview ? "border-accent/60 bg-text/[0.03]" : "border-border-strong/40"
+        )}
+      >
+        <button
+          onClick={() => onPreview(isPreview ? "" : p.focusName)}
+          className="w-full text-left px-4 py-3.5"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="text-base font-medium tracking-tight text-text">{p.name}</div>
+              <div className="text-xs text-text-dim mt-1 leading-relaxed">{p.tagline}</div>
+            </div>
+            <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim shrink-0 tabular-nums font-medium">
+              {p.durationWeeks}w
+            </div>
+          </div>
+        </button>
+        {isPreview && (
+          <PresetPreview
+            preset={p}
+            frequency={freq}
+            onFrequencyChange={onFrequencyChange}
+            onStart={() => onStart(p, freq)}
+          />
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/70 z-50 flex items-end sm:items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-bg-elevated border border-border-strong/50 rounded-2xl p-5 max-w-md w-full max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between mb-5">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+              Choose a focus
+            </div>
+            <h3 className="text-xl font-medium tracking-[-0.02em] text-text mt-1">
+              Blocks
+            </h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-text-dim text-2xl leading-none hover:text-text"
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+        <p className="text-sm text-text-muted mb-5 leading-relaxed">
+          Pick a block, then your frequency. Switching replaces the current weekly pattern — you can change it again anytime.
+        </p>
+
+        <div className="space-y-6">
+          {PRESET_GROUPS.map((g) => {
+            const items = g.items
+              .map((name) => byFocusName.get(name))
+              .filter((p): p is PresetT => !!p);
+            if (items.length === 0) return null;
+            return (
+              <div key={g.id} className="space-y-2">
+                <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+                  {g.label}
+                </div>
+                {items.map(renderCard)}
+              </div>
+            );
+          })}
+          {unlisted.length > 0 && (
+            <div className="space-y-2">
+              <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+                More
+              </div>
+              {unlisted.map(renderCard)}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PresetPreview({
   preset,
   frequency,
@@ -929,28 +1030,26 @@ function PhaseOutline({
   startedAt: string;
   currentWeek: number;
 }) {
-  // Compute the phase label for every week using the same rules as
-  // getBlockPhase — a small compact strip so the whole block is legible.
-  const phases: { label: string; short: string; desc: string }[] = [];
+  void startedAt;
+  // Same phase rules as getBlockPhase. Readable here as a horizontal strip
+  // of pill-labels with full names — not 3-letter codes. The user taps a
+  // week to read its one-line description.
+  const phases: { label: string; desc: string }[] = [];
   for (let w = 1; w <= durationWeeks; w++) {
     const weeksLeft = durationWeeks - w;
     let label = "Accumulation";
-    let short = "Acc";
     let desc = "Build volume tolerance — moderate loads, more sets.";
     if (durationWeeks <= 1 || weeksLeft === 0) {
       label = "Deload";
-      short = "Del";
-      desc = "Recovery week — cut intensity ~15%, drop a set. CNS reset.";
+      desc = "Recovery — cut intensity ~15%, drop a set. CNS reset.";
     } else if (weeksLeft === 1 && durationWeeks >= 3) {
       label = "Realization";
-      short = "Real";
-      desc = "Peak week — heaviest loads, main lift +1 set, accessories back off. Chase PRs.";
+      desc = "Peak — heaviest loads, accessories back off. Chase PRs.";
     } else if (w > Math.ceil(durationWeeks / 3)) {
       label = "Intensification";
-      short = "Int";
-      desc = "Load creeps up ~5%, reps drop slightly. Push harder, moderate volume.";
+      desc = "Load creeps up ~5%, reps drop slightly. Push harder.";
     }
-    phases.push({ label, short, desc });
+    phases.push({ label, desc });
   }
   const currentIdx = Math.min(currentWeek - 1, phases.length - 1);
   const [selectedIdx, setSelectedIdx] = useState(currentIdx);
@@ -958,32 +1057,35 @@ function PhaseOutline({
   const isCurrent = selectedIdx === currentIdx;
 
   return (
-    <div className="pt-2 space-y-2">
-      <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${durationWeeks}, minmax(0, 1fr))` }}>
-        {phases.map((p, i) => (
-          <button
-            key={i}
-            onClick={() => setSelectedIdx(i)}
-            className={clsx(
-              "text-center py-1 rounded text-[10px] font-semibold tabular-nums transition-colors",
-              i === selectedIdx
-                ? "ring-1 ring-accent"
-                : "",
-              i === currentIdx
-                ? "bg-accent text-black"
-                : i < currentIdx
-                ? "bg-accent/25 text-text-muted hover:bg-accent/40"
-                : "bg-bg text-text-dim hover:bg-bg-elevated"
-            )}
-          >
-            {i + 1}
-            <div className="text-[8px] font-normal opacity-80">{p.short}</div>
-          </button>
-        ))}
+    <div className="pt-1 space-y-2.5">
+      <div className="flex gap-1.5 overflow-x-auto -mx-1 px-1 pb-1" style={{ scrollbarWidth: "none" }}>
+        {phases.map((p, i) => {
+          const isDone = i < currentIdx;
+          const isNow = i === currentIdx;
+          const isSel = i === selectedIdx;
+          return (
+            <button
+              key={i}
+              onClick={() => setSelectedIdx(i)}
+              className={clsx(
+                "shrink-0 px-2.5 h-7 rounded-full border text-[10px] uppercase tracking-[0.18em] font-medium tabular-nums transition-colors",
+                isNow
+                  ? "border-accent bg-accent text-bg"
+                  : isSel
+                    ? "border-accent/60 bg-text/5 text-text"
+                    : isDone
+                      ? "border-border-strong/40 text-text-muted"
+                      : "border-border-strong/40 text-text-dim hover:border-text-dim"
+              )}
+            >
+              W{i + 1} · {p.label.slice(0, 3).toUpperCase()}
+            </button>
+          );
+        })}
       </div>
-      <p className="text-[11px] text-text-muted leading-snug">
-        <span className="text-accent font-semibold">
-          Week {selectedIdx + 1} · {selectedPhase.label}
+      <p className="text-[11px] text-text-muted leading-relaxed">
+        <span className="text-text font-medium">
+          Wk {selectedIdx + 1} — {selectedPhase.label}
           {isCurrent && " (now)"}:
         </span>{" "}
         {selectedPhase.desc}
@@ -1030,7 +1132,7 @@ function DayPicker({
             <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
               Edit day
             </div>
-            <h3 className="font-display text-2xl font-normal tracking-tight text-text mt-1">
+            <h3 className="text-xl font-medium tracking-[-0.02em] tracking-tight text-text mt-1">
               {DAY_LABELS_LONG[day]}
               {stage === "template" && pickedCategory && (
                 <span className="text-text-muted font-normal text-base ml-2">

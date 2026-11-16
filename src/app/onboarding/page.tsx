@@ -134,7 +134,7 @@ function WelcomeStep() {
       <div className="text-[10px] uppercase tracking-[0.22em] text-accent font-medium">
         Welcome to Outwork
       </div>
-      <h1 className="font-display text-[2.75rem] font-normal tracking-tight leading-[0.95] text-text">
+      <h1 className="text-[2.25rem] font-medium tracking-[-0.03em] leading-[1] text-text">
         Workouts that<br />adapt to you.
       </h1>
       <p className="text-text-muted leading-relaxed">
@@ -159,7 +159,7 @@ function WelcomeStep() {
 function ExperienceStep({ profile, update }: { profile: Profile; update: (c: Partial<Profile>) => void }) {
   return (
     <div className="space-y-5">
-      <h2 className="font-display text-[2rem] font-normal tracking-tight leading-[1] text-text">How much have you trained?</h2>
+      <h2 className="text-[1.625rem] font-medium tracking-[-0.025em] leading-[1.05] text-text">How much have you trained?</h2>
       <p className="text-text-muted text-sm">
         Beginners get simpler lifts and lighter starting loads. Advanced gets the full exercise library.
       </p>
@@ -222,7 +222,7 @@ function HistoryStep({ profile, update }: { profile: Profile; update: (c: Partia
 
   return (
     <div className="space-y-5">
-      <h2 className="font-display text-[2rem] font-normal tracking-tight leading-[1] text-text">Anything bothering you?</h2>
+      <h2 className="text-[1.625rem] font-medium tracking-[-0.025em] leading-[1.05] text-text">Anything bothering you?</h2>
       <p className="text-text-muted text-sm">
         Tap any area that&apos;s currently nagging — we&apos;ll swap risky lifts for safer alternatives. Leave empty if you&apos;re all good.
       </p>
@@ -295,7 +295,7 @@ function GoalsStep({ profile, update }: { profile: Profile; update: (c: Partial<
 
   return (
     <div className="space-y-5">
-      <h2 className="font-display text-[2rem] font-normal tracking-tight leading-[1] text-text">What are you training for?</h2>
+      <h2 className="text-[1.625rem] font-medium tracking-[-0.025em] leading-[1.05] text-text">What are you training for?</h2>
       <p className="text-text-muted text-sm">Pick any that apply — we&apos;ll bias your daily picks accordingly.</p>
 
       <div className="space-y-2">
@@ -342,7 +342,7 @@ function EquipmentStep({ profile, update }: { profile: Profile; update: (c: Part
 
   return (
     <div className="space-y-5">
-      <h2 className="font-display text-[2rem] font-normal tracking-tight leading-[1] text-text">Default equipment</h2>
+      <h2 className="text-[1.625rem] font-medium tracking-[-0.025em] leading-[1.05] text-text">Default equipment</h2>
       <p className="text-text-muted text-sm">
         What do you usually train with? You can override this on any workout (e.g. on the road).
       </p>
@@ -404,7 +404,7 @@ function StrengthStep({ profile, update }: { profile: Profile; update: (c: Parti
 
   return (
     <div className="space-y-5">
-      <h2 className="font-display text-[2rem] font-normal tracking-tight leading-[1] text-text">Your strength numbers</h2>
+      <h2 className="text-[1.625rem] font-medium tracking-[-0.025em] leading-[1.05] text-text">Your strength numbers</h2>
       <p className="text-text-muted text-sm">
         For each lift, enter a weight you&apos;ve lifted recently and how many reps you did. We&apos;ll use it to pick safe starting loads.
         {" "}Any lift you don&apos;t know, leave blank.
@@ -481,7 +481,7 @@ function RunningStep({ profile, update }: { profile: Profile; update: (c: Partia
 
   return (
     <div className="space-y-5">
-      <h2 className="font-display text-[2rem] font-normal tracking-tight leading-[1] text-text">Running capacity</h2>
+      <h2 className="text-[1.625rem] font-medium tracking-[-0.025em] leading-[1.05] text-text">Running capacity</h2>
       <p className="text-text-muted text-sm">
         A recent solid effort — fastest pace you could hold without stopping. We&apos;ll use it to set your easy-cardio and interval paces.
       </p>
@@ -530,7 +530,7 @@ function RunningStep({ profile, update }: { profile: Profile; update: (c: Partia
           <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium mb-1">
             Tempo pace
           </div>
-          <div className="font-display text-2xl font-normal text-text tabular-nums">{paceFmt}</div>
+          <div className="text-xl font-medium tracking-[-0.02em] text-text tabular-nums">{paceFmt}</div>
           <div className="text-text-muted text-xs mt-1.5 leading-relaxed">
             We&apos;ll use this to suggest easy and hard paces in your cardio sessions.
           </div>
@@ -546,7 +546,7 @@ function DoneStep() {
       <div className="text-[10px] uppercase tracking-[0.22em] text-accent font-medium">
         You&apos;re set
       </div>
-      <h2 className="font-display text-[2.5rem] font-normal tracking-tight leading-[0.95] text-text">Last thing: pick your first block.</h2>
+      <h2 className="text-[2.125rem] font-medium tracking-[-0.03em] leading-[1] text-text">Last thing: pick your first block.</h2>
       <p className="text-text-muted leading-relaxed">
         A <span className="text-text font-semibold">block</span> is your training program for the next few weeks — the whole app adapts to it.
       </p>

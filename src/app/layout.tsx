@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import BottomNav from "@/components/BottomNav";
 
@@ -13,16 +13,10 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// Display face — Instrument Serif. Single light 400 weight with delicate
-// forms (Linear / Clay / Sierra AI). Replaces Fraunces, which read too
-// editorial / bookish. We use it for marquee moments (page titles, headline
-// greetings, big KPI numbers) and keep everything else Geist.
-const instrumentSerif = Instrument_Serif({
-  variable: "--font-instrument",
-  subsets: ["latin"],
-  weight: ["400"],
-  style: ["normal", "italic"],
-});
+// No separate display face. Geist does everything — we get hierarchy from
+// size and tracking, not a second typeface. Tried Fraunces (too editorial)
+// then Instrument Serif (too tall / stylized). Linear, Vercel, Clay all
+// hold a single sans and let scale do the work.
 
 export const metadata: Metadata = {
   title: "Outwork",
@@ -51,7 +45,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-bg text-text">
         <main className="flex-1 pb-24 safe-top">{children}</main>

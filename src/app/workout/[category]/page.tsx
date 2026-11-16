@@ -451,7 +451,7 @@ export default function WorkoutForCategory({
               </span>
             )}
           </div>
-          <h1 className="font-display text-[2rem] font-semibold mt-2 leading-[1.1] tracking-tight text-text">
+          <h1 className="text-[2rem] font-semibold mt-2 leading-[1.1] tracking-tight text-text">
             {session.name.split(" — ")[1] ?? session.name}
           </h1>
           <div className="text-sm text-text-muted mt-1.5">
@@ -1653,7 +1653,7 @@ function CoreFocusPicker({
             <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
               Today
             </div>
-            <h3 className="font-display text-2xl font-normal tracking-tight text-text mt-1">Core focus</h3>
+            <h3 className="text-xl font-medium tracking-[-0.02em] tracking-tight text-text mt-1">Core focus</h3>
           </div>
           <button onClick={onClose} className="text-text-dim text-2xl leading-none hover:text-text" aria-label="Close">×</button>
         </div>
