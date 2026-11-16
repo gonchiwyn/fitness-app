@@ -510,7 +510,7 @@ function PlanPageInner() {
     <div className="max-w-3xl mx-auto px-5 py-6 space-y-6">
       <header>
         <p className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">Your program</p>
-        <h1 className="font-display text-[2.25rem] font-semibold tracking-tight leading-[1.05] mt-1.5 text-text">Plan</h1>
+        <h1 className="font-display text-[2.5rem] font-normal tracking-tight leading-[0.95] mt-1.5 text-text">Plan</h1>
       </header>
 
       {blockState === "active" && focus && (
@@ -535,7 +535,7 @@ function PlanPageInner() {
                 )}
                 Current focus block
               </div>
-              <div className="font-display text-2xl font-semibold tracking-tight mt-1.5 text-text leading-[1.05]">{focus.name}</div>
+              <div className="font-display text-3xl font-normal tracking-tight mt-1.5 text-text leading-[1.05]">{focus.name}</div>
             </div>
             <div className="text-[11px] text-text-dim shrink-0 tracking-wide tabular-nums">
               Wk {weekNum} / {focus.durationWeeks}
@@ -760,7 +760,7 @@ function PlanPageInner() {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
-                        <div className="font-display text-base font-semibold tracking-tight text-text">{p.name}</div>
+                        <div className="font-display text-lg font-normal tracking-tight text-text">{p.name}</div>
                         <div className="text-xs text-text-dim mt-1 leading-relaxed">{p.tagline}</div>
                       </div>
                       <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim shrink-0 tabular-nums font-medium">
@@ -1030,7 +1030,7 @@ function DayPicker({
             <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
               Edit day
             </div>
-            <h3 className="font-display text-xl font-semibold tracking-tight text-text mt-1">
+            <h3 className="font-display text-2xl font-normal tracking-tight text-text mt-1">
               {DAY_LABELS_LONG[day]}
               {stage === "template" && pickedCategory && (
                 <span className="text-text-muted font-normal text-base ml-2">

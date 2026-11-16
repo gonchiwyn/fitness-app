@@ -98,7 +98,7 @@ export default function QuickLogModal({
             <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
               {existingForDate && existingForDate.length > 0 ? "Edit the day" : "Log a session"}
             </div>
-            <h3 className="font-display text-xl font-semibold tracking-tight text-text mt-1">
+            <h3 className="font-display text-2xl font-normal tracking-tight text-text mt-1">
               {dayLabel}
             </h3>
           </div>

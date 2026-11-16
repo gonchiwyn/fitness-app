@@ -50,7 +50,7 @@ export default function HistoryPage() {
           <p className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">
             Your work
           </p>
-          <h1 className="font-display text-[2.25rem] font-semibold tracking-tight leading-[1.05] mt-1.5 text-text">
+          <h1 className="font-display text-[2.5rem] font-normal tracking-tight leading-[0.95] mt-1.5 text-text">
             History
           </h1>
         </div>
@@ -78,7 +78,7 @@ export default function HistoryPage() {
         <p className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">
           Your work
         </p>
-        <h1 className="font-display text-[2.25rem] font-semibold tracking-tight leading-[1.05] mt-1.5 text-text">
+        <h1 className="font-display text-[2.5rem] font-normal tracking-tight leading-[0.95] mt-1.5 text-text">
           History
         </h1>
       </header>
@@ -230,7 +230,7 @@ function StatTile({ value, label, accent }: { value: number; label: string; acce
     <div className="border border-border-strong/40 bg-bg-elevated rounded-2xl p-4">
       <div
         className={clsx(
-          "font-display font-semibold tabular-nums leading-none tracking-tight text-5xl",
+          "font-display font-normal tabular-nums leading-none tracking-tight text-5xl",
           accent ? "text-accent" : "text-text"
         )}
       >
@@ -292,7 +292,7 @@ function ConsistencyCalendar({ sessions }: { sessions: Session[] }) {
             >
               ‹
             </button>
-            <div className="font-display text-base font-semibold tabular-nums min-w-[120px] text-center text-text">
+            <div className="font-display text-lg font-normal tabular-nums min-w-[120px] text-center text-text">
               {format(viewMonth, "MMMM yyyy")}
             </div>
             <button

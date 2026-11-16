@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Fraunces } from "next/font/google";
+import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import BottomNav from "@/components/BottomNav";
 
@@ -13,13 +13,15 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// Display face — used for big numbers + page headers. Fraunces has a dense,
-// slightly serif-y character that reads bold and editorial, away from the
-// "iPhone Notes" default-sans flatness.
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
+// Display face — Instrument Serif. Single light 400 weight with delicate
+// forms (Linear / Clay / Sierra AI). Replaces Fraunces, which read too
+// editorial / bookish. We use it for marquee moments (page titles, headline
+// greetings, big KPI numbers) and keep everything else Geist.
+const instrumentSerif = Instrument_Serif({
+  variable: "--font-instrument",
   subsets: ["latin"],
-  weight: ["600", "700", "900"],
+  weight: ["400"],
+  style: ["normal", "italic"],
 });
 
 export const metadata: Metadata = {
@@ -49,7 +51,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-bg text-text">
         <main className="flex-1 pb-24 safe-top">{children}</main>

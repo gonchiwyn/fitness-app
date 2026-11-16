@@ -434,9 +434,17 @@ export function computeArchetype(sessions: Session[], period: Period = "all", to
 }
 
 // --- Muscle coverage -------------------------------------------------------
-// Aggregates set count per muscle group over the period. Specific muscles
-// are collapsed into high-level groups so the chart doesn't become 20 bars
-// of "front_delt / side_delt / rear_delt".
+// Aggregates "effective hard sets" per muscle group — the number that actually
+// matters for hypertrophy/strength per modern volume-landmark literature
+// (Schoenfeld / Nippard / Menno / Galpin). A hard set is a working set within
+// ~3 RPE of failure on a weighted exercise. Warmups, mobility, finishers,
+// recovery blocks and conditioning do not contribute.
+//
+// Primary mover = 1.0× credit, secondary movers = 0.5× (pre-failure assistors).
+// Posterior chain / legs / full-body tags get split across their actual
+// movers instead of dumping into one bucket.
+//
+// Sets are fractional internally and rounded for display.
 export type MuscleBucket = { group: string; label: string; sets: number };
 
 const MUSCLE_GROUP_LABELS: Record<string, string> = {
@@ -449,20 +457,109 @@ const MUSCLE_GROUP_LABELS: Record<string, string> = {
   glutes: "Glutes",
   calves: "Calves",
   core: "Core",
-  traps: "Traps",
 };
-const MUSCLE_TO_GROUP: Record<string, string> = {
-  chest: "chest", upper_chest: "chest",
-  back: "back", lats: "back", posterior_chain: "back",
-  shoulder: "shoulder", front_delt: "shoulder", side_delt: "shoulder", rear_delt: "shoulder", rotator_cuff: "shoulder",
-  biceps: "arms", tris: "arms", triceps: "arms", forearms: "arms", grip: "arms",
-  quads: "quads",
-  hamstrings: "hamstrings",
-  glutes: "glutes", hip: "glutes",
-  calves: "calves", ankle: "calves",
-  core: "core", abs: "core", obliques: "core", lower_back: "core",
-  traps: "traps",
+
+// Muscle tag → group, with a WEIGHT. Primary movers get 1.0, secondary
+// movers 0.5. Tags that mean "multiple groups" get split proportionally.
+// Anything not in this map is dropped by design (grip / full_body / legs /
+// spine / thoracic etc. are tracked via SPLITS below or ignored).
+type GroupShare = Record<string, number>;
+
+// Direct muscle → group mappings. Values are the fraction of ONE set that
+// the muscle tag puts into each group. Secondary-mover tags (e.g. tris on
+// a bench press) are weighted 0.5 by MUSCLE_ROLE below instead of here.
+const MUSCLE_TO_SHARE: Record<string, GroupShare> = {
+  // Chest
+  chest: { chest: 1 }, upper_chest: { chest: 1 },
+
+  // Back
+  back: { back: 1 }, lats: { back: 1 }, traps: { back: 1 },
+  rhomboid: { back: 1 }, serratus: { back: 1 },
+
+  // Shoulders
+  shoulder: { shoulder: 1 },
+  front_delt: { shoulder: 1 }, side_delt: { shoulder: 1 }, rear_delt: { shoulder: 1 },
+  rotator_cuff: { shoulder: 1 },
+
+  // Arms (biceps / tris only — grip / forearms are grip endurance, dropped)
+  biceps: { arms: 1 }, tris: { arms: 1 }, triceps: { arms: 1 },
+
+  // Quads / hams / glutes
+  quads: { quads: 1 }, hamstrings: { hamstrings: 1 },
+  glutes: { glutes: 1 },
+  adductors: { glutes: 1 },
+
+  // Calves
+  calves: { calves: 1 }, ankle: { calves: 1 },
+
+  // Core
+  core: { core: 1 }, abs: { core: 1 }, obliques: { core: 1 },
+  lower_back: { core: 1 },
+
+  // Compound / blanket tags — split across actual movers so a deadlift
+  // tagged "posterior_chain" credits glutes+hams+back instead of back only.
+  posterior_chain: { hamstrings: 0.4, glutes: 0.4, back: 0.2 },
+  legs: { quads: 0.4, hamstrings: 0.3, glutes: 0.3 },
+  full_body: { chest: 0.2, back: 0.2, quads: 0.2, core: 0.2, shoulder: 0.2 },
+
+  // Hip pattern work — generally glute-biased when loaded.
+  hip: { glutes: 1 },
+
+  // Tags that are real but not training volume for hypertrophy — explicitly
+  // dropped: grip, forearms, spine, thoracic, hip_flexor.
 };
+
+// Secondary-mover tags per exercise — these count at 0.5× instead of 1.0×.
+// If an exercise's `muscles` array is [primary, secondary, secondary…], we
+// credit the first at 1.0 and the rest at 0.5. There's no explicit role field
+// in the exercise data, so this is positional: index 0 = primary.
+const SECONDARY_MULTIPLIER = 0.5;
+
+// Block titles / name fragments that mean "not training volume". Case-
+// insensitive substring match — covers Warmup, Cooldown, Mobility, Prep,
+// Activation, Finisher, Skill, Primer, Race Prep, Movement Prep, etc.
+const NON_VOLUME_TITLE_RE =
+  /warm[- ]?up|cool[- ]?down|mobility|activation|primer|prep\b|finisher|skill|stretch|cardio|spin|z2|opener|closer/i;
+
+// Session categories that never contribute to hypertrophy volume.
+const NON_VOLUME_CATEGORIES = new Set<Category>([
+  "cardio", "recovery", "stretching", "sport", "hyrox", "crossfit",
+  "burn", "surf", "test",
+]);
+
+// Exercise patterns that are conditioning / mobility, never hypertrophy work.
+const NON_VOLUME_PATTERNS = new Set<string>([
+  "mobility", "conditioning", "carry", "plyometric",
+]);
+
+/** A "hard set" for volume counting: RPE 7+ on a weighted working set in a
+ *  hypertrophy-oriented session. Finishers, warmups, and mobility don't count. */
+function isHardSet(
+  session: Session,
+  blockTitle: string,
+  prescription: { prescribedSets: number; actualRpe?: number; sets?: { completed: boolean; rpe?: number }[] },
+  exercise: { pattern?: string; weighted?: boolean }
+): number {
+  // Session-level gate: only strength-shaped categories count.
+  if (NON_VOLUME_CATEGORIES.has(session.category)) return 0;
+
+  // Block-level gate: titles that advertise themselves as prep / skill / cardio.
+  if (NON_VOLUME_TITLE_RE.test(blockTitle)) return 0;
+
+  // Exercise-level gate: mobility, conditioning, carries, plyos.
+  if (exercise.pattern && NON_VOLUME_PATTERNS.has(exercise.pattern)) return 0;
+  if (exercise.weighted === false) return 0;
+
+  // Use completed-set count when logged, fall back to prescribed.
+  const completed = prescription.sets?.filter((x) => x.completed).length ?? 0;
+  const sets = completed > 0 ? completed : (prescription.prescribedSets ?? 0);
+
+  // If an RPE was logged, enforce the "within 3 of failure" threshold.
+  const rpe = prescription.actualRpe ?? prescription.sets?.find((x) => x.rpe != null)?.rpe;
+  if (rpe != null && rpe < 7) return 0;
+
+  return sets;
+}
 
 export function computeMuscleCoverage(sessions: Session[], period: Period, today: Date = new Date()): MuscleBucket[] {
   const { from, to } = periodRange(period, today);
@@ -471,28 +568,36 @@ export function computeMuscleCoverage(sessions: Session[], period: Period, today
   const setsByGroup = new Map<string, number>();
   for (const s of inPeriod) {
     for (const b of s.blocks ?? []) {
-      // Skip warmup/cooldown — they're prep, not training volume.
-      if (b.title === "Warmup" || b.title === "Cooldown") continue;
       for (const p of b.prescriptions ?? []) {
         const ex = EXERCISES_BY_ID[p.exerciseId];
         if (!ex) continue;
-        const sets = p.prescribedSets ?? 1;
-        // Weight each muscle equally — if deadlift hits "posterior_chain",
-        // that's 1 set credited to the Back group.
-        const groups = new Set<string>();
-        for (const m of ex.muscles ?? []) {
-          const g = MUSCLE_TO_GROUP[m];
-          if (g) groups.add(g);
-        }
-        for (const g of groups) {
-          setsByGroup.set(g, (setsByGroup.get(g) ?? 0) + sets);
-        }
+
+        const hardSets = isHardSet(s, b.title, p, ex);
+        if (hardSets === 0) continue;
+
+        // Credit each muscle group its proportional share. First muscle in the
+        // list is PRIMARY (1.0×), the rest are SECONDARY (0.5×).
+        (ex.muscles ?? []).forEach((m, idx) => {
+          const share = MUSCLE_TO_SHARE[m];
+          if (!share) return;
+          const roleMult = idx === 0 ? 1 : SECONDARY_MULTIPLIER;
+          for (const [group, frac] of Object.entries(share)) {
+            const credit = hardSets * frac * roleMult;
+            setsByGroup.set(group, (setsByGroup.get(group) ?? 0) + credit);
+          }
+        });
       }
     }
   }
 
   return Object.keys(MUSCLE_GROUP_LABELS)
-    .map((g) => ({ group: g, label: MUSCLE_GROUP_LABELS[g], sets: setsByGroup.get(g) ?? 0 }))
+    .map((g) => ({
+      group: g,
+      label: MUSCLE_GROUP_LABELS[g],
+      // Round to whole sets for display — internal math is fractional but
+      // nobody wants to read "7.5 sets".
+      sets: Math.round(setsByGroup.get(g) ?? 0),
+    }))
     .sort((a, b) => b.sets - a.sets);
 }
 

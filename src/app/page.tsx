@@ -139,21 +139,21 @@ export default function HomePage() {
 
   return (
     <div className="max-w-3xl mx-auto px-5 py-6 space-y-7">
-      <header className="flex items-end justify-between">
-        <div>
+      <header className="flex items-end justify-between gap-4">
+        <div className="min-w-0">
           <p className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">
             {format(new Date(), "EEEE, MMM d")}
           </p>
-          <h1 className="font-display text-[2.25rem] leading-[1.1] font-semibold mt-1.5 tracking-tight text-text">
+          <h1 className="font-display text-[2.75rem] leading-[0.95] font-normal mt-1 tracking-tight text-text">
             {greet()}{profile?.name && profile.name !== "Athlete" ? `, ${profile.name}` : ""}.
           </h1>
         </div>
         {streak > 0 && (
-          <div className="text-right">
-            <div className="font-display text-3xl font-semibold text-accent leading-none tabular-nums">
-              {streak}
-            </div>
-            <div className="text-[9px] uppercase tracking-[0.22em] text-text-dim mt-1.5 font-medium">day streak</div>
+          <div className="text-right shrink-0 pb-1">
+            <span className="text-sm text-text-muted tabular-nums">
+              <span className="font-display text-xl text-accent align-baseline">{streak}</span>
+              <span className="text-[10px] uppercase tracking-[0.18em] text-text-dim ml-1.5 font-medium">day streak</span>
+            </span>
           </div>
         )}
       </header>
@@ -449,7 +449,7 @@ function BlockCompleteCard({
         <div className="text-[10px] uppercase tracking-[0.22em] text-accent font-medium">
           Block complete
         </div>
-        <div className="font-display text-2xl font-semibold tracking-tight mt-1.5 text-text">
+        <div className="font-display text-3xl font-normal tracking-tight mt-1.5 text-text">
           {focus.name} done.
         </div>
       </div>
@@ -515,7 +515,7 @@ function PlannedTodayCard({ day }: { day: NonNullable<PlannedDay> }) {
             />
             Today's session
           </div>
-          <div className="font-display text-3xl font-semibold tracking-tight mt-2 leading-[1.05] text-text">
+          <div className="font-display text-4xl font-normal tracking-tight mt-2 leading-[1.05] text-text">
             {title}
           </div>
           <div className="text-sm text-text-muted mt-1.5 leading-relaxed">{subtitle}</div>
@@ -594,7 +594,7 @@ function RecommendationCard({ rec }: { rec: Recommendation }) {
       <div className="text-[10px] uppercase tracking-[0.22em] text-accent font-medium">
         Based on your week — try today
       </div>
-      <div className="font-display text-2xl font-semibold tracking-tight mt-1.5 text-text">
+      <div className="font-display text-3xl font-normal tracking-tight mt-1.5 text-text">
         {CATEGORY_LABELS[rec.category]}{template ? ` — ${title}` : ""}
       </div>
       <p className="text-sm text-text-muted mt-2.5 leading-relaxed">
@@ -714,7 +714,7 @@ function TodaysSessionCard({ session, compact }: { session: Session; compact?: b
       </div>
       <div
         className={clsx(
-          "font-display font-semibold tracking-tight mt-2 leading-[1.05] text-text",
+          "font-display font-normal tracking-tight mt-2 leading-[1.05] text-text",
           compact ? "text-xl" : "text-3xl"
         )}
       >
@@ -820,6 +820,15 @@ function WeekStrip({
   onPreviewFuture: (date: string) => void;
   isOverride: boolean;
 }) {
+  // Home starts collapsed — just a row of 7 dots. Tap "See all" to expand
+  // into the full strip with labels, dates, and prev/next-week controls.
+  // Product rationale: Home should surface one verb (today's workout).
+  // The weekly outlook is context, not a decision — belongs behind a tap.
+  // Auto-expand when the user navigates off the current week (weekOffset!=0)
+  // so the Previous/Next-week controls are reachable.
+  const [expanded, setExpanded] = useState(false);
+  const isExpanded = expanded || weekOffset !== 0;
+
   const weekEnd = addDays(weekStart, 6);
   const dateRange =
     format(weekStart, "MMM") === format(weekEnd, "MMM")
@@ -835,20 +844,96 @@ function WeekStrip({
       : weekOffset > 0
       ? `In ${weekOffset} weeks`
       : `${Math.abs(weekOffset)} weeks ago`;
+  const todayStr = format(new Date(), "yyyy-MM-dd");
 
+  // Collapsed view — one tight row, dot-per-day, no labels, no dates.
+  if (!isExpanded) {
+    return (
+      <section>
+        <button
+          onClick={() => setExpanded(true)}
+          className="w-full flex items-center justify-between pb-2.5 group"
+        >
+          <span className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">
+            This week
+          </span>
+          <span className="text-[10px] uppercase tracking-[0.18em] text-text-dim group-hover:text-text transition-colors font-medium">
+            See all ›
+          </span>
+        </button>
+        <div className="grid grid-cols-7 gap-1">
+          {days.map((day, i) => {
+            const date = addDays(weekStart, i);
+            const dateStr = format(date, "yyyy-MM-dd");
+            const session = sessionsByDate.get(dateStr);
+            const displayCategory = session?.category ?? day?.category;
+            const color = displayCategory ? categoryColor(displayCategory) : null;
+            const isToday = i === todayIdx;
+            const isPast = dateStr < todayStr;
+            const handler = () => {
+              if (isPast || session) onLogPast(dateStr);
+              else if (day) onPreviewFuture(dateStr);
+            };
+
+            return (
+              <button
+                key={i}
+                onClick={handler}
+                className={clsx(
+                  "flex flex-col items-center py-2.5 rounded-xl border transition-colors",
+                  isToday
+                    ? "border-accent/60 bg-text/5"
+                    : "border-transparent hover:border-border-strong/40"
+                )}
+              >
+                <span
+                  className={clsx(
+                    "text-[10px] uppercase tracking-[0.18em] font-medium",
+                    isToday ? "text-accent" : "text-text-dim"
+                  )}
+                >
+                  {DAY_LABELS_SHORT[i][0]}
+                </span>
+                <span
+                  className={clsx(
+                    "w-1.5 h-1.5 rounded-full mt-2",
+                    !displayCategory && "bg-text-dim/25",
+                    session ? "" : "opacity-50"
+                  )}
+                  style={displayCategory ? { background: color?.solid } : undefined}
+                  aria-hidden
+                />
+              </button>
+            );
+          })}
+        </div>
+      </section>
+    );
+  }
+
+  // Expanded view (user tapped "See all" or is on a different week).
   return (
     <section>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-text-dim">
-            {heading}
-          </h2>
+          <button
+            onClick={() => {
+              setExpanded(false);
+              if (weekOffset !== 0) onReturnToToday();
+            }}
+            className="flex items-center gap-2"
+          >
+            <span className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium hover:text-text transition-colors">
+              {heading}
+            </span>
+            <span className="text-text-dim text-xs">▾</span>
+          </button>
           <span className="text-[10px] text-text-dim tabular-nums">
             {dateRange}
           </span>
           {isOverride && (
             <span
-              className="text-[9px] uppercase tracking-widest text-accent bg-accent/15 px-1.5 py-0.5 rounded"
+              className="text-[9px] uppercase tracking-[0.18em] text-accent border border-accent/40 px-1.5 py-0.5 rounded font-medium"
               title="This week deviates from your base plan — only affects this week."
             >
               Edited
@@ -859,14 +944,14 @@ function WeekStrip({
           <button
             onClick={onPrevWeek}
             aria-label="Previous week"
-            className="w-7 h-7 rounded-lg border border-border text-text-muted flex items-center justify-center hover:border-accent/40"
+            className="w-7 h-7 rounded-full border border-border-strong/40 text-text-muted flex items-center justify-center hover:border-text-dim"
           >
             ‹
           </button>
           {weekOffset !== 0 && (
             <button
               onClick={onReturnToToday}
-              className="px-2 h-7 rounded-lg border border-border text-[10px] uppercase tracking-widest text-text-muted hover:border-accent/40"
+              className="px-2.5 h-7 rounded-full border border-border-strong/40 text-[10px] uppercase tracking-[0.18em] text-text-muted hover:border-text-dim font-medium"
             >
               Today
             </button>
@@ -874,7 +959,7 @@ function WeekStrip({
           <button
             onClick={onNextWeek}
             aria-label="Next week"
-            className="w-7 h-7 rounded-lg border border-border text-text-muted flex items-center justify-center hover:border-accent/40"
+            className="w-7 h-7 rounded-full border border-border-strong/40 text-text-muted flex items-center justify-center hover:border-text-dim"
           >
             ›
           </button>

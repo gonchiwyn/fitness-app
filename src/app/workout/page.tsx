@@ -43,7 +43,7 @@ export default function WorkoutIndex() {
         <p className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">
           Choose your discipline
         </p>
-        <h1 className="font-display text-[2.25rem] font-semibold tracking-tight leading-[1.05] mt-1.5 text-text">
+        <h1 className="font-display text-[2.5rem] font-normal tracking-tight leading-[0.95] mt-1.5 text-text">
           Train
         </h1>
         <p className="text-sm text-text-muted mt-3 leading-relaxed">

@@ -1653,7 +1653,7 @@ function CoreFocusPicker({
             <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
               Today
             </div>
-            <h3 className="font-display text-xl font-semibold tracking-tight text-text mt-1">Core focus</h3>
+            <h3 className="font-display text-2xl font-normal tracking-tight text-text mt-1">Core focus</h3>
           </div>
           <button onClick={onClose} className="text-text-dim text-2xl leading-none hover:text-text" aria-label="Close">×</button>
         </div>

@@ -128,7 +128,7 @@ export default function ProfilePage() {
         </div>
         <div className="flex items-baseline gap-3 mt-2">
           <span className="text-3xl opacity-80">{archetype.icon}</span>
-          <h2 className="font-display text-[1.75rem] font-semibold tracking-tight leading-[1.05]">
+          <h2 className="font-display text-[2rem] font-normal tracking-tight leading-[1]">
             {archetype.name}
           </h2>
         </div>
@@ -137,12 +137,14 @@ export default function ProfilePage() {
         </p>
       </section>
 
-      {/* Muscle coverage — bar chart with top 3 highlighted. Delta next to
-          each is sets this period vs the equivalent previous period
-          (week-vs-week, month-vs-month, etc.). */}
-      {muscles.some((m) => m.sets > 0) && (() => {
+      {/* Hard sets per muscle — Galpin / Schoenfeld volume accounting.
+          Only RPE-7+ working sets on weighted lifts in strength-category
+          sessions. Primary mover 1.0×, secondaries 0.5×. Warmups, mobility,
+          carries, and conditioning don't count. */}
+      {(() => {
         const trained = muscles.filter((m) => m.sets > 0);
         const neglected = muscles.filter((m) => m.sets === 0).map((m) => m.label);
+        const hasVolume = trained.length > 0;
         const max = Math.max(...trained.map((m) => m.sets), 1);
         const prevLabel =
           period === "week" ? "last wk"
@@ -151,48 +153,69 @@ export default function ProfilePage() {
           : "prior";
         return (
           <section className="space-y-3">
-            <h2 className="text-xs uppercase tracking-widest text-text-dim font-semibold">
-              Muscle coverage <span className="text-[10px] normal-case tracking-normal text-text-dim">· Δ vs {prevLabel}</span>
-            </h2>
-            <div className="bg-bg-card border border-border rounded-2xl p-4 space-y-2.5">
-              {trained.map((m, i) => {
-                const pct = Math.round((m.sets / max) * 100);
-                const isTop = i < 3;
-                const delta = muscleDeltas[m.group] ?? 0;
-                return (
-                  <div key={m.group} className="space-y-1">
-                    <div className="flex items-baseline justify-between text-sm gap-2">
-                      <span className={clsx("font-medium", isTop ? "text-text" : "text-text-muted")}>
-                        {m.label}
-                      </span>
-                      <div className="flex items-baseline gap-2 text-xs tabular-nums shrink-0">
-                        {delta !== 0 && (
-                          <span
-                            className={clsx(
-                              "font-semibold text-[10px]",
-                              delta > 0 ? "text-accent" : "text-danger"
-                            )}
-                          >
-                            {delta > 0 ? `+${delta}` : delta}
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+                Hard sets per muscle
+              </h2>
+              {hasVolume && (
+                <span className="text-[10px] uppercase tracking-[0.18em] text-text-dim font-medium">
+                  Δ vs {prevLabel}
+                </span>
+              )}
+            </div>
+            <div className="border border-border-strong/40 rounded-2xl p-4 space-y-2.5">
+              {hasVolume ? (
+                <>
+                  {trained.map((m, i) => {
+                    const pct = Math.round((m.sets / max) * 100);
+                    const isTop = i < 3;
+                    const delta = muscleDeltas[m.group] ?? 0;
+                    return (
+                      <div key={m.group} className="space-y-1.5">
+                        <div className="flex items-baseline justify-between text-sm gap-2">
+                          <span className={clsx("font-medium", isTop ? "text-text" : "text-text-muted")}>
+                            {m.label}
                           </span>
-                        )}
-                        <span className="text-text-dim">{m.sets} sets</span>
+                          <div className="flex items-baseline gap-2 text-xs tabular-nums shrink-0">
+                            {delta !== 0 && (
+                              <span
+                                className={clsx(
+                                  "text-[10px] font-medium tabular-nums",
+                                  delta > 0 ? "text-accent" : "text-danger"
+                                )}
+                              >
+                                {delta > 0 ? `+${delta}` : delta}
+                              </span>
+                            )}
+                            <span className="text-text-dim">{m.sets} sets</span>
+                          </div>
+                        </div>
+                        <div className="h-1 bg-border-strong/30 rounded-full overflow-hidden">
+                          <div
+                            className={clsx("h-full transition-all", isTop ? "bg-accent" : "bg-text-dim/50")}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
                       </div>
+                    );
+                  })}
+                  {neglected.length > 0 && (
+                    <div className="pt-3 border-t border-border-strong/30 text-xs text-text-dim leading-relaxed">
+                      <span className="uppercase tracking-[0.18em] text-[10px] font-medium">Neglected · </span>
+                      <span>{neglected.join(" · ")}</span>
                     </div>
-                    <div className="h-1.5 bg-border rounded-full overflow-hidden">
-                      <div
-                        className={clsx("h-full transition-all", isTop ? "bg-accent" : "bg-text-dim/40")}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-              {neglected.length > 0 && (
-                <div className="pt-2 border-t border-border/50 text-xs text-text-dim">
-                  <span className="uppercase tracking-widest text-[10px] font-semibold">Neglected · </span>
-                  <span>{neglected.join(" · ")}</span>
-                </div>
+                  )}
+                  <p className="text-[10px] text-text-dim/70 leading-relaxed pt-2 border-t border-border-strong/20">
+                    Only RPE 7+ working sets on weighted lifts. Primary mover 1.0×, secondaries 0.5×. Warmups, carries, and conditioning excluded.
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-text-muted leading-relaxed">
+                  No hypertrophy volume this {period === "all" ? "range" : period} yet.
+                  <span className="block text-xs text-text-dim mt-1.5 leading-relaxed">
+                    Log a weighted strength, split, or hypertrophy session to see your per-muscle set count. Conditioning (hyrox, cardio, carries) doesn&apos;t accrue hard sets.
+                  </span>
+                </p>
               )}
             </div>
           </section>
@@ -596,7 +619,7 @@ function KpiTile({
       <div className="flex items-baseline gap-1.5">
         <span
           className={clsx(
-            "font-display font-semibold tabular-nums leading-none tracking-tight",
+            "font-display font-normal tabular-nums leading-none tracking-tight",
             accent ? "text-accent" : "text-text",
             big.length >= 4 ? "text-[2.5rem]" : "text-[3rem]"
           )}

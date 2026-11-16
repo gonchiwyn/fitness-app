@@ -92,7 +92,7 @@ export default function DayPreviewModal({
             <div className="text-[10px] uppercase tracking-[0.22em] text-accent font-medium">
               Preview
             </div>
-            <h3 className="font-display text-xl font-semibold tracking-tight text-text mt-1">
+            <h3 className="font-display text-2xl font-normal tracking-tight text-text mt-1">
               {dayLabel}
             </h3>
           </div>
