@@ -2731,12 +2731,12 @@ TEMPLATES.push(
   {
     id: "hyrox_sim_test",
     category: "hyrox",
-    name: "Hyrox — Realization Test",
-    description: "W5 peak-week benchmark. Time a mini-race. Record the number.",
+    name: "Hyrox — Time Trial",
+    description: "Peak-week benchmark. One honest effort, start-to-finish, timed.",
     influences: ["galpin", "general"],
     blocks: [
       {
-        title: "Race Prep",
+        title: "Warmup",
         scheme: "1 round",
         prescriptions: [
           { exerciseId: "easy_bike", sets: 1, reps: "5 min easy" },
@@ -2744,23 +2744,26 @@ TEMPLATES.push(
         ],
       },
       {
-        title: "Mini Race — For Time",
-        scheme: "Start the stopwatch. One continuous effort.",
+        title: "Time Trial — Go Straight Through",
+        scheme: "Do stations in order. Don't stop until you finish. Start a stopwatch.",
         // Peak-week benchmark. Hunter McIntyre: test one honest effort so you
         // know what Hyrox pace actually feels like before race day.
-        note: "Log total time in Benchmarks when done. Compare to this attempt again next block.",
+        // All rests are 0 by design — the point is one continuous effort —
+        // and they're explicitly omitted so the UI doesn't show "rest 0s"
+        // between every row. Stations are the shape; the clock is the test.
+        note: "Log the finish time as a benchmark when done so next block has a target to beat.",
         prescriptions: [
-          { exerciseId: "run", sets: 1, reps: "1000m race pace", rest: "0s" },
-          { exerciseId: "ski_erg", sets: 1, reps: "500m hard", rest: "0s" },
-          { exerciseId: "sled_push", sets: 1, reps: "25m moderate", rest: "0s" },
-          { exerciseId: "sled_pull", sets: 1, reps: "25m", rest: "0s" },
-          { exerciseId: "run", sets: 1, reps: "1000m race pace", rest: "0s" },
-          { exerciseId: "wallball", sets: 1, reps: "50 reps", rest: "0s" },
-          { exerciseId: "run", sets: 1, reps: "1000m race pace", rest: "60s" },
+          { exerciseId: "run", sets: 1, reps: "1000m race pace" },
+          { exerciseId: "ski_erg", sets: 1, reps: "500m hard" },
+          { exerciseId: "sled_push", sets: 1, reps: "25m moderate" },
+          { exerciseId: "sled_pull", sets: 1, reps: "25m" },
+          { exerciseId: "run", sets: 1, reps: "1000m race pace" },
+          { exerciseId: "wallball", sets: 1, reps: "50 reps" },
+          { exerciseId: "run", sets: 1, reps: "1000m race pace" },
         ],
       },
       {
-        title: "Cool-down walk",
+        title: "Cooldown",
         scheme: "5 min easy",
         prescriptions: [
           { exerciseId: "run", sets: 1, reps: "5 min walk" },

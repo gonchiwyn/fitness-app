@@ -251,6 +251,17 @@ export default function HomePage() {
         <NoPlanCard />
       )}
 
+      {/* "Next up" teaser — Peloton pattern. One slim card telling the user
+          what's on the horizon so there's continuity after they finish today.
+          Plus a tiny "See full week" link to Plan for the tactical view. */}
+      {!profile?.currentFocus?.pausedAt && (
+        <NextUpCard
+          days={displayedWeekDays ?? plan?.days ?? [null, null, null, null, null, null, null]}
+          todayIdx={todayIdx}
+          onPreview={(date) => setPreviewDate(date)}
+        />
+      )}
+
       {/* "I did something different" lives as a quiet text link now, not a
           row of chips. Home's job is one verb; the escape hatch is a one-
           tap link to the day's log modal, same surface as a past-day tap. */}
@@ -262,21 +273,6 @@ export default function HomePage() {
           Log something else ›
         </button>
       )}
-
-      {/* Week strip — navigable across weeks so the block outlook is visible */}
-      <WeekStrip
-        days={displayedWeekDays ?? plan?.days ?? [null, null, null, null, null, null, null]}
-        weekStart={weekStart}
-        todayIdx={displayedTodayIdx}
-        weekOffset={weekOffset}
-        onPrevWeek={() => setWeekOffset((w) => w - 1)}
-        onNextWeek={() => setWeekOffset((w) => w + 1)}
-        onReturnToToday={() => setWeekOffset(0)}
-        sessionsByDate={sessionsByDate}
-        onLogPast={(date) => setLogDate(date)}
-        onPreviewFuture={(date) => setPreviewDate(date)}
-        isOverride={displayedIsOverride ?? false}
-      />
 
       {logDate && (
         <QuickLogModal
@@ -544,7 +540,7 @@ function PlannedTodayCard({ day }: { day: NonNullable<PlannedDay> }) {
         {title}
       </div>
       <div className="text-sm text-text-muted mt-2 leading-relaxed">{subtitle}</div>
-      <div className="mt-5 inline-flex items-center justify-center gap-2 bg-accent text-bg rounded-full px-5 py-2.5 text-sm font-semibold hover:bg-accent-dim transition-colors">
+      <div className="mt-5 w-full flex items-center justify-center gap-2 bg-accent text-bg rounded-full px-5 py-3.5 text-base font-semibold hover:bg-accent-dim transition-colors">
         Start workout
         <span aria-hidden>→</span>
       </div>
@@ -618,7 +614,7 @@ function RecommendationCard({ rec }: { rec: Recommendation }) {
       <p className="text-sm text-text-muted mt-2 leading-relaxed">
         {rec.reasoning}
       </p>
-      <div className="mt-5 inline-flex items-center justify-center gap-2 bg-accent text-bg rounded-full px-5 py-2.5 text-sm font-semibold hover:bg-accent-dim transition-colors">
+      <div className="mt-5 w-full flex items-center justify-center gap-2 bg-accent text-bg rounded-full px-5 py-3.5 text-base font-semibold hover:bg-accent-dim transition-colors">
         Start workout
         <span aria-hidden>→</span>
       </div>
@@ -680,7 +676,7 @@ function NoPlanCard() {
       <div className="text-sm text-text-muted mt-2 leading-relaxed">
         Pick a weekly pattern — what you train each day. Takes under a minute.
       </div>
-      <div className="mt-5 inline-flex items-center justify-center gap-2 bg-accent text-bg rounded-full px-5 py-2.5 text-sm font-semibold hover:bg-accent-dim transition-colors">
+      <div className="mt-5 w-full flex items-center justify-center gap-2 bg-accent text-bg rounded-full px-5 py-3.5 text-base font-semibold hover:bg-accent-dim transition-colors">
         Set my plan
         <span aria-hidden>→</span>
       </div>
@@ -766,7 +762,7 @@ function TodaysSessionCard({ session, compact }: { session: Session; compact?: b
         {session.name}
       </div>
       {!compact && !done && (
-        <div className="mt-5 inline-flex items-center justify-center gap-2 bg-accent text-bg rounded-full px-5 py-2.5 text-sm font-semibold hover:bg-accent-dim transition-colors">
+        <div className="mt-5 w-full flex items-center justify-center gap-2 bg-accent text-bg rounded-full px-5 py-3.5 text-base font-semibold hover:bg-accent-dim transition-colors">
           Resume
           <span aria-hidden>→</span>
         </div>
@@ -1124,6 +1120,88 @@ function WeekStrip({
         })}
       </div>
     </section>
+  );
+}
+
+// "Next up" teaser — shows the next planned session on the horizon (tomorrow
+// if it's a training day, otherwise the next non-rest day), plus a tiny
+// "See full week" link to Plan. Peloton / NTC / Caliber all pin one bit of
+// forward-look on their home screens because it gives the user continuity
+// without asking them to parse a grid. Hidden when nothing's scheduled.
+function NextUpCard({
+  days,
+  todayIdx,
+  onPreview,
+}: {
+  days: PlannedDay[];
+  todayIdx: number;
+  onPreview: (date: string) => void;
+}) {
+  // Walk forward from tomorrow, wrapping to next week, finding the next
+  // training day. Stop after 7 days to avoid a wrap-around loop.
+  const start = startOfWeek(new Date(), { weekStartsOn: 1 });
+  let nextIdx: number | null = null;
+  let nextOffset = 0;
+  for (let offset = 1; offset <= 7; offset++) {
+    const idx = (todayIdx + offset) % 7;
+    const day = days[idx];
+    if (day !== null && day !== undefined) {
+      nextIdx = idx;
+      nextOffset = offset;
+      break;
+    }
+  }
+  if (nextIdx === null) return null;
+  const day = days[nextIdx]!;
+  const date = addDays(start, nextIdx + (nextOffset > (6 - todayIdx) ? 7 : 0));
+  const dateStr = format(date, "yyyy-MM-dd");
+  const template = day.templateId
+    ? templatesFor(day.category).find((t) => t.id === day.templateId)
+    : null;
+  // If the template's own name leads with the category (e.g. "Hyrox —
+   // Time Trial"), don't repeat the category prefix — we already show the
+   // category as a dot + label on this card.
+  const title = template
+    ? template.name.toLowerCase().startsWith(CATEGORY_LABELS[day.category].toLowerCase() + " —")
+      ? template.name
+      : `${CATEGORY_LABELS[day.category]} — ${template.name}`
+    : CATEGORY_LABELS[day.category];
+  const color = categoryColor(day.category);
+  const whenLabel =
+    nextOffset === 1
+      ? `Tomorrow · ${format(date, "EEE")}`
+      : format(date, "EEEE, MMM d");
+
+  return (
+    <div className="space-y-2">
+      <button
+        onClick={() => onPreview(dateStr)}
+        className="w-full flex items-center justify-between gap-3 border border-border-strong/40 rounded-2xl px-4 py-3 hover:border-text-dim transition-colors text-left"
+      >
+        <div className="min-w-0 flex-1">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+            Next up — {whenLabel}
+          </div>
+          <div className="flex items-center gap-2 mt-1">
+            <span
+              className="w-1.5 h-1.5 rounded-full shrink-0"
+              style={{ background: color.solid }}
+              aria-hidden
+            />
+            <span className="text-sm text-text font-medium truncate">
+              {title}
+            </span>
+          </div>
+        </div>
+        <span className="text-text-dim text-sm shrink-0" aria-hidden>›</span>
+      </button>
+      <Link
+        href="/plan"
+        className="block text-right text-[10px] uppercase tracking-[0.18em] text-text-dim hover:text-text font-medium transition-colors"
+      >
+        See full week →
+      </Link>
+    </div>
   );
 }
 

@@ -110,6 +110,12 @@ function parseRestSeconds(rest: string | undefined): number {
   return 0;
 }
 
+// Zero-rest means "go straight into the next thing" — showing a "rest 0s"
+// stat on the card implies a pause that doesn't exist. Hide it.
+function isZeroRest(rest: string | undefined): boolean {
+  return parseRestSeconds(rest) === 0;
+}
+
 // The "round rest" for a block — the pause between rounds (or sets of the one
 // exercise). In a circuit/superset the templates encode this on the LAST
 // prescription's `rest` field (the preceding exercises have 0s "go straight in"
@@ -974,7 +980,21 @@ function BlockCard({
       {!effectivelyCollapsed && (
         <div className="border-t border-border/50">
           {block.note && (
-            <div className="px-4 pt-3 text-xs italic text-text-dim">{block.note}</div>
+            /benchmark/i.test(block.note) ? (
+              <Link
+                href="/benchmarks"
+                className="mx-4 mt-3 flex items-center justify-between gap-3 border border-accent/40 bg-text/[0.03] rounded-xl px-3.5 py-2.5 text-xs text-text leading-relaxed hover:border-accent transition-colors"
+              >
+                <span>{block.note}</span>
+                <span className="text-[10px] uppercase tracking-[0.18em] text-accent font-medium shrink-0">
+                  Log →
+                </span>
+              </Link>
+            ) : (
+              <div className="px-4 pt-3 text-xs text-text-muted leading-relaxed">
+                {block.note}
+              </div>
+            )
           )}
 
           {/* Actual-rounds adjuster — lets the user record "I did 3 instead of
@@ -1462,7 +1482,7 @@ function ExerciseCard({
             : "sets × reps"
           }
         />
-        {prescription.rest && !hideRestStat && (
+        {prescription.rest && !hideRestStat && !isZeroRest(prescription.rest) && (
           <Stat
             big={prescription.rest}
             label={totalInGroup === 1 ? "rest between sets" : "rest"}

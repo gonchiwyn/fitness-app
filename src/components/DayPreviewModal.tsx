@@ -123,7 +123,7 @@ export default function DayPreviewModal({
               {CATEGORY_LABELS[day.category]}
             </div>
             <div className="text-xl font-medium tracking-[-0.02em] text-text leading-tight">
-              {workout.name}
+              {cleanWorkoutName(workout.name, CATEGORY_LABELS[day.category])}
             </div>
             {workout.philosophy && (
               <p className="text-sm text-text-muted leading-relaxed">
@@ -219,5 +219,23 @@ function sessionToWorkoutShape(s: Session): Workout {
       })),
     })),
   };
+}
+
+// Template names often start with the category ("Hyrox — Realization Test",
+// "Strength — Upper A"). We already show the category label above the name,
+// so stripping it kills the "Hyrox — Hyrox — Realization Test" repetition.
+function cleanWorkoutName(name: string, categoryLabel: string): string {
+  const lower = name.toLowerCase();
+  const catLower = categoryLabel.toLowerCase();
+  if (lower.startsWith(catLower + " — ")) {
+    return name.slice(categoryLabel.length + 3);
+  }
+  if (lower.startsWith(catLower + " - ")) {
+    return name.slice(categoryLabel.length + 3);
+  }
+  if (lower.startsWith(catLower + ": ")) {
+    return name.slice(categoryLabel.length + 2);
+  }
+  return name;
 }
 
