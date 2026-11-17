@@ -75,7 +75,16 @@ function detectBlockMode(scheme: string | undefined, prescriptionCount: number):
   if (s.includes("superset")) return "superset";
   if (s.includes("emom")) return "emom";
   if (s.includes("amrap")) return "amrap";
-  if (s.includes("for time")) return "for_time";
+  // "for time", "time trial", or any mention of a stopwatch / "go straight
+  // through" means this is a one-round continuous effort — never a counted
+  // rounds pattern. The rounds adjuster is explicitly hidden for this mode.
+  if (
+    s.includes("for time") ||
+    s.includes("time trial") ||
+    s.includes("stopwatch") ||
+    s.includes("straight through") ||
+    s.includes("one continuous")
+  ) return "for_time";
   if (s.includes("circuit") || s.includes("giant set") || (s.includes("round") && prescriptionCount > 1)) return "circuit";
   return "straight";
 }
@@ -1003,12 +1012,25 @@ function BlockCard({
               AND on any block that's itself cardio-shaped — an "Easy Bike
               20 min" block inside a Recovery or Stretching session shouldn't
               show "3 rounds done." */}
-          {!isWarmup && !isCooldown && category !== "cardio" && block.prescriptions.length > 0 && !isCardioShapedBlock(block) && (
+          {!isWarmup && !isCooldown && category !== "cardio" && block.prescriptions.length > 0 && !isCardioShapedBlock(block) && mode !== "for_time" && mode !== "amrap" && (
             <BlockRoundsAdjuster
               block={block}
               isGrouped={isGrouped}
               onUpdate={onUpdate}
             />
+          )}
+          {/* For-Time blocks show the time-trial semantics instead of a
+              rounds counter. The point isn't how many rounds you did — it's
+              the stopwatch. */}
+          {mode === "for_time" && !isWarmup && !isCooldown && (
+            <div className="px-4 pt-3 flex items-center justify-between gap-3">
+              <span className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+                One round · for time
+              </span>
+              <span className="text-[10px] uppercase tracking-[0.18em] text-accent font-medium">
+                Start a stopwatch
+              </span>
+            </div>
           )}
 
           <div className={clsx(
