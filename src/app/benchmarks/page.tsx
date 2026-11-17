@@ -11,6 +11,7 @@ import {
   BENCHMARK_META,
   BENCHMARK_TYPES,
   type Benchmark,
+  type BenchmarkMeta,
   type BenchmarkType,
 } from "@/lib/types";
 
@@ -39,10 +40,11 @@ export default function BenchmarksPage() {
   }
 
   const groups: { name: string; types: BenchmarkType[] }[] = [
+    { name: "Hybrid", types: BENCHMARK_TYPES.filter((t) => BENCHMARK_META[t].group === "hybrid") },
     { name: "Strength", types: BENCHMARK_TYPES.filter((t) => BENCHMARK_META[t].group === "strength") },
     { name: "Power", types: BENCHMARK_TYPES.filter((t) => BENCHMARK_META[t].group === "power") },
     { name: "Endurance", types: BENCHMARK_TYPES.filter((t) => BENCHMARK_META[t].group === "endurance") },
-  ];
+  ].filter((g) => g.types.length > 0);
 
   return (
     <div className="max-w-3xl mx-auto px-5 py-6 space-y-6">
@@ -87,10 +89,12 @@ export default function BenchmarksPage() {
                       {info ? (
                         <>
                           <div className="text-2xl font-medium tracking-[-0.02em] text-text tabular-nums leading-none">
-                            {info.best.value}
-                            <span className="text-[10px] uppercase tracking-[0.18em] text-text-dim ml-1.5 font-medium">
-                              {meta.unit}
-                            </span>
+                            {formatBenchmarkValue(info.best.value, meta)}
+                            {meta.format !== "duration" && (
+                              <span className="text-[10px] uppercase tracking-[0.18em] text-text-dim ml-1.5 font-medium">
+                                {meta.unit}
+                              </span>
+                            )}
                           </div>
                           <div className="text-[10px] uppercase tracking-[0.18em] text-text-dim mt-1.5 font-medium">
                             best · {format(parseISO(info.best.date), "MMM d")}
@@ -105,7 +109,7 @@ export default function BenchmarksPage() {
                   </div>
                   {info && info.count > 1 && (
                     <div className="text-[10px] text-text-dim mt-3 pt-3 border-t border-border-strong/30 leading-relaxed">
-                      Latest: {info.latest.value}{meta.unit} on {format(parseISO(info.latest.date), "MMM d")}
+                      Latest: {formatBenchmarkValue(info.latest.value, meta)}{meta.format !== "duration" ? meta.unit : ""} on {format(parseISO(info.latest.date), "MMM d")}
                       {info.count > 2 && ` · ${info.count} tests logged`}
                     </div>
                   )}
@@ -142,15 +146,17 @@ function LogModal({
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const parsed = parseBenchmarkInput(value, meta);
+  const canSave = parsed !== null && parsed > 0 && !saving;
+
   const save = async () => {
-    const num = parseFloat(value);
-    if (Number.isNaN(num) || num <= 0) return;
+    if (parsed === null || parsed <= 0) return;
     setSaving(true);
     const today = format(new Date(), "yyyy-MM-dd");
     await db.benchmarks.add({
       date: today,
       type,
-      value: num,
+      value: parsed,
       notes: notes.trim() || undefined,
     });
     setSaving(false);
@@ -182,19 +188,26 @@ function LogModal({
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <input
-              type="number"
-              inputMode="decimal"
-              step="0.5"
+              type={meta.format === "duration" ? "text" : "number"}
+              inputMode={meta.format === "duration" ? "numeric" : "decimal"}
+              step={meta.format === "duration" ? undefined : "0.5"}
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              placeholder="Value"
+              placeholder={meta.format === "duration" ? "mm:ss  or  h:mm:ss" : "Value"}
               autoFocus
               className="flex-1 h-12 px-4 bg-transparent border border-border-strong/40 rounded-full text-center text-base tabular-nums focus:outline-none focus:border-accent/60 placeholder:text-text-dim"
             />
-            <span className="text-[11px] uppercase tracking-[0.18em] text-text-dim font-medium">
-              {meta.unit}
-            </span>
+            {meta.format !== "duration" && (
+              <span className="text-[11px] uppercase tracking-[0.18em] text-text-dim font-medium">
+                {meta.unit}
+              </span>
+            )}
           </div>
+          {meta.format === "duration" && parsed !== null && parsed > 0 && (
+            <div className="text-center text-[11px] uppercase tracking-[0.18em] text-text-dim font-medium tabular-nums">
+              = {formatDuration(parsed)}
+            </div>
+          )}
 
           <textarea
             value={notes}
@@ -206,10 +219,10 @@ function LogModal({
 
           <button
             onClick={save}
-            disabled={!value || saving}
+            disabled={!canSave}
             className={clsx(
               "w-full h-12 rounded-full font-semibold text-sm transition-colors",
-              value && !saving
+              canSave
                 ? "bg-accent text-bg hover:bg-accent-dim"
                 : "bg-transparent border border-border-strong/40 text-text-dim"
             )}
@@ -220,4 +233,49 @@ function LogModal({
       </div>
     </div>
   );
+}
+
+// Display a stored benchmark value. Duration types are stored as seconds and
+// shown as mm:ss (or h:mm:ss over an hour). Everything else is a plain number.
+function formatBenchmarkValue(value: number, meta: BenchmarkMeta): string {
+  if (meta.format === "duration") return formatDuration(value);
+  return String(value);
+}
+
+function formatDuration(totalSeconds: number): string {
+  const s = Math.max(0, Math.round(totalSeconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  if (h > 0) return `${h}:${pad(m)}:${pad(sec)}`;
+  return `${m}:${pad(sec)}`;
+}
+
+// Parse input for a benchmark. Duration types accept "mm:ss", "h:mm:ss", or a
+// bare integer (interpreted as seconds). Everything else parses as a number.
+// Returns null if the input is unparseable or malformed.
+function parseBenchmarkInput(raw: string, meta: BenchmarkMeta): number | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  if (meta.format === "duration") {
+    if (trimmed.includes(":")) {
+      const parts = trimmed.split(":").map((p) => p.trim());
+      if (parts.length < 2 || parts.length > 3) return null;
+      if (!parts.every((p) => /^\d+$/.test(p))) return null;
+      const nums = parts.map(Number);
+      if (parts.length === 2) {
+        const [m, s] = nums;
+        if (s >= 60) return null;
+        return m * 60 + s;
+      }
+      const [h, m, s] = nums;
+      if (m >= 60 || s >= 60) return null;
+      return h * 3600 + m * 60 + s;
+    }
+    const n = Number(trimmed);
+    return Number.isFinite(n) ? n : null;
+  }
+  const n = parseFloat(trimmed);
+  return Number.isNaN(n) ? null : n;
 }

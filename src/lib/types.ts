@@ -484,6 +484,7 @@ export const BENCHMARK_TYPES = [
   "cooper_12min_m",
   "5k_time_sec",
   "plank_sec",
+  "hyrox_time_sec",
 ] as const;
 export type BenchmarkType = (typeof BENCHMARK_TYPES)[number];
 
@@ -491,8 +492,11 @@ export type BenchmarkMeta = {
   label: string;
   unit: string;
   higherIsBetter: boolean;
-  group: "strength" | "power" | "endurance" | "mobility";
+  group: "strength" | "power" | "endurance" | "hybrid" | "mobility";
   description: string;
+  // "duration" → store seconds but render + input as mm:ss (or h:mm:ss over an hour).
+  // Omitted → plain numeric display with the unit suffix.
+  format?: "duration";
 };
 
 // Which benchmark does a given exercise map to when used in a Test-category workout?
@@ -523,8 +527,9 @@ export const BENCHMARK_META: Record<BenchmarkType, BenchmarkMeta> = {
   vertical_jump_cm: { label: "Vertical jump", unit: "cm", higherIsBetter: true, group: "power", description: "Reach standing vs reach at jump apex" },
   farmer_carry_sec: { label: "Farmer carry (bodyweight × 2)", unit: "sec", higherIsBetter: true, group: "strength", description: "Hold heaviest DBs/KBs = your bodyweight, walk or stand, longest time" },
   cooper_12min_m: { label: "Cooper 12-min run", unit: "m", higherIsBetter: true, group: "endurance", description: "Distance covered in 12 minutes at max sustainable pace" },
-  "5k_time_sec": { label: "5k time", unit: "sec", higherIsBetter: false, group: "endurance", description: "Best 5km run time" },
+  "5k_time_sec": { label: "5k time", unit: "time", higherIsBetter: false, group: "endurance", description: "Best 5km run time", format: "duration" },
   plank_sec: { label: "Plank hold", unit: "sec", higherIsBetter: true, group: "strength", description: "Straight line, elbows under shoulders, no sagging" },
+  hyrox_time_sec: { label: "Hyrox finish time", unit: "time", higherIsBetter: false, group: "hybrid", description: "8×1000m run + 8 stations (ski, sled push/pull, burpee broad jump, row, farmer carry, lunges, wall balls). Record race or race-pattern time trial.", format: "duration" },
 };
 
 export type Benchmark = {
