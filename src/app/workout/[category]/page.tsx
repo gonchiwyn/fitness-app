@@ -360,6 +360,17 @@ export default function WorkoutForCategory({
     // Stay on the page — the rating prompt shows in place of the button
   };
 
+  // Accidental tap on "I did this ✓" shouldn't be a one-way door. Clearing
+  // finishedAt + rating returns the session to the in-progress state with
+  // every logged set still intact.
+  const unfinish = async () => {
+    if (!session.id) return;
+    if (!confirm("Mark this workout as not done? Your logged sets stay.")) return;
+    const next: Session = { ...session, finishedAt: undefined, rating: undefined };
+    setSession(next);
+    await db.sessions.put(next);
+  };
+
   const rateAndGoHome = async (rating: SessionRating) => {
     if (!session.id) return;
     const next = { ...session, rating };
@@ -622,9 +633,16 @@ export default function WorkoutForCategory({
       <div className="pt-4 no-print space-y-3">
         {session.finishedAt && !session.rating ? (
           <>
-            <div className="w-full bg-success/10 border border-success/30 text-success text-center font-bold py-3 rounded-2xl">
-              ✓ Marked done
-            </div>
+            {/* Single toggle button — tap to undo. Replaces the old static
+                "Marked done" banner + separate undo link. Same visual weight
+                as "I did this ✓" so the done/not-done states feel like one
+                button in two colors. */}
+            <button
+              onClick={unfinish}
+              className="w-full bg-success/15 border border-success/40 text-success text-center font-semibold py-4 rounded-full hover:bg-success/25 transition-colors"
+            >
+              ✓ Done — tap to undo
+            </button>
             <div>
               <div className="text-xs uppercase tracking-widest text-text-dim font-semibold text-center mb-2">
                 How did it feel?
@@ -647,12 +665,16 @@ export default function WorkoutForCategory({
           </>
         ) : session.finishedAt ? (
           <>
-            <div className="w-full bg-success/10 border border-success/30 text-success text-center font-bold py-4 rounded-2xl text-lg">
-              ✓ Done · rated {session.rating}
-            </div>
+            {/* Same toggle — now carries the rating in the label. Tap to undo. */}
+            <button
+              onClick={unfinish}
+              className="w-full bg-success/15 border border-success/40 text-success text-center font-semibold py-4 rounded-full text-base hover:bg-success/25 transition-colors"
+            >
+              ✓ Done · rated {session.rating} — tap to undo
+            </button>
             <button
               onClick={() => router.push("/")}
-              className="w-full text-text-dim text-sm py-2"
+              className="w-full text-text-dim text-xs py-2 uppercase tracking-[0.18em] font-medium hover:text-text transition-colors"
             >
               Back to home
             </button>

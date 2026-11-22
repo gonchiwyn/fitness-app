@@ -14,8 +14,7 @@ import {
 } from "date-fns";
 import Link from "next/link";
 import clsx from "clsx";
-import { db, deleteSession } from "@/lib/db";
-import { getExercise } from "@/lib/data/exercises";
+import { db } from "@/lib/db";
 import { categoryColor } from "@/lib/categoryTheme";
 import { CATEGORY_LABELS, DAY_LABELS_SHORT, type Category, type Session } from "@/lib/types";
 
@@ -28,12 +27,6 @@ export default function HistoryPage() {
     },
     []
   );
-
-  const onDelete = async (id: number | undefined) => {
-    if (id === undefined) return;
-    if (!confirm("Delete this session?")) return;
-    await deleteSession(id);
-  };
 
   if (!sessions) {
     return (
@@ -128,13 +121,17 @@ export default function HistoryPage() {
         <div className="space-y-2">
           {sessions.map((s) => {
             const color = categoryColor(s.category);
+            // Finished sessions open the recap page; drafts open the live
+            // workout page (so the user can finish logging). Replaces the old
+            // inline accordion which showed only prescribed sets.
+            const href = s.finishedAt ? `/history/${s.id}` : `/workout/${s.category}`;
             return (
-              <details
+              <Link
                 key={s.id}
-                id={s.id?.toString()}
-                className="border border-border-strong/40 bg-bg-elevated rounded-xl overflow-hidden group"
+                href={href}
+                className="block border border-border-strong/40 bg-bg-elevated rounded-xl overflow-hidden hover:border-text-dim transition-colors"
               >
-                <summary className="px-4 py-3 flex items-center justify-between cursor-pointer list-none">
+                <div className="px-4 py-3 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
                     <span
                       className="w-1.5 h-1.5 rounded-full shrink-0"
@@ -154,69 +151,10 @@ export default function HistoryPage() {
                     ) : (
                       <span className="text-[10px] uppercase tracking-[0.18em] text-text-dim/60 font-medium">Draft</span>
                     )}
-                    <svg
-                      className="w-4 h-4 text-text-dim transition-transform group-open:rotate-180"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
-                </summary>
-                <div className="border-t border-border-strong/30 p-4 space-y-3 text-sm">
-                  {s.blocks.length === 0 && (
-                    <p className="text-xs text-text-dim italic">
-                      Logged retroactively — no session breakdown.
-                    </p>
-                  )}
-                  {s.blocks.map((b, bi) => (
-                    <div key={bi}>
-                      <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim mb-1.5 font-medium">
-                        {b.title}
-                      </div>
-                      <div className="space-y-1">
-                        {b.prescriptions.map((p, pi) => {
-                          const ex = safeGetExercise(p.exerciseId);
-                          return (
-                            <div
-                              key={pi}
-                              className="flex items-baseline justify-between text-text-muted"
-                            >
-                              <span>{ex}</span>
-                              <span className="text-xs tabular-nums text-text-dim">
-                                {p.prescribedSets}×{p.prescribedReps}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                  <div className="flex items-center justify-between pt-2">
-                    {!s.finishedAt ? (
-                      <Link
-                        href={`/workout/${s.category}`}
-                        className="text-accent text-sm font-medium"
-                      >
-                        Open →
-                      </Link>
-                    ) : (
-                      <span />
-                    )}
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        onDelete(s.id);
-                      }}
-                      className="text-[11px] text-text-dim hover:text-danger px-2 py-1 uppercase tracking-[0.18em] font-medium"
-                    >
-                      Delete
-                    </button>
+                    <span className="text-text-dim text-sm" aria-hidden>›</span>
                   </div>
                 </div>
-              </details>
+              </Link>
             );
           })}
         </div>
@@ -340,7 +278,7 @@ function ConsistencyCalendar({ sessions }: { sessions: Session[] }) {
               return (
                 <Link
                   key={`${ri}-${di}`}
-                  href={session?.id ? `/history#${session.id}` : "#"}
+                  href={session?.id ? `/history/${session.id}` : "#"}
                   title={title}
                   className={clsx(
                     "aspect-square rounded-lg flex items-center justify-center text-[11px] tabular-nums font-medium transition-opacity border",
@@ -370,10 +308,3 @@ function ConsistencyCalendar({ sessions }: { sessions: Session[] }) {
   );
 }
 
-function safeGetExercise(id: string): string {
-  try {
-    return getExercise(id).name;
-  } catch {
-    return id;
-  }
-}

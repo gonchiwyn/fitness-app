@@ -12,6 +12,7 @@ import { templatesFor } from "@/lib/data/templates";
 import { categoryColor } from "@/lib/categoryTheme";
 import { recommendForToday, type Recommendation } from "@/lib/recommend";
 import {
+  BENCHMARK_META,
   CATEGORY_BLURBS,
   CATEGORY_LABELS,
   DAY_LABELS_SHORT,
@@ -20,6 +21,7 @@ import {
   effectiveFocusToday,
   getBlockPhase,
   normalizePlannedDay,
+  type Benchmark,
   type PlannedDay,
   type Profile,
   type Session,
@@ -170,13 +172,19 @@ export default function HomePage() {
         <h1 className="text-[2rem] leading-[1] font-medium mt-2 tracking-[-0.03em] text-text">
           {greet()}{profile?.name && profile.name !== "Athlete" ? `, ${profile.name}` : ""}.
         </h1>
-        {/* Weekly session glance — Strava weekly goal + Apple ring hybrid.
-            Compact: "3 OF 5 THIS WEEK" + hairline fill bar. One of the few
-            metrics a fitness user genuinely wants to see at open. */}
-        {weekTarget > 0 && !profile?.currentFocus?.pausedAt && (
-          <WeekProgress done={doneThisWeek} target={weekTarget} />
-        )}
       </header>
+
+      {/* Context card: block + week progress together. Oura/Whoop pattern —
+          a single glance surface that answers "where am I in training" + "how's
+          this week going". Replaces the old two-strip (focus indicator + week
+          progress bar) which read as two disconnected afterthoughts. */}
+      {!profile?.currentFocus?.pausedAt && (
+        <ContextCard
+          focus={profile?.currentFocus}
+          done={doneThisWeek}
+          target={weekTarget}
+        />
+      )}
 
       {draftSession && (
         <Link
@@ -219,12 +227,7 @@ export default function HomePage() {
           return isDone ? (
             <BlockCompleteCard focus={focus} sessions={recent ?? []} />
           ) : (
-            <>
-              <FocusIndicator focus={focus} />
-              {focus.name === "Surf prep" && (
-                <BreathingCard weekInBlock={weekNum} />
-              )}
-            </>
+            focus.name === "Surf prep" && <BreathingCard weekInBlock={weekNum} />
           );
         })()
       )}
@@ -261,6 +264,12 @@ export default function HomePage() {
           onPreview={(date) => setPreviewDate(date)}
         />
       )}
+
+      {/* Latest benchmark glance — shows the user's most recent tested metric
+          so Home surfaces the app's measurement identity, not just today's
+          verb. Doubles as the "what I'm tracking" signal for anyone looking
+          over the user's shoulder. */}
+      <BenchmarkGlance />
 
       {/* "I did something different" lives as a quiet text link now, not a
           row of chips. Home's job is one verb; the escape hatch is a one-
@@ -374,58 +383,157 @@ function BreathingCard({ weekInBlock }: { weekInBlock: number }) {
   );
 }
 
-function FocusIndicator({
+// Unified Home glance — combines block progress + week progress in one card.
+// Replaces the old FocusIndicator (quiet one-line passthrough) + WeekProgress
+// (bar with floating caption) that visually read as two afterthoughts. The
+// card surfaces: block name + week number + phase + visual week-sessions bar.
+// With no block set, offers a tight "Pick a block →" CTA so Home never looks
+// empty at the top.
+function ContextCard({
   focus,
+  done,
+  target,
 }: {
-  focus: NonNullable<Profile["currentFocus"]>;
+  focus: Profile["currentFocus"];
+  done: number;
+  target: number;
 }) {
-  // While paused, time stops: week counter + phase freeze at pausedAt.
-  const isPaused = !!focus.pausedAt;
+  if (!focus) {
+    // No block — show week meter alone + quiet CTA to pick one. Friends see
+    // "no plan" state as intentional, not broken.
+    return (
+      <section className="border border-border-strong/40 rounded-2xl p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+            No block yet
+          </div>
+          <Link
+            href="/plan"
+            className="text-[10px] uppercase tracking-[0.18em] text-accent font-medium hover:text-accent-dim"
+          >
+            Pick one →
+          </Link>
+        </div>
+        <TrainingDaysMeter done={done} target={target} />
+      </section>
+    );
+  }
   const effToday = effectiveFocusToday(focus);
   const daysIn = Math.max(0, differenceInCalendarDays(effToday, new Date(focus.startedAt)));
   const weekNum = Math.floor(daysIn / 7) + 1;
-  const done = weekNum > focus.durationWeeks;
-  const totalDays = focus.durationWeeks * 7;
-  const pct = Math.min(100, Math.round((daysIn / totalDays) * 100));
-  // Same wave the generator uses — surfacing it here so the user sees why
-  // this week feels different (Realization = peak, Deload = ease off).
-  const phase = done
+  const complete = weekNum > focus.durationWeeks;
+  const phase = complete
     ? null
     : getBlockPhase(focus.startedAt, focus.durationWeeks, effToday);
-
   return (
     <Link
       href="/plan"
-      className="group flex items-center justify-between gap-3 px-1 py-1"
+      className="block border border-border-strong/40 rounded-2xl p-4 space-y-3 hover:border-text-dim transition-colors"
     >
-      <div className="flex items-center gap-2.5 min-w-0">
-        {isPaused && (
-          <span className="text-[9px] uppercase tracking-[0.18em] text-text-dim border border-text-dim/40 px-1.5 py-0.5 rounded font-medium">
-            Paused
-          </span>
-        )}
-        <span className="text-sm text-text-muted group-hover:text-text transition-colors truncate">
-          {focus.name}
-        </span>
-      </div>
-      <div className="flex items-center gap-2.5 shrink-0 text-[11px] tabular-nums text-text-dim">
-        <span>
-          {done ? "complete" : `Wk ${weekNum}/${focus.durationWeeks}`}
-        </span>
-        {phase && !done && !isPaused && (
-          <span className="text-accent uppercase tracking-[0.18em] text-[10px] font-medium">
-            {phase.label}
-          </span>
-        )}
-        <div className="w-16 h-[3px] bg-border-strong/40 rounded-full overflow-hidden">
-          <div
-            className={clsx("h-full", isPaused ? "bg-text-dim/60" : "bg-accent")}
-            style={{ width: `${done ? 100 : pct}%` }}
-          />
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-accent font-medium">
+            {focus.name}
+          </div>
+          <div className="text-[11px] text-text-dim mt-1 tabular-nums tracking-wide">
+            Week {complete ? focus.durationWeeks : weekNum} of {focus.durationWeeks}
+            {phase && ` · ${phase.label}`}
+          </div>
         </div>
+        <span className="text-text-dim text-sm shrink-0" aria-hidden>›</span>
+      </div>
+      <TrainingDaysMeter done={done} target={target} />
+    </Link>
+  );
+}
+
+// Discrete training-day meter — each planned session is a block. Filled
+// blocks = done sessions. Hairline blocks = still to come. Replaces a single
+// 3px progress bar that read as zero-value noise on week 1 (no fill visible).
+// Apple Fitness rings in Nordic clothing.
+function TrainingDaysMeter({ done, target }: { done: number; target: number }) {
+  const t = Math.max(1, target);
+  const cappedDone = Math.min(done, t);
+  const slots = Array.from({ length: t }, (_, i) => i < cappedDone);
+  const complete = cappedDone >= t;
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-1.5">
+        {slots.map((filled, i) => (
+          <div
+            key={i}
+            className={clsx(
+              "flex-1 h-2 rounded-full transition-colors",
+              filled
+                ? complete
+                  ? "bg-success"
+                  : "bg-accent"
+                : "bg-text/10 border border-border-strong/60"
+            )}
+          />
+        ))}
+      </div>
+      <div className="flex items-baseline justify-between text-[10px] uppercase tracking-[0.18em] font-medium">
+        <span className={clsx(complete ? "text-success" : "text-text")}>
+          {done} of {target} this week
+        </span>
+        {!complete && (
+          <span className="text-text-dim tabular-nums">{target - done} to go</span>
+        )}
+        {complete && <span className="text-success">✓ done</span>}
+      </div>
+    </div>
+  );
+}
+
+// Benchmark glance — surfaces the user's most recent tested metric. Signals
+// "this app actually tracks the stuff Attia / Galpin / Huberman say matters"
+// so a friend scanning Home sees measurement, not just workout logging.
+// Silent when no benchmark exists yet (new user) so onboarding doesn't look
+// littered.
+function BenchmarkGlance() {
+  const latest = useLiveQuery(async () => {
+    const all = await db.benchmarks.orderBy("date").reverse().limit(1).toArray();
+    return all[0] as Benchmark | undefined;
+  }, []);
+  if (!latest) return null;
+  const meta = BENCHMARK_META[latest.type];
+  if (!meta) return null;
+  const valueText = meta.format === "duration"
+    ? formatSeconds(latest.value)
+    : `${latest.value}${meta.unit === "time" ? "" : ` ${meta.unit}`}`;
+  const daysAgo = Math.max(0, differenceInCalendarDays(new Date(), new Date(latest.date + "T00:00:00")));
+  const whenLabel =
+    daysAgo === 0 ? "today" : daysAgo === 1 ? "yesterday" : `${daysAgo} days ago`;
+  return (
+    <Link
+      href="/benchmarks"
+      className="flex items-center justify-between gap-3 border border-border-strong/40 rounded-2xl px-4 py-3 hover:border-text-dim transition-colors"
+    >
+      <div className="min-w-0 flex-1">
+        <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+          Latest benchmark
+        </div>
+        <div className="flex items-baseline gap-2 mt-1">
+          <span className="text-sm text-text font-medium truncate">{meta.label}</span>
+          <span className="text-text-dim text-[11px] shrink-0">· tested {whenLabel}</span>
+        </div>
+      </div>
+      <div className="text-xl font-medium tabular-nums tracking-[-0.02em] text-text shrink-0">
+        {valueText}
       </div>
     </Link>
   );
+}
+
+function formatSeconds(totalSeconds: number): string {
+  const s = Math.max(0, Math.round(totalSeconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  if (h > 0) return `${h}:${pad(m)}:${pad(sec)}`;
+  return `${m}:${pad(sec)}`;
 }
 
 function BlockCompleteCard({
@@ -703,15 +811,39 @@ function TodaysSessionsStack({ sessions }: { sessions: Session[] }) {
 function TodaysSessionCard({ session, compact }: { session: Session; compact?: boolean }) {
   const done = Boolean(session.finishedAt);
   const tid = session.modifiers?.templateId;
-  const href = tid
-    ? `/workout/${session.category}?template=${tid}`
-    : `/workout/${session.category}`;
+  // Done sessions open the Recap page (clean "what I did" view meant for
+  // sharing with a friend). Drafts + not-done sessions open the live workout
+  // page so the user can finish logging.
+  const href = done && session.id !== undefined
+    ? `/history/${session.id}`
+    : tid
+      ? `/workout/${session.category}?template=${tid}`
+      : `/workout/${session.category}`;
   const color = categoryColor(session.category);
-  const remove = async (e: React.MouseEvent) => {
+  // Single toggle. On a NOT-done session, the corner button discards the draft
+  // so the user can start fresh. On a DONE session, the SAME corner button
+  // undoes the Done mark; for a retroactive session (no logged work) we also
+  // delete the empty shell since there's nothing to preserve. Either way:
+  // one affordance, one tap, matches the done-state toggle on the workout page.
+  const toggleOrDiscard = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!confirm(`Remove "${session.name}" from today? Undoes the Done mark.`)) return;
-    if (session.id !== undefined) await db.sessions.delete(session.id);
+    if (session.id === undefined) return;
+    if (done) {
+      const isEmpty = session.blocks.length === 0;
+      const msg = isEmpty
+        ? "Undo today's Done mark? The session has no logged work, so it'll be removed."
+        : "Undo today's Done mark? Your logged sets stay.";
+      if (!confirm(msg)) return;
+      if (isEmpty) {
+        await db.sessions.delete(session.id);
+      } else {
+        await db.sessions.put({ ...session, finishedAt: undefined, rating: undefined });
+      }
+    } else {
+      if (!confirm(`Discard "${session.name}" draft? Any logged sets are lost.`)) return;
+      await db.sessions.delete(session.id);
+    }
   };
   // Done state: calm & complete — hairline border, no hero tint, "Review"
   // secondary link. In-progress draft: full hero with filled Resume pill.
@@ -727,12 +859,17 @@ function TodaysSessionCard({ session, compact }: { session: Session; compact?: b
       )}
     >
       <button
-        onClick={remove}
-        aria-label="Remove session"
-        title="Remove"
-        className="absolute top-3 right-3 w-7 h-7 rounded-full text-text-dim hover:text-danger hover:bg-danger/10 flex items-center justify-center text-base leading-none"
+        onClick={toggleOrDiscard}
+        aria-label={done ? "Undo Done mark" : "Discard draft"}
+        title={done ? "Undo Done" : "Discard"}
+        className={clsx(
+          "absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center text-sm leading-none transition-colors",
+          done
+            ? "bg-success/15 border border-success/40 text-success hover:bg-success/25"
+            : "text-text-dim hover:text-danger hover:bg-danger/10"
+        )}
       >
-        ×
+        {done ? "✓" : "×"}
       </button>
       <div
         className={clsx(
@@ -1201,32 +1338,6 @@ function NextUpCard({
       >
         See full week →
       </Link>
-    </div>
-  );
-}
-
-// Week-progress strip: a single hairline row with "N of M this week" caption +
-// filled bar. Strava's weekly goal + Apple's Move-ring in Nordic clothing.
-// Target is derived from the user's plan (non-rest days); done is finished
-// sessions Mon–Sun this calendar week.
-function WeekProgress({ done, target }: { done: number; target: number }) {
-  const pct = Math.min(100, Math.round((done / target) * 100));
-  const complete = done >= target;
-  return (
-    <div className="mt-4 flex items-center gap-3">
-      <div className="flex-1 h-[3px] bg-border-strong/30 rounded-full overflow-hidden">
-        <div
-          className={clsx(
-            "h-full transition-all duration-500",
-            complete ? "bg-success" : "bg-accent"
-          )}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <div className="text-[10px] uppercase tracking-[0.18em] text-text-dim font-medium tabular-nums shrink-0">
-        <span className={clsx(complete ? "text-success" : "text-text")}>{done}</span>
-        <span className="text-text-dim"> of {target} this week</span>
-      </div>
     </div>
   );
 }

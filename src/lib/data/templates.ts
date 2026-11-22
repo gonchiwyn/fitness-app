@@ -467,7 +467,7 @@ export const TEMPLATES: Template[] = [
   {
     id: "hyrox_strength",
     category: "hyrox",
-    name: "Hyrox Strength",
+    name: "Strength (Legacy)",
     description: "Build the engine that pushes the sled.",
     blocks: [
       {
@@ -2425,7 +2425,7 @@ TEMPLATES.push(
   {
     id: "hyrox_sim_intro",
     category: "hyrox",
-    name: "Hyrox — Learn the Stations",
+    name: "Learn the Stations",
     description: "Short runs + stations. Technique focus.",
     influences: ["general"],
     blocks: [
@@ -2460,7 +2460,7 @@ TEMPLATES.push(
   {
     id: "hyrox_sim_race",
     category: "hyrox",
-    name: "Hyrox — Race Simulation",
+    name: "Race Simulation",
     description: "Full 400m runs + all 8 stations at race pace.",
     influences: ["general"],
     blocks: [
@@ -2492,7 +2492,7 @@ TEMPLATES.push(
   {
     id: "hyrox_sim_light",
     category: "hyrox",
-    name: "Hyrox — Light Skill",
+    name: "Light Skill",
     description: "Single round of each station, slow and clean.",
     influences: ["general"],
     blocks: [
@@ -2542,7 +2542,7 @@ TEMPLATES.push(
   {
     id: "hyrox_sim_commercial_intro",
     category: "hyrox",
-    name: "Hyrox — Learn (Commercial Gym)",
+    name: "Learn (Commercial Gym)",
     description: "DBs + skip rope only. Short rounds, long rest. Learn transitions.",
     influences: ["general"],
     blocks: [
@@ -2577,7 +2577,7 @@ TEMPLATES.push(
   {
     id: "hyrox_sim_commercial",
     category: "hyrox",
-    name: "Hyrox — Race Pace (Commercial Gym)",
+    name: "Race Pace (Commercial Gym)",
     description: "Full 6-station circuit using DBs + skip rope + bodyweight. Race pace.",
     influences: ["general"],
     blocks: [
@@ -2613,7 +2613,7 @@ TEMPLATES.push(
   {
     id: "hyrox_sim_commercial_light",
     category: "hyrox",
-    name: "Hyrox — Light Skill (Commercial Gym)",
+    name: "Light Skill (Commercial Gym)",
     description: "Single round of each station, slow + clean. DBs + skip rope.",
     influences: ["general"],
     blocks: [
@@ -2640,7 +2640,7 @@ TEMPLATES.push(
   {
     id: "hyrox_sim_pairs_intro",
     category: "hyrox",
-    name: "Hyrox — Learn (Station Blocks)",
+    name: "Learn (Station Blocks)",
     description: "Shorter runs + light stations, held one at a time. Learn transitions.",
     influences: ["general"],
     blocks: [
@@ -2681,7 +2681,7 @@ TEMPLATES.push(
   {
     id: "hyrox_sim_pairs",
     category: "hyrox",
-    name: "Hyrox — Race Pace (Station Blocks)",
+    name: "Race Pace (Station Blocks)",
     description: "Full equipment, held one at a time. Compromised running + 3 stations per session.",
     influences: ["general"],
     blocks: [
@@ -2731,7 +2731,7 @@ TEMPLATES.push(
   {
     id: "hyrox_sim_test",
     category: "hyrox",
-    name: "Hyrox — Time Trial",
+    name: "Time Trial",
     description: "Peak-week benchmark. One honest effort, start-to-finish, timed.",
     influences: ["galpin", "general"],
     blocks: [
@@ -2774,7 +2774,7 @@ TEMPLATES.push(
   {
     id: "hyrox_sim_short",
     category: "hyrox",
-    name: "Hyrox — Short Sim (Mid-Week)",
+    name: "Short Sim (Mid-Week)",
     description: "25-min race-pace sim. Compromised running + 2 stations. Hunts your weakness.",
     influences: ["general"],
     blocks: [
@@ -2810,7 +2810,7 @@ TEMPLATES.push(
   {
     id: "hyrox_sim_pairs_light",
     category: "hyrox",
-    name: "Hyrox — Light Skill (Station Blocks)",
+    name: "Light Skill (Station Blocks)",
     description: "One pair at each station, slow + clean.",
     influences: ["general"],
     blocks: [

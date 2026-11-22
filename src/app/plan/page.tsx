@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
+import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useSearchParams } from "next/navigation";
 import clsx from "clsx";
@@ -9,6 +10,7 @@ import {
   archiveCurrentFocus,
   db,
   getProfile,
+  getWeekDaysFor,
   getWeeklyPlan,
   pauseFocusBlock,
   resumeFocusBlock,
@@ -17,6 +19,7 @@ import {
   saveWeekOverride,
 } from "@/lib/db";
 import { templatesFor } from "@/lib/data/templates";
+import { BLOCK_PRESETS, PRESET_GROUPS, type BlockPreset } from "@/lib/data/presets";
 import { categoryColor } from "@/lib/categoryTheme";
 import { useBodyScrollLock } from "@/lib/useBodyScrollLock";
 import {
@@ -100,6 +103,16 @@ function PlanPageInner() {
 
   const [viewMode, setViewMode] = useState<"this-week" | "base">("this-week");
   const [hasOverride, setHasOverride] = useState(false);
+  // 0 = this week, 1 = next week, 2 = +2 weeks, up to +5. Negative = the past,
+  // not supported here — History covers "what I did", Plan is forward-only.
+  const [viewedWeekOffset, setViewedWeekOffset] = useState(0);
+  const viewedMonday = addDays(thisMonday, viewedWeekOffset * 7);
+  const viewedWeekStart = format(viewedMonday, "yyyy-MM-dd");
+  const viewedDays = useLiveQuery(
+    async () => (viewedWeekOffset === 0 ? null : await getWeekDaysFor(viewedWeekStart)),
+    [viewedWeekStart, viewedWeekOffset],
+    null
+  );
 
   const loadPlan = async () => {
     const base = await getWeeklyPlan();
@@ -167,205 +180,9 @@ function PlanPageInner() {
     setPlan(fresh);
   };
 
-  // Presets ordered by focus type. "durationWeeks" powers the Home indicator's
-  // "Week X of N" counter — pick something meaningful for that block.
-  //
-  // `name`: short, goal-driven (2-4 words). No jargon, no parens.
-  // `tagline`: one sentence, what you'll actually do each week.
-  // `days`: ordered priority — index 0 is the most important session, used
-  //   when the user picks fewer training days than the full pattern has.
-  // `defaultFrequency`: suggested days/week when applying. Also what the
-  //   chip picker pre-selects.
-  const presets: {
-    name: string;
-    tagline: string;
-    focusName: string;
-    durationWeeks: number;
-    defaultFrequency: number;
-    days: PlannedDay[];
-  }[] = [
-    // Durations per Galpin (real hypertrophy adaptation takes 5–6 weeks
-    // minimum, strength peaks want 6–8 with a real deload). Every preset
-    // holds 2× Zone 2 minimum — Attia/Patrick's non-negotiable for aerobic
-    // maintenance and mortality prevention regardless of block focus.
-    {
-      name: "Beginner",
-      tagline: "Build the habit. Full-body sessions + easy cardio.",
-      focusName: "Beginner",
-      durationWeeks: 4,
-      defaultFrequency: 3,
-      // Priority order: 3 strength (hits every muscle each session) → cardio → mobility
-      days: [
-        { category: "split", templateId: "split_full_body" },
-        { category: "split", templateId: "split_full_body" },
-        { category: "split", templateId: "split_full_body" },
-        { category: "cardio", templateId: "attia_zone2_45" },
-        { category: "stretching" },
-        { category: "cardio", templateId: "attia_zone2_45" },
-      ],
-    },
-    {
-      name: "Build muscle",
-      tagline: "Push / Pull / Legs twice a week + Z2 cardio.",
-      focusName: "Hypertrophy",
-      durationWeeks: 6,
-      defaultFrequency: 5,
-      days: [
-        { category: "split", templateId: "split_push" },
-        { category: "split", templateId: "split_pull" },
-        { category: "split", templateId: "split_legs" },
-        { category: "cardio", templateId: "attia_zone2_45" },
-        { category: "hypertrophy" },
-        { category: "cardio", templateId: "attia_zone2_45" },
-      ],
-    },
-    {
-      name: "Build muscle — autoregulated",
-      tagline: "ABAB hypertrophy. Load adapts rep-by-rep (Menno/Galpin).",
-      focusName: "Menno Hypertrophy",
-      durationWeeks: 8,
-      defaultFrequency: 4,
-      days: [
-        { category: "hypertrophy", templateId: "menno_hyp_a" },
-        { category: "hypertrophy", templateId: "menno_hyp_b" },
-        { category: "hypertrophy", templateId: "menno_hyp_a" },
-        { category: "hypertrophy", templateId: "menno_hyp_b" },
-        { category: "cardio", templateId: "attia_zone2_45" },
-        { category: "cardio", templateId: "attia_zone2_45" },
-      ],
-    },
-    {
-      name: "Get stronger",
-      tagline: "Heavy bench, squat, deadlift. 8-week peak.",
-      focusName: "Strength peak",
-      durationWeeks: 8,
-      defaultFrequency: 4,
-      days: [
-        { category: "strength", templateId: "strength_lower_a" },
-        { category: "strength", templateId: "strength_upper_a" },
-        { category: "strength", templateId: "strength_deadlift_day" },
-        { category: "split", templateId: "split_arms" },
-        { category: "cardio", templateId: "attia_zone2_45" },
-        { category: "cardio", templateId: "attia_zone2_45" },
-      ],
-    },
-    {
-      name: "Cardio base",
-      tagline: "Mostly Z2 running / biking + 2× strength maintenance.",
-      focusName: "Cardio base",
-      durationWeeks: 8,
-      defaultFrequency: 5,
-      days: [
-        { category: "cardio", templateId: "attia_zone2_45" },
-        { category: "cardio", templateId: "attia_zone2_45" },
-        { category: "cardio", templateId: "attia_4x4_vo2" },
-        { category: "strength" },
-        { category: "strength" },
-        { category: "cardio", templateId: "attia_zone2_45" },
-      ],
-    },
-    {
-      name: "Athletic power",
-      tagline: "Jumps, sprints, Hyrox stations, heavy legs.",
-      focusName: "Athletic",
-      durationWeeks: 6,
-      defaultFrequency: 5,
-      days: [
-        { category: "athlete" },
-        { category: "hyrox" },
-        { category: "split", templateId: "split_legs" },
-        { category: "hyrox" },
-        { category: "cardio", templateId: "attia_zone2_45" },
-        { category: "cardio", templateId: "attia_zone2_45" },
-      ],
-    },
-    {
-      name: "Longevity",
-      tagline: "3 strength · 2 Z2 · 1 VO2 · 1 stretch. The Attia week.",
-      focusName: "Longevity",
-      durationWeeks: 8,
-      defaultFrequency: 6,
-      days: [
-        { category: "strength" },
-        { category: "cardio", templateId: "attia_zone2_45" },
-        { category: "hypertrophy" },
-        { category: "cardio", templateId: "attia_4x4_vo2" },
-        { category: "strength" },
-        { category: "cardio", templateId: "attia_zone2_45" },
-        { category: "stretching" },
-      ],
-    },
-    {
-      name: "Push / Pull / Legs",
-      tagline: "Classic PPL — Push & Pull twice, Legs once.",
-      focusName: "PPL",
-      durationWeeks: 6,
-      defaultFrequency: 6,
-      days: [
-        { category: "split", templateId: "split_push" },
-        { category: "split", templateId: "split_pull" },
-        { category: "split", templateId: "split_legs" },
-        { category: "split", templateId: "split_push" },
-        { category: "split", templateId: "split_pull" },
-        { category: "cardio", templateId: "attia_zone2_45" },
-        { category: "cardio", templateId: "attia_zone2_45" },
-      ],
-    },
-    {
-      name: "Recovery week",
-      tagline: "Mobility, easy Z2, no barbell. Reset the system.",
-      focusName: "Recovery",
-      durationWeeks: 1,
-      defaultFrequency: 5,
-      days: [
-        { category: "stretching" },
-        { category: "cardio", templateId: "attia_zone2_45" },
-        { category: "stretching" },
-        { category: "recovery" },
-        { category: "cardio", templateId: "attia_zone2_45" },
-        { category: "recovery" },
-      ],
-    },
-    {
-      // Fixed layout — frequency chip is cosmetic here, structure is designed
-      // around sailing week 3 and auto-override; see applyPreset.
-      name: "Surf trip prep",
-      tagline: "Paddle, pop-up, back-safe. Built for a 6-week countdown.",
-      focusName: "Surf prep",
-      durationWeeks: 6,
-      defaultFrequency: 6,
-      days: [
-        { category: "athlete", templateId: "surf_paddle_push" },
-        { category: "athlete", templateId: "surf_paddle_pull" },
-        { category: "cardio", templateId: "attia_zone2_45" },
-        { category: "athlete", templateId: "surf_legs" },
-        { category: "athlete", templateId: "surf_pop_up_core" },
-        { category: "cardio", templateId: "attia_zone2_45" },
-      ],
-    },
-    {
-      // Fixed layout — phase-based template progression W1-2 vs W3-5 vs W6.
-      // Sim day uses the "Station Blocks" variant by default — real Hyrox
-      // equipment but held one station at a time, so you don't need to
-      // commandeer a whole circuit. Travel / no-sled days can swap to
-      // hyrox_sim_commercial; a Hyrox-equipped box can swap to hyrox_sim_race.
-      // Thursday (short mid-week sim) and Saturday (long run) added per
-      // Hunter McIntyre + Nick Bare review.
-      name: "Hyrox prep",
-      tagline: "First-time Hyrox: learn → build → peak. Back-aware.",
-      focusName: "Hyrox prep",
-      durationWeeks: 6,
-      defaultFrequency: 5,
-      days: [
-        { category: "hyrox", templateId: "hyrox_strength_pull" },
-        { category: "hyrox", templateId: "hyrox_sim_pairs" },
-        { category: "hyrox", templateId: "hyrox_strength_push" },
-        { category: "hyrox", templateId: "hyrox_sim_short" },
-        { category: "cardio", templateId: "attia_zone2_45" },
-        { category: "cardio", templateId: "nick_bare_long_run" },
-      ],
-    },
-  ];
+  // Presets are defined in src/lib/data/presets.ts so the Plans library at
+  // /plans and this picker share the same source of truth.
+  const presets: BlockPreset[] = BLOCK_PRESETS;
 
   const applyPreset = async (preset: (typeof presets)[number], frequency: number) => {
     if (!confirm(`Start "${preset.name}" (${frequency} days/week)? Replaces your current weekly plan.`)) return;
@@ -521,8 +338,18 @@ function PlanPageInner() {
   return (
     <div className="max-w-3xl mx-auto px-5 py-6 space-y-6">
       <header>
-        <p className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">Your program</p>
-        <h1 className="text-[2.125rem] font-medium tracking-[-0.03em] leading-[1] mt-1.5 text-text">Plan</h1>
+        <div className="flex items-baseline justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">Your program</p>
+            <h1 className="text-[2.125rem] font-medium tracking-[-0.03em] leading-[1] mt-1.5 text-text">Plan</h1>
+          </div>
+          <Link
+            href="/plans"
+            className="text-[11px] uppercase tracking-[0.18em] text-accent font-medium hover:text-accent-dim shrink-0"
+          >
+            Browse all →
+          </Link>
+        </div>
       </header>
 
       {blockState === "active" && focus && (
@@ -642,11 +469,33 @@ function PlanPageInner() {
       )}
 
       <section className="space-y-3">
-        <div className="flex items-baseline justify-between gap-3">
-          <h2 className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">
-            This week
-          </h2>
-          {weekTarget > 0 && (
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setViewedWeekOffset((n) => Math.max(0, n - 1))}
+              disabled={viewedWeekOffset === 0}
+              aria-label="Previous week"
+              className="w-7 h-7 rounded-full border border-border-strong/50 text-text-muted flex items-center justify-center hover:border-text-dim disabled:opacity-25"
+            >
+              ‹
+            </button>
+            <h2 className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium min-w-[110px] text-center">
+              {viewedWeekOffset === 0
+                ? "This week"
+                : viewedWeekOffset === 1
+                  ? "Next week"
+                  : `${format(viewedMonday, "MMM d")} week`}
+            </h2>
+            <button
+              onClick={() => setViewedWeekOffset((n) => Math.min(5, n + 1))}
+              disabled={viewedWeekOffset >= 5}
+              aria-label="Next week"
+              className="w-7 h-7 rounded-full border border-border-strong/50 text-text-muted flex items-center justify-center hover:border-text-dim disabled:opacity-25"
+            >
+              ›
+            </button>
+          </div>
+          {viewedWeekOffset === 0 && weekTarget > 0 && (
             <span className="text-[10px] uppercase tracking-[0.18em] text-text-dim font-medium tabular-nums">
               <span className={clsx(doneThisWeek >= weekTarget ? "text-success" : "text-text")}>
                 {doneThisWeek}
@@ -655,7 +504,7 @@ function PlanPageInner() {
             </span>
           )}
         </div>
-        {weekTarget > 0 && (
+        {viewedWeekOffset === 0 && weekTarget > 0 && (
           <div className="h-[3px] bg-border-strong/30 rounded-full overflow-hidden">
             <div
               className={clsx(
@@ -666,26 +515,22 @@ function PlanPageInner() {
             />
           </div>
         )}
-        <p className="text-xs text-text-dim leading-relaxed">{patternIntro}</p>
+        <p className="text-xs text-text-dim leading-relaxed">
+          {viewedWeekOffset === 0
+            ? patternIntro
+            : "Preview — shows this week's pattern or any saved overrides. Edit from This week."}
+        </p>
 
         <div className="space-y-2 pt-1">
-          {plan.days.map((day, i) => {
-            const isToday = i === todayIdx;
+          {(viewedWeekOffset === 0 ? plan.days : viewedDays ?? plan.days).map((day, i) => {
+            const isToday = viewedWeekOffset === 0 && i === todayIdx;
+            const isEditable = viewedWeekOffset === 0;
             const lockedTemplate = day?.templateId
               ? templatesFor(day.category).find((t) => t.id === day.templateId)
               : null;
             const color = day ? categoryColor(day.category) : null;
-            return (
-              <button
-                key={i}
-                onClick={() => setEditingDay(i)}
-                className={clsx(
-                  "w-full text-left flex items-center gap-4 rounded-2xl border p-4 transition-colors",
-                  isToday
-                    ? "border-accent/50 bg-text/[0.03]"
-                    : "border-border-strong/40 hover:border-text-dim"
-                )}
-              >
+            const content = (
+              <>
                 <div className={clsx("w-12 text-center shrink-0", isToday ? "text-accent" : "text-text-dim")}>
                   <div className="text-[10px] uppercase tracking-[0.22em] font-medium">
                     {DAY_LABELS_LONG[i].slice(0, 3)}
@@ -721,8 +566,29 @@ function PlanPageInner() {
                     <div className="text-sm text-text-dim">Rest day</div>
                   )}
                 </div>
-                <span className="text-text-dim text-sm shrink-0">›</span>
+                {isEditable && <span className="text-text-dim text-sm shrink-0">›</span>}
+              </>
+            );
+            return isEditable ? (
+              <button
+                key={i}
+                onClick={() => setEditingDay(i)}
+                className={clsx(
+                  "w-full text-left flex items-center gap-4 rounded-2xl border p-4 transition-colors",
+                  isToday
+                    ? "border-accent/50 bg-text/[0.03]"
+                    : "border-border-strong/40 hover:border-text-dim"
+                )}
+              >
+                {content}
               </button>
+            ) : (
+              <div
+                key={i}
+                className="w-full text-left flex items-center gap-4 rounded-2xl border p-4 border-border-strong/40"
+              >
+                {content}
+              </div>
             );
           })}
         </div>
@@ -785,22 +651,9 @@ function PlanPageInner() {
 // the user doesn't scan 11 unlabeled cards. "intent" here is the user's goal,
 // not an exercise taxonomy — people pick a block by WHY, not by anatomy.
 // If a preset's focusName isn't listed here, it lands in "Specialty".
-const PRESET_GROUPS: { id: string; label: string; items: string[] }[] = [
-  { id: "strength", label: "Strength", items: ["Hypertrophy", "Menno Hypertrophy", "Strength peak", "PPL"] },
-  { id: "endurance", label: "Endurance", items: ["Cardio base"] },
-  { id: "hybrid", label: "Hybrid / Athletic", items: ["Athletic", "Longevity", "Hyrox prep"] },
-  { id: "reset", label: "Reset", items: ["Recovery", "Beginner"] },
-  { id: "specialty", label: "Specialty", items: ["Surf prep"] },
-];
-
-type PresetT = {
-  name: string;
-  tagline: string;
-  focusName: string;
-  durationWeeks: number;
-  defaultFrequency: number;
-  days: PlannedDay[];
-};
+// PRESET_GROUPS + BlockPreset live in @/lib/data/presets, imported at the top.
+// The local alias below keeps the rest of this file readable without a rename.
+type PresetT = BlockPreset;
 
 // Full-screen block picker modal. Replaces the inline accordion that forced
 // the user to scroll past 11 cards to find one. Groups presets by intent

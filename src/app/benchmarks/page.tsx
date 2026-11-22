@@ -186,23 +186,29 @@ function LogModal({
         <p className="text-sm text-text-muted mb-5 leading-relaxed">{meta.description}</p>
 
         <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <input
-              type={meta.format === "duration" ? "text" : "number"}
-              inputMode={meta.format === "duration" ? "numeric" : "decimal"}
-              step={meta.format === "duration" ? undefined : "0.5"}
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              placeholder={meta.format === "duration" ? "mm:ss  or  h:mm:ss" : "Value"}
-              autoFocus
-              className="flex-1 h-12 px-4 bg-transparent border border-border-strong/40 rounded-full text-center text-base tabular-nums focus:outline-none focus:border-accent/60 placeholder:text-text-dim"
-            />
-            {meta.format !== "duration" && (
+          {meta.format === "duration" ? (
+            // Split duration input: separate min / sec (and optional hr) fields
+            // that each open a plain numeric keypad on mobile. The old single
+            // "mm:ss" text input needed a colon key, which the iOS numeric
+            // keypad doesn't carry — users couldn't actually type the value.
+            <DurationInput value={value} onChange={setValue} />
+          ) : (
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.5"
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                placeholder="Value"
+                autoFocus
+                className="flex-1 h-12 px-4 bg-transparent border border-border-strong/40 rounded-full text-center text-base tabular-nums focus:outline-none focus:border-accent/60 placeholder:text-text-dim"
+              />
               <span className="text-[11px] uppercase tracking-[0.18em] text-text-dim font-medium">
                 {meta.unit}
               </span>
-            )}
-          </div>
+            </div>
+          )}
           {meta.format === "duration" && parsed !== null && parsed > 0 && (
             <div className="text-center text-[11px] uppercase tracking-[0.18em] text-text-dim font-medium tabular-nums">
               = {formatDuration(parsed)}
@@ -231,6 +237,115 @@ function LogModal({
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Dedicated duration input: three number fields (hr / min / sec) that each
+// open the plain numeric keypad on mobile. Hour defaults hidden, revealed by
+// a tiny "+ hr" link so short-duration benchmarks (5k, plank) stay two fields.
+// Composes a canonical "h:mm:ss" (or "mm:ss") string back up to the parent so
+// the rest of the save pipeline stays unchanged.
+function DurationInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  // Parse the incoming canonical string into field values (empty when zero).
+  const parts = value.split(":").map((p) => p.trim());
+  const hasHour = parts.length === 3;
+  const initH = hasHour ? parts[0] : "";
+  const initM = hasHour ? parts[1] : parts[0] ?? "";
+  const initS = hasHour ? parts[2] : parts[1] ?? "";
+  const [showHour, setShowHour] = useState(hasHour);
+
+  const emit = (h: string, m: string, s: string) => {
+    const hN = h.trim();
+    const mN = m.trim();
+    const sN = s.trim();
+    if (!hN && !mN && !sN) {
+      onChange("");
+      return;
+    }
+    if (hN) {
+      onChange(`${hN || 0}:${(mN || "0").padStart(2, "0")}:${(sN || "0").padStart(2, "0")}`);
+    } else {
+      onChange(`${mN || 0}:${(sN || "0").padStart(2, "0")}`);
+    }
+  };
+
+  const clamp = (v: string, max: number) => {
+    // Only digits, no leading minus etc. Cap at max to keep users honest
+    // (60s should go into minutes, not sit as "60" in the seconds field).
+    const digits = v.replace(/[^0-9]/g, "");
+    if (digits === "") return "";
+    const n = Math.min(Number(digits), max);
+    return String(n);
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-center gap-1.5">
+        {showHour && (
+          <>
+            <NumField
+              value={initH}
+              onChange={(v) => emit(clamp(v, 99), initM, initS)}
+              label="hr"
+              autoFocus
+            />
+            <span className="text-2xl text-text-dim font-light leading-none pb-1">:</span>
+          </>
+        )}
+        <NumField
+          value={initM}
+          onChange={(v) => emit(initH, clamp(v, showHour ? 59 : 999), initS)}
+          label="min"
+          autoFocus={!showHour}
+        />
+        <span className="text-2xl text-text-dim font-light leading-none pb-1">:</span>
+        <NumField
+          value={initS}
+          onChange={(v) => emit(initH, initM, clamp(v, 59))}
+          label="sec"
+        />
+      </div>
+      {!showHour && (
+        <div className="text-center">
+          <button
+            onClick={() => setShowHour(true)}
+            className="text-[10px] uppercase tracking-[0.18em] text-text-dim hover:text-text font-medium"
+          >
+            + add hours
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NumField({
+  value,
+  onChange,
+  label,
+  autoFocus,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  label: string;
+  autoFocus?: boolean;
+}) {
+  return (
+    <div className="flex flex-col items-center">
+      <input
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="0"
+        autoFocus={autoFocus}
+        className="w-20 h-14 bg-transparent border border-border-strong/40 rounded-xl text-center text-2xl font-medium tabular-nums focus:outline-none focus:border-accent/60 placeholder:text-text-dim"
+      />
+      <span className="text-[9px] uppercase tracking-[0.22em] text-text-dim font-medium mt-1">
+        {label}
+      </span>
     </div>
   );
 }
