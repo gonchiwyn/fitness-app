@@ -791,10 +791,18 @@ function timeScaleBlocks(blocks: Block[], targetMinutes: number, baselineMinutes
 
   const expanded = main.map((b) => ({
     ...b,
-    prescriptions: b.prescriptions.map((p) => ({
-      ...p,
-      sets: Math.min(p.sets + 1, p.sets + Math.round(ratio - 1)),
-    })),
+    prescriptions: b.prescriptions.map((p) => {
+      // Duration-based work ("20 min Z2", "45 min run") scales by extending
+      // the reps string via `scaleTimeReps` further down the pipeline, not
+      // by multiplying sets. Bumping sets here would turn a single 20-min
+      // Z2 into "2 × 20 min Z2", which is a different session shape.
+      const isDurationBased = /\b(min|sec)\b|\d+s(?:\/|\b)/i.test(String(p.reps));
+      if (isDurationBased) return { ...p };
+      return {
+        ...p,
+        sets: Math.min(p.sets + 1, p.sets + Math.round(ratio - 1)),
+      };
+    }),
   }));
   return [...warmup, ...expanded, ...core, ...cooldown];
 }
@@ -927,6 +935,10 @@ function applyBlockBias(
   const rangeHigh = rangeMatch ? parseInt(rangeMatch[2], 10) : null;
   const repsIsNumeric = bareReps !== null || rangeHigh !== null;
   const currentTop = bareReps ?? rangeHigh ?? 0;
+  // Duration-based prescriptions ("20 min Z2") hold a one-continuous-effort
+  // meaning — set bumps turn them into multiple separate efforts. Block bias
+  // should not touch their sets count.
+  const isDurationBased = /\b(min|sec)\b|\d+s(?:\/|\b)/i.test(trimmedReps);
 
   if (name.includes("hypertrophy") || name.includes("aesthetic")) {
     // 8–12 rep range, moderate rest, +1 set on accessories.
@@ -934,7 +946,7 @@ function applyBlockBias(
     if (repsIsNumeric && (currentTop < 8 || currentTop > 12)) {
       next.reps = "8-12";
     }
-    if (!isMainLift && next.sets < 4) next.sets = next.sets + 1;
+    if (!isDurationBased && !isMainLift && next.sets < 4) next.sets = next.sets + 1;
     if (!isMainLift && next.rest && /^\d+/.test(next.rest)) {
       // Cap rest at 60s for accessories to keep density up.
       next.rest = "60s";
@@ -1172,13 +1184,23 @@ export async function generateWorkout(
         p = dedupeAgainstUsed(p, usedExerciseIds, available, rng);
       }
 
+      // Duration-based prescriptions ("20 min Z2", "45 min run", "60s hold")
+      // have a single-continuous-effort semantic — `sets` for them means
+      // "number of blocks of this duration". Bumping that turns a 20-min Z2
+      // into three separate 20-min efforts, a different session entirely.
+      // We guard every set-count adjustment below with this flag so the
+      // template's sets number is the source of truth for duration work.
+      // Block bias + weekly scheme rotation + time scaling further down still
+      // apply (they shape reps / duration intelligently, not sets).
+      const isDurationBased = /\b(min|sec)\b|\d+s(?:\/|\b)/i.test(String(p.reps));
+
       // Apply periodization wave. Main compounds follow phase.setAdjustment
       // directly (Realization +1 set, Deload -1). Accessories run the opposite
       // direction on Realization — cut a set so energy is preserved for the
       // main-lift PR attempt — and match the Deload cut.
-      if (phase && LIFT_ID_SET.has(p.exerciseId) && phase.setAdjustment !== 0) {
+      if (!isDurationBased && phase && LIFT_ID_SET.has(p.exerciseId) && phase.setAdjustment !== 0) {
         p = { ...p, sets: Math.max(1, p.sets + phase.setAdjustment) };
-      } else if (phase && !LIFT_ID_SET.has(p.exerciseId)) {
+      } else if (!isDurationBased && phase && !LIFT_ID_SET.has(p.exerciseId)) {
         const isRealization = phase.label === "Realization";
         const isDeload = phase.label === "Deload";
         if ((isRealization || isDeload) && p.sets > 2) {
@@ -1188,15 +1210,15 @@ export async function generateWorkout(
 
       // Intensity mode also adjusts volume — makes readiness feel real, not cosmetic.
       // Push: +1 set on main lifts. Easy: -1 set on accessories (never below 2).
-      if (intensity === "push" && LIFT_ID_SET.has(p.exerciseId)) {
+      if (!isDurationBased && intensity === "push" && LIFT_ID_SET.has(p.exerciseId)) {
         p = { ...p, sets: p.sets + 1 };
-      } else if (intensity === "easy" && !LIFT_ID_SET.has(p.exerciseId) && p.sets > 2) {
+      } else if (!isDurationBased && intensity === "easy" && !LIFT_ID_SET.has(p.exerciseId) && p.sets > 2) {
         p = { ...p, sets: p.sets - 1 };
       }
 
       // Feedback from the last rated session of this category. Only nudges
       // accessories, so main lifts stay a stable progression anchor.
-      if (lastRating && !LIFT_ID_SET.has(p.exerciseId)) {
+      if (!isDurationBased && lastRating && !LIFT_ID_SET.has(p.exerciseId)) {
         if (lastRating === "hard" && p.sets > 2) {
           p = { ...p, sets: p.sets - 1 };
         } else if (lastRating === "easy" && p.sets < 5) {
@@ -1209,7 +1231,7 @@ export async function generateWorkout(
       // if flagged Hard. Main lifts feel the progression edits.
       if (activeReview) {
         // Energy: 1 (drained) → -1 set on accessories; 5 (charged) → +1
-        if (!LIFT_ID_SET.has(p.exerciseId)) {
+        if (!isDurationBased && !LIFT_ID_SET.has(p.exerciseId)) {
           if (activeReview.energy <= 2 && p.sets > 2) {
             p = { ...p, sets: p.sets - 1 };
           } else if (activeReview.energy >= 4 && p.sets < 5) {
