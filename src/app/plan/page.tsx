@@ -1,11 +1,12 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import clsx from "clsx";
-import { addDays, differenceInCalendarDays, format, startOfWeek } from "date-fns";
+import { addDays, differenceInCalendarDays, differenceInCalendarWeeks, format, startOfWeek } from "date-fns";
+import DayPreviewModal from "@/components/DayPreviewModal";
 import {
   archiveCurrentFocus,
   db,
@@ -32,8 +33,15 @@ import {
   type Category,
   type PlannedDay,
   type Profile,
+  type Session,
   type WeeklyPlan,
 } from "@/lib/types";
+
+// Parse a yyyy-MM-dd as the user's local midnight (not UTC). Keeps weekday
+// math honest regardless of timezone offset.
+function parseLocalDate(s: string): Date {
+  return new Date(s + "T00:00:00");
+}
 
 // Days a user can actually train. Used to render the frequency chips and
 // to map a chosen frequency to a weekday distribution (Mon=0 ... Sun=6).
@@ -101,18 +109,44 @@ function PlanPageInner() {
     return all.filter((s) => s.finishedAt).length;
   }, [weekStartStr, weekEndStr], 0);
 
+  const router = useRouter();
   const [viewMode, setViewMode] = useState<"this-week" | "base">("this-week");
   const [hasOverride, setHasOverride] = useState(false);
-  // 0 = this week, 1 = next week, 2 = +2 weeks, up to +5. Negative = the past,
-  // not supported here — History covers "what I did", Plan is forward-only.
+  // Week offset relative to today's week: 0 = this week, +N = future, -N = past.
+  // Bounds are computed from the current focus block (if any) — can't scan
+  // past the block's start date or past its end date. Without a block, we
+  // allow a generous ±8 for free-form planning.
   const [viewedWeekOffset, setViewedWeekOffset] = useState(0);
+  const [previewDate, setPreviewDate] = useState<string | null>(null);
   const viewedMonday = addDays(thisMonday, viewedWeekOffset * 7);
   const viewedWeekStart = format(viewedMonday, "yyyy-MM-dd");
+  const viewedWeekEnd = format(addDays(viewedMonday, 7), "yyyy-MM-dd");
   const viewedDays = useLiveQuery(
     async () => (viewedWeekOffset === 0 ? null : await getWeekDaysFor(viewedWeekStart)),
     [viewedWeekStart, viewedWeekOffset],
     null
   );
+  // Sessions logged in the viewed week — used to route a past-day tap to its
+  // recap page instead of the (useless-in-the-past) day-picker.
+  const viewedSessions = useLiveQuery(
+    async () => {
+      const all = await db.sessions.where("date").between(viewedWeekStart, viewedWeekEnd, true, false).toArray();
+      return all.filter((s) => s.startedAt || s.finishedAt);
+    },
+    [viewedWeekStart, viewedWeekEnd],
+    [] as Session[]
+  );
+  const sessionByDayIdx = useMemo(() => {
+    const m = new Map<number, Session>();
+    for (const s of viewedSessions) {
+      const d = parseLocalDate(s.date);
+      const dayIdx = (d.getDay() + 6) % 7; // Mon = 0 ... Sun = 6
+      // Prefer finished sessions over drafts.
+      const existing = m.get(dayIdx);
+      if (!existing || (s.finishedAt && !existing.finishedAt)) m.set(dayIdx, s);
+    }
+    return m;
+  }, [viewedSessions]);
 
   const loadPlan = async () => {
     const base = await getWeeklyPlan();
@@ -328,6 +362,24 @@ function PlanPageInner() {
   // progress glance at the top of This Week.
   const weekTarget = plan?.days.filter((d) => d !== null).length ?? 0;
 
+  // Week-nav bounds. With a focus block we cap at the block's start and end
+  // Mondays so the ‹ › arrows stop at "beginning of this block" and "last
+  // week of this block" — no scrolling into dead air past the block. Without
+  // a block, allow ±8 weeks for free-form planning (history still covers the
+  // deeper past via its calendar).
+  const blockStartMonday = focus
+    ? startOfWeek(parseLocalDate(focus.startedAt), { weekStartsOn: 1 })
+    : null;
+  const blockEndMonday = blockStartMonday && focus
+    ? addDays(blockStartMonday, (focus.durationWeeks - 1) * 7)
+    : null;
+  const minOffset = blockStartMonday
+    ? Math.min(0, differenceInCalendarWeeks(blockStartMonday, thisMonday, { weekStartsOn: 1 }))
+    : -8;
+  const maxOffset = blockEndMonday
+    ? Math.max(0, differenceInCalendarWeeks(blockEndMonday, thisMonday, { weekStartsOn: 1 }))
+    : 5;
+
   const patternIntro =
     blockState === "active"
       ? "Tap a day to swap the workout — just this week, or every week."
@@ -472,8 +524,8 @@ function PlanPageInner() {
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setViewedWeekOffset((n) => Math.max(0, n - 1))}
-              disabled={viewedWeekOffset === 0}
+              onClick={() => setViewedWeekOffset((n) => Math.max(minOffset, n - 1))}
+              disabled={viewedWeekOffset <= minOffset}
               aria-label="Previous week"
               className="w-7 h-7 rounded-full border border-border-strong/50 text-text-muted flex items-center justify-center hover:border-text-dim disabled:opacity-25"
             >
@@ -484,11 +536,13 @@ function PlanPageInner() {
                 ? "This week"
                 : viewedWeekOffset === 1
                   ? "Next week"
-                  : `${format(viewedMonday, "MMM d")} week`}
+                  : viewedWeekOffset === -1
+                    ? "Last week"
+                    : `${format(viewedMonday, "MMM d")} week`}
             </h2>
             <button
-              onClick={() => setViewedWeekOffset((n) => Math.min(5, n + 1))}
-              disabled={viewedWeekOffset >= 5}
+              onClick={() => setViewedWeekOffset((n) => Math.min(maxOffset, n + 1))}
+              disabled={viewedWeekOffset >= maxOffset}
               aria-label="Next week"
               className="w-7 h-7 rounded-full border border-border-strong/50 text-text-muted flex items-center justify-center hover:border-text-dim disabled:opacity-25"
             >
@@ -518,13 +572,28 @@ function PlanPageInner() {
         <p className="text-xs text-text-dim leading-relaxed">
           {viewedWeekOffset === 0
             ? patternIntro
-            : "Preview — shows this week's pattern or any saved overrides. Edit from This week."}
+            : viewedWeekOffset < 0
+              ? "Tap a day to see what you actually did."
+              : "Tap a day to preview the planned workout."}
         </p>
 
         <div className="space-y-2 pt-1">
           {(viewedWeekOffset === 0 ? plan.days : viewedDays ?? plan.days).map((day, i) => {
             const isToday = viewedWeekOffset === 0 && i === todayIdx;
-            const isEditable = viewedWeekOffset === 0;
+            const rowDate = addDays(viewedMonday, i);
+            const rowDateStr = format(rowDate, "yyyy-MM-dd");
+            const session = sessionByDayIdx.get(i);
+            // Three distinct roles for a row tap:
+            //   past weeks → open the session recap if logged, else quietly
+            //                a plan preview (user may still want to peek)
+            //   this week  → open the DayPicker (edit)
+            //   future     → open the DayPreviewModal (peek)
+            const role: "past-recap" | "past-nothing" | "edit" | "preview" =
+              viewedWeekOffset < 0
+                ? (session && session.id !== undefined ? "past-recap" : "past-nothing")
+                : viewedWeekOffset === 0
+                  ? "edit"
+                  : "preview";
             const lockedTemplate = day?.templateId
               ? templatesFor(day.category).find((t) => t.id === day.templateId)
               : null;
@@ -538,6 +607,11 @@ function PlanPageInner() {
                   {isToday && (
                     <div className="text-[9px] mt-1 font-medium uppercase tracking-[0.18em] text-accent">
                       Today
+                    </div>
+                  )}
+                  {role === "past-recap" && !isToday && (
+                    <div className="text-[9px] mt-1 font-medium uppercase tracking-[0.18em] text-success">
+                      Done
                     </div>
                   )}
                 </div>
@@ -566,29 +640,45 @@ function PlanPageInner() {
                     <div className="text-sm text-text-dim">Rest day</div>
                   )}
                 </div>
-                {isEditable && <span className="text-text-dim text-sm shrink-0">›</span>}
+                {role !== "past-nothing" && (
+                  <span className="text-text-dim text-sm shrink-0">›</span>
+                )}
               </>
             );
-            return isEditable ? (
+            const baseClasses = clsx(
+              "w-full text-left flex items-center gap-4 rounded-2xl border p-4 transition-colors",
+              isToday
+                ? "border-accent/50 bg-text/[0.03]"
+                : role === "past-recap"
+                  ? "border-success/30 hover:border-success/50"
+                  : "border-border-strong/40 hover:border-text-dim"
+            );
+            if (role === "past-nothing") {
+              return (
+                <div
+                  key={i}
+                  className={clsx(baseClasses, "opacity-60 cursor-default hover:border-border-strong/40")}
+                >
+                  {content}
+                </div>
+              );
+            }
+            return (
               <button
                 key={i}
-                onClick={() => setEditingDay(i)}
-                className={clsx(
-                  "w-full text-left flex items-center gap-4 rounded-2xl border p-4 transition-colors",
-                  isToday
-                    ? "border-accent/50 bg-text/[0.03]"
-                    : "border-border-strong/40 hover:border-text-dim"
-                )}
+                onClick={() => {
+                  if (role === "past-recap" && session?.id !== undefined) {
+                    router.push(`/history/${session.id}`);
+                  } else if (role === "edit") {
+                    setEditingDay(i);
+                  } else if (role === "preview") {
+                    setPreviewDate(rowDateStr);
+                  }
+                }}
+                className={baseClasses}
               >
                 {content}
               </button>
-            ) : (
-              <div
-                key={i}
-                className="w-full text-left flex items-center gap-4 rounded-2xl border p-4 border-border-strong/40"
-              >
-                {content}
-              </div>
             );
           })}
         </div>
@@ -612,6 +702,19 @@ function PlanPageInner() {
           current={plan.days[editingDay]}
           onPick={(d, scope) => setDay(editingDay, d, scope)}
           onClose={() => setEditingDay(null)}
+        />
+      )}
+
+      {previewDate && profile && (
+        <DayPreviewModal
+          date={previewDate}
+          day={
+            (viewedDays ?? plan.days)[
+              (parseLocalDate(previewDate).getDay() + 6) % 7
+            ]
+          }
+          profile={profile}
+          onClose={() => setPreviewDate(null)}
         />
       )}
 
