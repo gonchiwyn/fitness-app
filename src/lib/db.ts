@@ -1,6 +1,6 @@
 import Dexie, { type Table } from "dexie";
 import type { Benchmark, CompletedBlock, PlannedDay, Profile, Session, WeeklyPlan, WeeklyReview, WeekOverride } from "./types";
-import { dateToPlanIndex, normalizePlannedDay } from "./types";
+import { dateToPlanIndex, normalizePlannedDay, parseDateOnly } from "./types";
 import {
   GENERIC_PROFILE,
   GENERIC_WEEKLY_PLAN,
@@ -285,21 +285,61 @@ export async function pauseFocusBlock(): Promise<void> {
   });
 }
 
-/** Resume a paused block. Shifts startedAt forward by the pause duration so
- *  the block picks up exactly where it was (same week, same phase). */
+/** Resume a paused block.
+ *
+ *  Shifts BOTH the block's startedAt AND every not-yet-reached week override
+ *  forward by the same number of whole weeks, so the periodization wave and
+ *  the planned weeks stay aligned.
+ *
+ *  Previously only startedAt moved. Week overrides are keyed to fixed
+ *  calendar Mondays saved at apply time, so a 1-week pause slid the phase
+ *  wave forward while leaving the planned weeks behind — the header would
+ *  read "Week 6 · Deload" while the days fell through to the base plan
+ *  (e.g. a Hyrox Strength day on what should be a deload Monday).
+ *
+ *  Shifts are in WHOLE WEEKS (rounded) because overrides must stay keyed to
+ *  Mondays. A 2-day pause rounds to 0 — your week just continues. A 6-9 day
+ *  pause rounds to 1 week. */
 export async function resumeFocusBlock(): Promise<void> {
   const current = await getProfile();
   const focus = current.currentFocus;
   if (!focus || !focus.pausedAt) return;
-  const pausedDate = new Date(focus.pausedAt + "T00:00:00");
-  const today = new Date();
-  const pauseDays = Math.max(
+
+  const pausedMonday = mondayOf(parseDateOnly(focus.pausedAt));
+  const resumeMonday = mondayOf(new Date());
+  const weeksSkipped = Math.max(
     0,
-    Math.floor((today.getTime() - pausedDate.getTime()) / 86400000)
+    Math.round(calendarDaysBetween(resumeMonday, pausedMonday) / 7)
   );
-  const start = new Date(focus.startedAt + "T00:00:00");
-  start.setDate(start.getDate() + pauseDays);
-  const newStartedAt = start.toISOString().slice(0, 10);
+  const shiftDays = weeksSkipped * 7;
+
+  let newStartedAt = focus.startedAt;
+  if (shiftDays > 0) {
+    const start = parseDateOnly(focus.startedAt);
+    start.setDate(start.getDate() + shiftDays);
+    newStartedAt = formatDateOnly(start);
+
+    // Slide every override at or after the pause point. Walk latest-first so
+    // a shifted record never collides with one still waiting to move
+    // (weekStartDate is a unique index).
+    const pausedMondayStr = formatDateOnly(pausedMonday);
+    const toShift = (await db.weekOverrides.toArray())
+      .filter((o) => o.weekStartDate >= pausedMondayStr)
+      .sort((a, b) => b.weekStartDate.localeCompare(a.weekStartDate));
+    for (const o of toShift) {
+      const d = parseDateOnly(o.weekStartDate);
+      d.setDate(d.getDate() + shiftDays);
+      const nextStart = formatDateOnly(d);
+      if (o.id !== undefined) await db.weekOverrides.delete(o.id);
+      await db.weekOverrides.where("weekStartDate").equals(nextStart).delete();
+      await db.weekOverrides.put({
+        weekStartDate: nextStart,
+        days: o.days,
+        updatedAt: Date.now(),
+      });
+    }
+  }
+
   await db.profile.put({
     ...current,
     currentFocus: {
@@ -308,6 +348,91 @@ export async function resumeFocusBlock(): Promise<void> {
       pausedAt: undefined,
     },
   });
+}
+
+/** Monday of the week containing `d`, at local midnight. */
+function mondayOf(d: Date): Date {
+  const out = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const back = (out.getDay() + 6) % 7;
+  out.setDate(out.getDate() - back);
+  return out;
+}
+
+/** yyyy-MM-dd in LOCAL time — never toISOString(), which shifts the date in
+ *  any non-UTC timezone. */
+function formatDateOnly(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function calendarDaysBetween(later: Date, earlier: Date): number {
+  const a = new Date(later.getFullYear(), later.getMonth(), later.getDate());
+  const b = new Date(earlier.getFullYear(), earlier.getMonth(), earlier.getDate());
+  return Math.round((a.getTime() - b.getTime()) / 86400000);
+}
+
+/**
+ * Slide the PLANNED WEEKS (week overrides) forward (+) or back (−) by whole
+ * weeks, leaving the block's startedAt — and therefore the periodization
+ * phase — exactly where it is.
+ *
+ * This is the realign tool, not the reschedule tool:
+ *   - Going away / losing a week → Pause + Resume. That shifts the phase AND
+ *     the planned weeks together, so the whole block slides.
+ *   - Phase and planned weeks disagree → this. It moves the week content onto
+ *     the dates the phase already thinks you're on.
+ *
+ * The desync it repairs: blocks paused before resumeFocusBlock learned to
+ * move overrides alongside startedAt. Those blocks ended up with the phase
+ * reading "Week 6 · Deload" while the deload week itself sat a week behind,
+ * so the current week fell through to the base plan.
+ *
+ * Returns how many week-plans actually moved.
+ */
+export async function shiftPlanWeeks(weeks: number): Promise<number> {
+  if (!Number.isInteger(weeks) || weeks === 0) return 0;
+  const shiftDays = weeks * 7;
+  const thisMondayStr = formatDateOnly(mondayOf(new Date()));
+
+  // Include an override when its DESTINATION is this week or later. Filtering
+  // on the source date instead would miss the case this exists to repair: a
+  // plan running a week behind, where the week that should be current is
+  // parked on last week's Monday. Shifting back still can't drag the current
+  // week into the past, since its destination would fall before this Monday.
+  //
+  // Move the furthest-out weeks first when shifting forward (and the nearest
+  // first when shifting back) so a moved record never lands on one that
+  // hasn't moved yet — weekStartDate is a unique index.
+  const affected = (await db.weekOverrides.toArray())
+    .filter((o) => {
+      const dest = parseDateOnly(o.weekStartDate);
+      dest.setDate(dest.getDate() + shiftDays);
+      return formatDateOnly(dest) >= thisMondayStr;
+    })
+    .sort((a, b) =>
+      weeks > 0
+        ? b.weekStartDate.localeCompare(a.weekStartDate)
+        : a.weekStartDate.localeCompare(b.weekStartDate)
+    );
+
+  for (const o of affected) {
+    const d = parseDateOnly(o.weekStartDate);
+    d.setDate(d.getDate() + shiftDays);
+    const nextStart = formatDateOnly(d);
+    if (o.id !== undefined) await db.weekOverrides.delete(o.id);
+    await db.weekOverrides.where("weekStartDate").equals(nextStart).delete();
+    await db.weekOverrides.put({
+      weekStartDate: nextStart,
+      days: o.days,
+      updatedAt: Date.now(),
+    });
+  }
+
+  // startedAt is deliberately untouched — moving it would drag the phase
+  // along and re-create the very mismatch this repairs.
+  return affected.length;
 }
 
 export async function recentSessions(limit = 30): Promise<Session[]> {

@@ -19,6 +19,7 @@ import {
   saveProfile,
   saveWeeklyPlan,
   saveWeekOverride,
+  shiftPlanWeeks,
 } from "@/lib/db";
 import { templatesFor } from "@/lib/data/templates";
 import { BLOCK_PRESETS, PRESET_GROUPS, visiblePresets, type BlockPreset } from "@/lib/data/presets";
@@ -30,7 +31,9 @@ import {
   CATEGORY_LABELS,
   DAY_LABELS_LONG,
   dateToPlanIndex,
+  blockWeekNumber,
   effectiveFocusToday,
+  parseDateOnly,
   type Category,
   type PlannedDay,
   type Profile,
@@ -330,6 +333,24 @@ function PlanPageInner() {
     setProfile((p) => (p ? { ...p, currentFocus: undefined } : p));
   };
 
+  // Realign: slide the planned week CONTENT onto the dates the phase already
+  // thinks you're on. Leaves startedAt (and the phase) alone — for sliding
+  // the whole block, Pause + Resume is the right tool.
+  const shiftWeeks = async (weeks: number) => {
+    const dir = weeks > 0 ? "later" : "earlier";
+    if (
+      !confirm(
+        `Move your planned weeks 1 week ${dir}? The block's week counter and phase stay as they are — this only moves which week's workouts land on which dates.`
+      )
+    )
+      return;
+    const moved = await shiftPlanWeeks(weeks);
+    await loadPlan();
+    if (moved === 0) {
+      alert("Nothing to move — no planned weeks would land on this week or later.");
+    }
+  };
+
   const togglePause = async () => {
     if (!profile?.currentFocus) return;
     const paused = !!profile.currentFocus.pausedAt;
@@ -354,11 +375,8 @@ function PlanPageInner() {
   let progressPct = 0;
   if (focus) {
     const effToday = effectiveFocusToday(focus);
-    const daysIn = Math.max(
-      0,
-      differenceInCalendarDays(effToday, new Date(focus.startedAt))
-    );
-    weekNum = Math.floor(daysIn / 7) + 1;
+    weekNum = blockWeekNumber(focus.startedAt, effToday);
+    const daysIn = Math.max(0, (weekNum - 1) * 7);
     const totalDays = focus.durationWeeks * 7;
     progressPct = Math.min(100, Math.round((daysIn / totalDays) * 100));
     blockState = weekNum > focus.durationWeeks ? "completed" : "active";
@@ -472,8 +490,27 @@ function PlanPageInner() {
               {isPaused ? "Resume" : "Pause"}
             </button>
           </div>
+          {/* Realign the week CONTENT against the phase. Distinct from
+              Pause/Resume, which slides the whole block (phase included). */}
+          <div className="flex items-center justify-between gap-3 pt-1">
+            <span className="text-[11px] text-text-dim">Wrong week showing?</span>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => shiftWeeks(-1)}
+                className="h-7 px-2.5 rounded-full border border-border-strong/40 text-[11px] text-text-muted hover:border-text-dim hover:text-text transition-colors"
+              >
+                ← Back
+              </button>
+              <button
+                onClick={() => shiftWeeks(1)}
+                className="h-7 px-2.5 rounded-full border border-border-strong/40 text-[11px] text-text-muted hover:border-text-dim hover:text-text transition-colors"
+              >
+                Forward →
+              </button>
+            </div>
+          </div>
           <div className="flex items-center justify-between text-[10px] text-text-dim tracking-normal font-medium pt-1">
-            <span>Started {format(new Date(focus.startedAt), "MMM d")}</span>
+            <span>Started {format(parseDateOnly(focus.startedAt), "MMM d")}</span>
             <button
               onClick={endBlock}
               className="hover:text-danger"
@@ -603,21 +640,25 @@ function PlanPageInner() {
             // the day-picker just because we're still looking at this week.
             const isPastDate =
               differenceInCalendarDays(rowDate, parseLocalDate(format(new Date(), "yyyy-MM-dd"))) < 0;
-            // Four distinct tap roles:
+            // Five distinct tap roles, by what the user most likely wants:
             //   recap     — there's a logged session on this date
-            //   log-retro — past date, no session; opens QuickLogModal so the
-            //               user can retroactively log what they actually did
-            //   edit      — today / future day in the current week; opens
-            //               DayPicker to shape or change the plan
-            //   preview   — future week; opens DayPreviewModal to peek
-            const role: "recap" | "log-retro" | "edit" | "preview" =
+            //   log-retro — past date, no session; QuickLogModal to backfill
+            //   start     — TODAY with nothing logged; open the workout. You
+            //               tap today because you want to DO it, not re-plan
+            //               it. (Changing today's plan still works from the
+            //               workout page's own "Change" button.)
+            //   edit      — future day in the current week; DayPicker to shape
+            //   preview   — future week; DayPreviewModal to peek
+            const role: "recap" | "log-retro" | "start" | "edit" | "preview" =
               session && session.id !== undefined
                 ? "recap"
                 : isPastDate
                   ? "log-retro"
                   : viewedWeekOffset > 0
                     ? "preview"
-                    : "edit";
+                    : isToday && day
+                      ? "start"
+                      : "edit";
             const lockedTemplate = day?.templateId
               ? templatesFor(day.category).find((t) => t.id === day.templateId)
               : null;
@@ -680,25 +721,49 @@ function PlanPageInner() {
                   ? "border-success/30 hover:border-success/50"
                   : "border-border-strong/40 hover:border-text-dim"
             );
-            return (
+            const rowButton = (
               <button
-                key={i}
                 onClick={() => {
                   if (role === "recap" && session?.id !== undefined) {
                     router.push(`/history/${session.id}`);
                   } else if (role === "log-retro") {
                     setLogDate(rowDateStr);
+                  } else if (role === "start" && day) {
+                    router.push(
+                      day.templateId
+                        ? `/workout/${day.category}?template=${day.templateId}`
+                        : `/workout/${day.category}`
+                    );
                   } else if (role === "edit") {
                     setEditingDay(i);
                   } else if (role === "preview") {
                     setPreviewDate(rowDateStr);
                   }
                 }}
-                className={baseClasses}
+                className={clsx(baseClasses, role === "start" && "rounded-r-none")}
               >
                 {content}
               </button>
             );
+            // Today's row does two jobs: the row itself opens the workout
+            // (what you usually want), and a separate Edit button swaps what's
+            // planned. Without the second affordance there'd be no way to
+            // change today's plan from the Plan tab at all.
+            if (role === "start") {
+              return (
+                <div key={i} className="flex items-stretch">
+                  <div className="flex-1 min-w-0">{rowButton}</div>
+                  <button
+                    onClick={() => setEditingDay(i)}
+                    aria-label="Change today's workout"
+                    className="shrink-0 px-4 rounded-r-2xl border border-l-0 border-accent/50 bg-text/[0.03] text-[11px] text-text-dim hover:text-text transition-colors"
+                  >
+                    Edit
+                  </button>
+                </div>
+              );
+            }
+            return <div key={i}>{rowButton}</div>;
           })}
         </div>
       </section>
@@ -1061,7 +1126,7 @@ function PhaseOutline({
                       : "border-border-strong/40 text-text-dim hover:border-text-dim"
               )}
             >
-              W{i + 1} · {p.label.slice(0, 3).toUpperCase()}
+              W{i + 1} · {p.label}
             </button>
           );
         })}

@@ -16,6 +16,7 @@ import {
   CORE_FOCUS_LABELS,
   EQUIPMENT_PRESET_INCLUDES,
   getBlockPhase,
+  parseDateOnly,
   EXERCISE_TO_BENCHMARK,
   TRACKED_LIFTS,
   type Category,
@@ -472,7 +473,7 @@ export default function WorkoutForCategory({
             {session.name.split(" — ")[1] ?? session.name}
           </h1>
           <div className="text-sm text-text-muted mt-1.5">
-            {format(new Date(session.date), "EEEE, MMM d")}
+            {format(parseDateOnly(session.date), "EEEE, MMM d")}
             {session.modifiers?.timeMinutes ? ` · ${session.modifiers.timeMinutes} min` : ""}
           </div>
         </div>
@@ -487,7 +488,7 @@ export default function WorkoutForCategory({
         // tomorrow's planned workout shouldn't say "Week 5" if tomorrow is
         // the first day of Week 6 (and a deload). Falls back to today for
         // dateless sessions so the live block hero still works.
-        const asOf = session.date ? new Date(session.date + "T00:00:00") : new Date();
+        const asOf = session.date ? parseDateOnly(session.date) : new Date();
         const livePhase =
           focus?.startedAt && focus.durationWeeks
             ? getBlockPhase(focus.startedAt, focus.durationWeeks, asOf)

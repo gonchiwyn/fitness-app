@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { format, startOfWeek, addDays, differenceInCalendarDays } from "date-fns";
+import { format, startOfWeek, addDays } from "date-fns";
 import { useLiveQuery } from "dexie-react-hooks";
 import clsx from "clsx";
 import { cleanupStaleDrafts, db, getProfile, getWeeklyPlan } from "@/lib/db";
@@ -19,6 +19,7 @@ import {
   DAY_LABELS_SHORT,
   chipShortLabel,
   dateToPlanIndex,
+  blockWeekNumber,
   effectiveFocusToday,
   getBlockPhase,
   normalizePlannedDay,
@@ -264,11 +265,11 @@ export default function HomePage() {
       {profile?.currentFocus && (
         (() => {
           const focus = profile.currentFocus;
-          const daysIn = Math.max(
-            0,
-            differenceInCalendarDays(new Date(), new Date(focus.startedAt))
-          );
-          const weekNum = Math.floor(daysIn / 7) + 1;
+          // Must use effectiveFocusToday, not raw today — while a block is
+          // PAUSED the week counter freezes at pausedAt. Reading real today
+          // here made the block-complete card and last-week banner keep
+          // advancing while the context card right above them stayed frozen.
+          const weekNum = blockWeekNumber(focus.startedAt, effectiveFocusToday(focus));
           const isDone = weekNum > focus.durationWeeks;
           const isLastWeek = !isDone && weekNum === focus.durationWeeks;
           return (
@@ -477,8 +478,7 @@ function ContextCard({
     );
   }
   const effToday = effectiveFocusToday(focus);
-  const daysIn = Math.max(0, differenceInCalendarDays(effToday, new Date(focus.startedAt)));
-  const weekNum = Math.floor(daysIn / 7) + 1;
+  const weekNum = blockWeekNumber(focus.startedAt, effToday);
   const complete = weekNum > focus.durationWeeks;
   const phase = complete
     ? null

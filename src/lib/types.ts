@@ -645,14 +645,43 @@ export function effectiveFocusToday(
 // Applied always when a focus block is active — this is how programs actually work.
 // Wave adapts to block duration: last week is always Deload, second-to-last is
 // Realization, first third is Accumulation, the middle is Intensification.
+// Parse a yyyy-MM-dd string as LOCAL midnight. `new Date("2026-10-20")`
+// parses as UTC midnight, which in any negative-offset timezone (the
+// Americas) lands on the PREVIOUS calendar day locally — that produced an
+// off-by-one week number between surfaces that used the bare constructor
+// and surfaces that appended "T00:00:00". Every date-only string in the app
+// goes through here.
+export function parseDateOnly(s: string): Date {
+  return new Date(s + "T00:00:00");
+}
+
+// Whole calendar days between two dates, ignoring time-of-day and DST.
+// Mirrors date-fns differenceInCalendarDays without the import (types.ts is
+// dependency-free on purpose).
+function calendarDaysBetween(later: Date, earlier: Date): number {
+  const a = new Date(later.getFullYear(), later.getMonth(), later.getDate());
+  const b = new Date(earlier.getFullYear(), earlier.getMonth(), earlier.getDate());
+  return Math.round((a.getTime() - b.getTime()) / 86400000);
+}
+
+// Week number within a block, 1-indexed, for a given day. NOT clamped to the
+// block duration — callers rely on `weekNum > durationWeeks` to detect a
+// finished block. Single source of truth: Home, Plan, and the workout header
+// all call this so they can't drift apart.
+export function blockWeekNumber(
+  startDate: string,
+  today: Date = new Date()
+): number {
+  const daysSince = Math.max(0, calendarDaysBetween(today, parseDateOnly(startDate)));
+  return Math.floor(daysSince / 7) + 1;
+}
+
 export function getBlockPhase(
   startDate: string,
   durationWeeks: number,
   today: Date = new Date()
 ): CyclePhase {
-  const start = new Date(startDate + "T00:00:00");
-  const daysSince = Math.max(0, Math.floor((today.getTime() - start.getTime()) / 86400000));
-  const weekInBlock = Math.min(durationWeeks, Math.floor(daysSince / 7) + 1);
+  const weekInBlock = Math.min(durationWeeks, blockWeekNumber(startDate, today));
   const weeksLeft = durationWeeks - weekInBlock;
 
   const ACCUMULATION: Omit<CyclePhase, "weekInCycle"> = {
