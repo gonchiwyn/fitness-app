@@ -63,7 +63,7 @@ export default function TemplatePicker({
       >
         <div className="flex items-start justify-between mb-5">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+            <div className="text-[11px] tracking-normal text-text-dim font-medium">
               Pick a session
             </div>
             <h3 className="text-xl font-medium tracking-[-0.02em] tracking-tight text-text mt-1">
@@ -81,7 +81,7 @@ export default function TemplatePicker({
 
         {/* Level chips — filters + saves preference per category */}
         <div className="mb-5">
-          <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium mb-2.5">
+          <div className="text-[11px] tracking-normal text-text-dim font-medium mb-2.5">
             Your level
           </div>
           <div className="grid grid-cols-3 gap-2">
@@ -118,7 +118,7 @@ export default function TemplatePicker({
         </button>
 
         {filtered.length > 0 && (
-          <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium pt-4 pb-2 px-1">
+          <div className="text-[11px] tracking-normal text-text-dim font-medium pt-4 pb-2 px-1">
             Or pick a specific session
           </div>
         )}
@@ -140,7 +140,7 @@ export default function TemplatePicker({
                 <div className="font-medium flex items-center gap-2 text-text">
                   <span>{t.name}</span>
                   {t.complexity && t.complexity !== "comfortable" && (
-                    <span className="text-[9px] uppercase tracking-[0.2em] text-text-dim">
+                    <span className="text-[10px] tracking-normal text-text-dim">
                       {t.complexity}
                     </span>
                   )}
@@ -160,7 +160,7 @@ export default function TemplatePicker({
           <Link
             href={switchCategoryHref}
             onClick={onClose}
-            className="block text-center text-[11px] text-accent mt-5 pt-4 border-t border-border-strong/30 uppercase tracking-[0.18em] font-medium"
+            className="block text-center text-[11px] text-accent mt-5 pt-4 border-t border-border-strong/30 tracking-normal font-medium"
           >
             Change day type
           </Link>

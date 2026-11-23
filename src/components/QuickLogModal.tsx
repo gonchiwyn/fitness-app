@@ -95,7 +95,7 @@ export default function QuickLogModal({
       >
         <div className="flex items-start justify-between mb-5">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+            <div className="text-[11px] tracking-normal text-text-dim font-medium">
               {existingForDate && existingForDate.length > 0 ? "Edit the day" : "Log a session"}
             </div>
             <h3 className="text-xl font-medium tracking-[-0.02em] tracking-tight text-text mt-1">
@@ -118,7 +118,7 @@ export default function QuickLogModal({
 
         {stage === "category" && existingForDate && existingForDate.length > 0 && (
           <div className="mb-5 space-y-2">
-            <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+            <div className="text-[11px] tracking-normal text-text-dim font-medium">
               Already logged
             </div>
             {existingForDate.map((s) => {
@@ -139,7 +139,7 @@ export default function QuickLogModal({
                       <div className="text-[11px] text-text-dim mt-0.5">
                         {CATEGORY_LABELS[s.category]}
                         {s.finishedAt && (
-                          <span className="uppercase tracking-[0.18em] ml-1.5">· Done</span>
+                          <span className="tracking-normal ml-1.5">· Done</span>
                         )}
                       </div>
                     </div>
@@ -160,7 +160,7 @@ export default function QuickLogModal({
 
         {stage === "category" && recent && recent.length > 0 && (
           <div className="mb-5 space-y-2">
-            <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+            <div className="text-[11px] tracking-normal text-text-dim font-medium">
               Recent
             </div>
             {recent.map((r, i) => {
@@ -186,7 +186,7 @@ export default function QuickLogModal({
                       </div>
                     </div>
                   </div>
-                  <span className="text-[10px] uppercase tracking-[0.18em] text-accent font-medium shrink-0">
+                  <span className="text-[11px] tracking-normal text-accent font-medium shrink-0">
                     Log
                   </span>
                 </button>
@@ -197,7 +197,7 @@ export default function QuickLogModal({
 
         {stage === "category" && (
           <>
-            <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium mb-2.5">
+            <div className="text-[11px] tracking-normal text-text-dim font-medium mb-2.5">
               Or pick a category
             </div>
             <div className="space-y-2">
@@ -241,7 +241,7 @@ export default function QuickLogModal({
           <>
             <button
               onClick={() => setStage("category")}
-              className="text-[11px] uppercase tracking-[0.18em] text-text-dim mb-3 hover:text-text font-medium"
+              className="text-[12px] tracking-normal text-text-dim mb-3 hover:text-text font-medium"
             >
               ← Change category
             </button>
@@ -259,7 +259,7 @@ export default function QuickLogModal({
               </button>
 
               {templates.length > 0 && (
-                <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium pt-3 pb-1 px-1">
+                <div className="text-[11px] tracking-normal text-text-dim font-medium pt-3 pb-1 px-1">
                   Or pick the specific session
                 </div>
               )}

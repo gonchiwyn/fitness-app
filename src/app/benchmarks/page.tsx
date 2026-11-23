@@ -49,10 +49,10 @@ export default function BenchmarksPage() {
   return (
     <div className="max-w-3xl mx-auto px-5 py-6 space-y-6">
       <header>
-        <div className="flex items-center gap-3 text-[11px] uppercase tracking-[0.18em] text-text-dim mb-3 font-medium">
+        <div className="flex items-center gap-3 text-[12px] tracking-normal text-text-dim mb-3 font-medium">
           <Link href="/settings" className="hover:text-text">← Profile</Link>
         </div>
-        <p className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">
+        <p className="text-[12px] tracking-normal text-text-dim font-medium">
           Retest to know
         </p>
         <h1 className="text-[2.125rem] font-medium tracking-[-0.03em] leading-[1] mt-1.5 text-text">
@@ -65,7 +65,7 @@ export default function BenchmarksPage() {
 
       {groups.map((g) => (
         <section key={g.name} className="space-y-3">
-          <h2 className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+          <h2 className="text-[11px] tracking-normal text-text-dim font-medium">
             {g.name}
           </h2>
           <div className="space-y-2">
@@ -91,17 +91,17 @@ export default function BenchmarksPage() {
                           <div className="text-2xl font-medium tracking-[-0.02em] text-text tabular-nums leading-none">
                             {formatBenchmarkValue(info.best.value, meta)}
                             {meta.format !== "duration" && (
-                              <span className="text-[10px] uppercase tracking-[0.18em] text-text-dim ml-1.5 font-medium">
+                              <span className="text-[11px] tracking-normal text-text-dim ml-1.5 font-medium">
                                 {meta.unit}
                               </span>
                             )}
                           </div>
-                          <div className="text-[10px] uppercase tracking-[0.18em] text-text-dim mt-1.5 font-medium">
+                          <div className="text-[11px] tracking-normal text-text-dim mt-1.5 font-medium">
                             best · {format(parseISO(info.best.date), "MMM d")}
                           </div>
                         </>
                       ) : (
-                        <span className="text-[10px] uppercase tracking-[0.18em] text-text-dim font-medium">
+                        <span className="text-[11px] tracking-normal text-text-dim font-medium">
                           not tested
                         </span>
                       )}
@@ -174,7 +174,7 @@ function LogModal({
       >
         <div className="flex items-start justify-between mb-5">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+            <div className="text-[11px] tracking-normal text-text-dim font-medium">
               New benchmark
             </div>
             <h3 className="text-xl font-medium tracking-[-0.02em] tracking-tight text-text mt-1">
@@ -204,13 +204,13 @@ function LogModal({
                 autoFocus
                 className="flex-1 h-12 px-4 bg-transparent border border-border-strong/40 rounded-full text-center text-base tabular-nums focus:outline-none focus:border-accent/60 placeholder:text-text-dim"
               />
-              <span className="text-[11px] uppercase tracking-[0.18em] text-text-dim font-medium">
+              <span className="text-[12px] tracking-normal text-text-dim font-medium">
                 {meta.unit}
               </span>
             </div>
           )}
           {meta.format === "duration" && parsed !== null && parsed > 0 && (
-            <div className="text-center text-[11px] uppercase tracking-[0.18em] text-text-dim font-medium tabular-nums">
+            <div className="text-center text-[12px] tracking-normal text-text-dim font-medium tabular-nums">
               = {formatDuration(parsed)}
             </div>
           )}
@@ -310,7 +310,7 @@ function DurationInput({ value, onChange }: { value: string; onChange: (v: strin
         <div className="text-center">
           <button
             onClick={() => setShowHour(true)}
-            className="text-[10px] uppercase tracking-[0.18em] text-text-dim hover:text-text font-medium"
+            className="text-[11px] tracking-normal text-text-dim hover:text-text font-medium"
           >
             + add hours
           </button>
@@ -343,7 +343,7 @@ function NumField({
         autoFocus={autoFocus}
         className="w-20 h-14 bg-transparent border border-border-strong/40 rounded-xl text-center text-2xl font-medium tabular-nums focus:outline-none focus:border-accent/60 placeholder:text-text-dim"
       />
-      <span className="text-[9px] uppercase tracking-[0.22em] text-text-dim font-medium mt-1">
+      <span className="text-[10px] tracking-normal text-text-dim font-medium mt-1">
         {label}
       </span>
     </div>

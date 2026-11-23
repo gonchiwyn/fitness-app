@@ -53,7 +53,7 @@ export default function ModifierPanel({
       {open && (
         <div className="border-t border-border-strong/30 p-4 space-y-5">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium mb-2.5">
+            <div className="text-[11px] tracking-normal text-text-dim font-medium mb-2.5">
               Time available
             </div>
             <div className="flex gap-2 flex-wrap">
@@ -70,7 +70,7 @@ export default function ModifierPanel({
           </div>
 
           <div>
-            <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium mb-2.5">
+            <div className="text-[11px] tracking-normal text-text-dim font-medium mb-2.5">
               Equipment
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -88,7 +88,7 @@ export default function ModifierPanel({
           </div>
 
           <div>
-            <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium mb-2.5">
+            <div className="text-[11px] tracking-normal text-text-dim font-medium mb-2.5">
               Rehab mode (zone is bothering me)
             </div>
             <div className="flex gap-2 flex-wrap">

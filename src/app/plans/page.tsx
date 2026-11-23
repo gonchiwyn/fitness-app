@@ -48,10 +48,10 @@ function PlansLibraryInner() {
   return (
     <div className="max-w-3xl mx-auto px-5 py-6 space-y-8">
       <header>
-        <div className="flex items-center gap-3 text-[11px] uppercase tracking-[0.18em] text-text-dim mb-3 font-medium">
+        <div className="flex items-center gap-3 text-[12px] tracking-normal text-text-dim mb-3 font-medium">
           <Link href="/plan" className="hover:text-text">← Plan</Link>
         </div>
-        <p className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">
+        <p className="text-[12px] tracking-normal text-text-dim font-medium">
           Every block
         </p>
         <h1 className="text-[2.125rem] font-medium tracking-[-0.03em] leading-[1] mt-1.5 text-text">
@@ -67,7 +67,7 @@ function PlansLibraryInner() {
       {groups.map((g) => (
         g.presets.length === 0 ? null : (
           <section key={g.id} className="space-y-3">
-            <h2 className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+            <h2 className="text-[11px] tracking-normal text-text-dim font-medium">
               {g.label}
             </h2>
             <div className="grid gap-3">
@@ -121,7 +121,7 @@ function PresetCard({ preset }: { preset: BlockPreset }) {
             );
           })}
         </div>
-        <div className="text-[10px] uppercase tracking-[0.18em] text-text-dim font-medium tabular-nums">
+        <div className="text-[11px] tracking-normal text-text-dim font-medium tabular-nums">
           {preset.durationWeeks}wk · {trainingCount} days/wk
         </div>
       </div>

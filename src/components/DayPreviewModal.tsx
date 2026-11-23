@@ -89,7 +89,7 @@ export default function DayPreviewModal({
       >
         <div className="flex items-start justify-between mb-5">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.22em] text-accent font-medium">
+            <div className="text-[11px] tracking-normal text-accent font-medium">
               Preview
             </div>
             <h3 className="text-xl font-medium tracking-[-0.02em] tracking-tight text-text mt-1">
@@ -119,7 +119,7 @@ export default function DayPreviewModal({
           // peek modal. The user already knows what Push Day looks like —
           // they don't want to read 8 block breakdowns here.
           <div className="space-y-3">
-            <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+            <div className="text-[11px] tracking-normal text-text-dim font-medium">
               {CATEGORY_LABELS[day.category]}
             </div>
             <div className="text-xl font-medium tracking-[-0.02em] text-text leading-tight">
@@ -130,7 +130,7 @@ export default function DayPreviewModal({
                 {workout.philosophy}
               </p>
             )}
-            <div className="text-[11px] uppercase tracking-[0.18em] text-text-dim pt-1 font-medium tabular-nums">
+            <div className="text-[12px] tracking-normal text-text-dim pt-1 font-medium tabular-nums">
               ~{workout.estimatedDurationMin ?? 60} min
               {workout.blocks.filter((b) => !/warmup|cooldown/i.test(b.title)).length > 0 && (
                 <span>
@@ -174,7 +174,7 @@ export default function DayPreviewModal({
 function SportDayPreview() {
   return (
     <div className="space-y-3">
-      <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+      <div className="text-[11px] tracking-normal text-text-dim font-medium">
         Sport day
       </div>
       <p className="text-sm text-text-muted leading-relaxed">

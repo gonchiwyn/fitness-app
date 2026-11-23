@@ -1201,7 +1201,7 @@ export async function generateWorkout(
       if (!isDurationBased && phase && LIFT_ID_SET.has(p.exerciseId) && phase.setAdjustment !== 0) {
         p = { ...p, sets: Math.max(1, p.sets + phase.setAdjustment) };
       } else if (!isDurationBased && phase && !LIFT_ID_SET.has(p.exerciseId)) {
-        const isRealization = phase.label === "Realization";
+        const isRealization = phase.label === "Peak";
         const isDeload = phase.label === "Deload";
         if ((isRealization || isDeload) && p.sets > 2) {
           p = { ...p, sets: p.sets - 1 };

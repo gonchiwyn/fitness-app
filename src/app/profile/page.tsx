@@ -7,7 +7,9 @@ import { format, differenceInCalendarDays } from "date-fns";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import {
+  BENCHMARK_META,
   CATEGORY_LABELS,
+  type Benchmark,
   type Category,
 } from "@/lib/types";
 import {
@@ -69,14 +71,14 @@ export default function ProfilePage() {
     <div className="max-w-3xl mx-auto px-5 py-6 space-y-6">
       <header className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">You</p>
+          <p className="text-[12px] tracking-normal text-text-dim font-medium">You</p>
           <h1 className="text-[2.25rem] font-semibold tracking-tight mt-1.5 leading-[1.05] text-text">
             {name}
           </h1>
         </div>
         <Link
           href="/settings"
-          className="text-[11px] uppercase tracking-[0.22em] text-text-dim hover:text-accent pt-2 font-medium"
+          className="text-[12px] tracking-normal text-text-dim hover:text-accent pt-2 font-medium"
         >
           Settings
         </Link>
@@ -109,7 +111,7 @@ export default function ProfilePage() {
               key={p}
               onClick={() => setPeriod(p)}
               className={clsx(
-                "uppercase tracking-[0.18em] font-medium transition-colors",
+                "tracking-normal font-medium transition-colors",
                 period === p ? "text-accent" : "text-text-dim hover:text-text-muted"
               )}
             >
@@ -123,7 +125,7 @@ export default function ProfilePage() {
       {/* Athlete archetype — the 30k-foot read on how you've been training.
           Updates as your category mix shifts. */}
       <section className="border border-border-strong/40 bg-bg-elevated rounded-2xl p-5">
-        <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+        <div className="text-[11px] tracking-normal text-text-dim font-medium">
           You train like a
         </div>
         <div className="flex items-baseline gap-3 mt-2">
@@ -154,11 +156,11 @@ export default function ProfilePage() {
         return (
           <section className="space-y-3">
             <div className="flex items-baseline justify-between gap-3">
-              <h2 className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+              <h2 className="text-[11px] tracking-normal text-text-dim font-medium">
                 Hard sets per muscle
               </h2>
               {hasVolume && (
-                <span className="text-[10px] uppercase tracking-[0.18em] text-text-dim font-medium">
+                <span className="text-[11px] tracking-normal text-text-dim font-medium">
                   Δ vs {prevLabel}
                 </span>
               )}
@@ -201,7 +203,7 @@ export default function ProfilePage() {
                   })}
                   {neglected.length > 0 && (
                     <div className="pt-3 border-t border-border-strong/30 text-xs text-text-dim leading-relaxed">
-                      <span className="uppercase tracking-[0.18em] text-[10px] font-medium">Neglected · </span>
+                      <span className="tracking-normal text-[10px] font-medium">Neglected · </span>
                       <span>{neglected.join(" · ")}</span>
                     </div>
                   )}
@@ -252,7 +254,7 @@ export default function ProfilePage() {
           junk miles" lens. Only renders when there's km in the period. */}
       {stats.km > 0 && (
         <section className="space-y-3">
-          <h2 className="text-xs uppercase tracking-widest text-text-dim font-semibold">
+          <h2 className="text-xs tracking-normal text-text-dim font-semibold">
             Km by intensity
           </h2>
           <div className="bg-bg-card border border-border rounded-2xl p-4">
@@ -281,7 +283,7 @@ export default function ProfilePage() {
           shows current progress against the target. Target scales with period
           length so Year view asks for 52× weekly targets, etc. */}
       <section className="space-y-3">
-        <h2 className="text-xs uppercase tracking-widest text-text-dim font-semibold">
+        <h2 className="text-xs tracking-normal text-text-dim font-semibold">
           Longevity pillars · Attia
         </h2>
         <div className="grid grid-cols-4 gap-2 bg-bg-card border border-border rounded-2xl p-3">
@@ -294,7 +296,7 @@ export default function ProfilePage() {
       {/* Category breakdown — proportion of training in the period */}
       {stats.byCategory.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-xs uppercase tracking-widest text-text-dim font-semibold">
+          <h2 className="text-xs tracking-normal text-text-dim font-semibold">
             Category mix
           </h2>
           <div className="bg-bg-card border border-border rounded-2xl p-4 space-y-2">
@@ -326,7 +328,7 @@ export default function ProfilePage() {
       {tab === "journey" && <>
       {/* Completed block badges — the gold-ring wall */}
       <section className="space-y-3">
-        <h2 className="text-xs uppercase tracking-widest text-text-dim font-semibold">
+        <h2 className="text-xs tracking-normal text-text-dim font-semibold">
           Completed blocks
         </h2>
         {completedBlocks && completedBlocks.length > 0 ? (
@@ -350,7 +352,7 @@ export default function ProfilePage() {
                   >
                     <div className="text-2xl">{b.endedEarly ? "🏁" : "🏆"}</div>
                     <div className="text-sm font-semibold">{b.name}</div>
-                    <div className="text-[10px] uppercase tracking-widest text-text-dim">
+                    <div className="text-[10px] tracking-normal text-text-dim">
                       {b.endedEarly ? `ended · ${weeks}w` : `complete · ${weeks}w`}
                     </div>
                     <div className="text-xs text-text-muted">
@@ -367,11 +369,16 @@ export default function ProfilePage() {
         )}
       </section>
 
+      {/* Latest benchmark — moved here from Home. It's a weekly-interest
+          metric, not a daily one; Home's job is today's verb. Sits above the
+          PR board since both read from the same Benchmarks table. */}
+      <BenchmarkGlance />
+
       {/* Strength PRs — latest value per tracked lift + delta from the prior
           entry. Populates from the Benchmarks table (Test-day logs feed it). */}
       {prRows.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-xs uppercase tracking-widest text-text-dim font-semibold">
+          <h2 className="text-xs tracking-normal text-text-dim font-semibold">
             Personal records
           </h2>
           <div className="bg-bg-card border border-border rounded-2xl divide-y divide-border">
@@ -388,7 +395,7 @@ export default function ProfilePage() {
                 <div key={pr.type} className="flex items-baseline justify-between px-4 py-3 gap-3">
                   <div>
                     <div className="text-sm font-medium">{pr.label}</div>
-                    <div className="text-[10px] uppercase tracking-widest text-text-dim mt-0.5">
+                    <div className="text-[10px] tracking-normal text-text-dim mt-0.5">
                       {format(new Date(pr.lastDate + "T00:00:00"), "MMM d, yyyy")}
                     </div>
                   </div>
@@ -415,7 +422,7 @@ export default function ProfilePage() {
 
       {/* Milestones — locked/unlocked with progress bars */}
       <section className="space-y-3">
-        <h2 className="text-xs uppercase tracking-widest text-text-dim font-semibold">
+        <h2 className="text-xs tracking-normal text-text-dim font-semibold">
           Milestones
         </h2>
         <div className="grid grid-cols-2 gap-3">
@@ -442,7 +449,7 @@ export default function ProfilePage() {
                     style={{ width: `${pct}%` }}
                   />
                 </div>
-                <div className="text-[10px] uppercase tracking-widest text-text-dim tabular-nums">
+                <div className="text-[10px] tracking-normal text-text-dim tabular-nums">
                   {unlocked ? "unlocked" : `${m.current} / ${m.target} ${m.unit}`}
                 </div>
               </div>
@@ -455,7 +462,7 @@ export default function ProfilePage() {
           Hero = archetype + name. Stats laid out in bold display type.
           "Most trained" flex line at the bottom. Brand mark corner-bottom. */}
       <section className="space-y-3">
-        <h2 className="text-xs uppercase tracking-widest text-text-dim font-semibold">
+        <h2 className="text-xs tracking-normal text-text-dim font-semibold">
           Share
         </h2>
         <ShareCard
@@ -473,7 +480,7 @@ export default function ProfilePage() {
           in one paragraph. Kept at the bottom so it's never in the way for
           returning users; discoverable for anyone scrolling to the end. */}
       <footer className="pt-6 mt-4 border-t border-border-strong/30 space-y-2">
-        <p className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+        <p className="text-[11px] tracking-normal text-text-dim font-medium">
           About Outwork
         </p>
         <p className="text-[12px] text-text-muted leading-relaxed">
@@ -513,7 +520,7 @@ function ShareCard({
       }}
     >
       {/* Top corners: brand + period */}
-      <div className="flex items-start justify-between text-[10px] uppercase tracking-[0.25em] font-bold">
+      <div className="flex items-start justify-between text-[11px] tracking-normal font-bold">
         <span className="text-accent">Outwork</span>
         <span className="text-text-dim">{periodWord}</span>
       </div>
@@ -521,7 +528,7 @@ function ShareCard({
       {/* Hero: archetype */}
       <div className="flex-1 flex flex-col items-center justify-center text-center">
         <div className="text-7xl mb-2 leading-none">{archetype.icon}</div>
-        <div className="text-[10px] uppercase tracking-[0.3em] text-text-dim font-semibold">
+        <div className="text-[11px] tracking-normal text-text-dim font-semibold">
           {name} trains like a
         </div>
         <div className="text-4xl font-black mt-1 leading-tight">
@@ -539,7 +546,7 @@ function ShareCard({
 
       {/* Flex line — most trained muscle in the period */}
       {topMuscle && (
-        <div className="mt-3 text-[11px] text-center text-text-dim uppercase tracking-widest">
+        <div className="mt-3 text-[11px] text-center text-text-dim tracking-normal">
           Most trained · <span className="text-text font-semibold">{topMuscle.label}</span> · {topMuscle.sets} sets
         </div>
       )}
@@ -551,7 +558,7 @@ function ShareNum({ big, label }: { big: string; label: string }) {
   return (
     <div>
       <div className="text-2xl font-black tabular-nums leading-none">{big}</div>
-      <div className="text-[9px] uppercase tracking-widest text-text-dim mt-1">{label}</div>
+      <div className="text-[9px] tracking-normal text-text-dim mt-1">{label}</div>
     </div>
   );
 }
@@ -561,7 +568,7 @@ function IntensityCell({ label, km, dot }: { label: string; km: number; dot: str
     <div>
       <div className="flex items-center gap-1.5">
         <span className={clsx("w-2 h-2 rounded-full", dot)} aria-hidden />
-        <span className="text-[10px] uppercase tracking-widest text-text-dim">{label}</span>
+        <span className="text-[10px] tracking-normal text-text-dim">{label}</span>
       </div>
       <div className="text-lg font-bold tabular-nums mt-0.5">{km} <span className="text-xs text-text-muted font-normal">km</span></div>
     </div>
@@ -608,7 +615,7 @@ function PillarRing({ pillar }: { pillar: { id: string; label: string; current: 
           </span>
         </div>
       </div>
-      <div className="text-[10px] uppercase tracking-widest text-text-dim mt-1 font-semibold">
+      <div className="text-[10px] tracking-normal text-text-dim mt-1 font-semibold">
         {pillar.label}
       </div>
       <div className="text-[10px] text-text-muted tabular-nums">
@@ -641,10 +648,60 @@ function KpiTile({
         >
           {big}
         </span>
-        <span className="text-xs text-text-dim font-medium uppercase tracking-[0.15em]">{unit}</span>
+        <span className="text-xs text-text-dim font-medium tracking-normal">{unit}</span>
       </div>
-      <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim mt-3 font-medium">{sub}</div>
+      <div className="text-[11px] tracking-normal text-text-dim mt-3 font-medium">{sub}</div>
     </div>
   );
 }
 
+
+// Latest tested benchmark — surfaces the single most recent measurement so
+// the Profile page leads with "what I've proven" before the stat tiles.
+// Lives here rather than Home: it's a thing you check weekly, not daily.
+function BenchmarkGlance() {
+  const latest = useLiveQuery(async () => {
+    const all = await db.benchmarks.orderBy("date").reverse().limit(1).toArray();
+    return all[0] as Benchmark | undefined;
+  }, []);
+  if (!latest) return null;
+  const meta = BENCHMARK_META[latest.type];
+  if (!meta) return null;
+  const valueText =
+    meta.format === "duration"
+      ? formatSeconds(latest.value)
+      : `${latest.value}${meta.unit === "time" ? "" : ` ${meta.unit}`}`;
+  const daysAgo = Math.max(
+    0,
+    differenceInCalendarDays(new Date(), new Date(latest.date + "T00:00:00"))
+  );
+  const whenLabel =
+    daysAgo === 0 ? "today" : daysAgo === 1 ? "yesterday" : `${daysAgo} days ago`;
+  return (
+    <Link
+      href="/benchmarks"
+      className="flex items-center justify-between gap-3 bg-bg-elevated rounded-2xl px-4 py-3.5 hover:bg-bg-card transition-colors"
+    >
+      <div className="min-w-0 flex-1">
+        <div className="text-[11px] text-text-dim font-medium">Latest benchmark</div>
+        <div className="flex items-baseline gap-2 mt-1">
+          <span className="text-sm text-text font-medium truncate">{meta.label}</span>
+          <span className="text-text-dim text-[11px] shrink-0">· {whenLabel}</span>
+        </div>
+      </div>
+      <div className="text-xl font-medium tabular-nums tracking-[-0.02em] text-text shrink-0">
+        {valueText}
+      </div>
+    </Link>
+  );
+}
+
+function formatSeconds(totalSeconds: number): string {
+  const s = Math.max(0, Math.round(totalSeconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  if (h > 0) return `${h}:${pad(m)}:${pad(sec)}`;
+  return `${m}:${pad(sec)}`;
+}

@@ -40,7 +40,7 @@ export default function HistoryPage() {
     return (
       <div className="max-w-3xl mx-auto px-5 py-10 space-y-5">
         <div>
-          <p className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">
+          <p className="text-[12px] tracking-normal text-text-dim font-medium">
             Your work
           </p>
           <h1 className="text-[2.125rem] font-medium tracking-[-0.03em] leading-[1] mt-1.5 text-text">
@@ -68,7 +68,7 @@ export default function HistoryPage() {
   return (
     <div className="max-w-3xl mx-auto px-5 py-6 space-y-6">
       <header>
-        <p className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">
+        <p className="text-[12px] tracking-normal text-text-dim font-medium">
           Your work
         </p>
         <h1 className="text-[2.125rem] font-medium tracking-[-0.03em] leading-[1] mt-1.5 text-text">
@@ -85,7 +85,7 @@ export default function HistoryPage() {
 
       {topCategories.length > 0 && (
         <section>
-          <h2 className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium mb-3">
+          <h2 className="text-[12px] tracking-normal text-text-dim font-medium mb-3">
             Most trained
           </h2>
           <div className="space-y-2">
@@ -115,7 +115,7 @@ export default function HistoryPage() {
       )}
 
       <section>
-        <h2 className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium mb-3">
+        <h2 className="text-[12px] tracking-normal text-text-dim font-medium mb-3">
           All sessions
         </h2>
         <div className="space-y-2">
@@ -147,9 +147,9 @@ export default function HistoryPage() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {s.finishedAt ? (
-                      <span className="text-[10px] uppercase tracking-[0.18em] text-text-dim font-medium">Done</span>
+                      <span className="text-[11px] tracking-normal text-text-dim font-medium">Done</span>
                     ) : (
-                      <span className="text-[10px] uppercase tracking-[0.18em] text-text-dim/60 font-medium">Draft</span>
+                      <span className="text-[11px] tracking-normal text-text-dim/60 font-medium">Draft</span>
                     )}
                     <span className="text-text-dim text-sm" aria-hidden>›</span>
                   </div>
@@ -174,7 +174,7 @@ function StatTile({ value, label, accent }: { value: number; label: string; acce
       >
         {value}
       </div>
-      <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim mt-3 font-medium">
+      <div className="text-[11px] tracking-normal text-text-dim mt-3 font-medium">
         {label}
       </div>
     </div>
@@ -217,7 +217,7 @@ function ConsistencyCalendar({ sessions }: { sessions: Session[] }) {
   return (
     <section>
       <div className="mb-3 space-y-2">
-        <h2 className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">
+        <h2 className="text-[12px] tracking-normal text-text-dim font-medium">
           {monthSessions.length} session{monthSessions.length === 1 ? "" : "s"} this month
         </h2>
         <div className="flex items-center justify-between gap-2">
@@ -245,7 +245,7 @@ function ConsistencyCalendar({ sessions }: { sessions: Session[] }) {
           {!isCurrentMonth && (
             <button
               onClick={() => setViewMonth(startOfMonth(today))}
-              className="text-[11px] uppercase tracking-[0.18em] text-accent font-medium hover:underline"
+              className="text-[12px] tracking-normal text-accent font-medium hover:underline"
             >
               Today
             </button>
@@ -257,7 +257,7 @@ function ConsistencyCalendar({ sessions }: { sessions: Session[] }) {
           {DAY_LABELS_SHORT.map((d) => (
             <div
               key={d}
-              className="text-[9px] uppercase tracking-[0.2em] text-text-dim text-center pb-1.5 font-medium"
+              className="text-[10px] tracking-normal text-text-dim text-center pb-1.5 font-medium"
             >
               {d[0]}
             </div>

@@ -40,7 +40,7 @@ export default function WorkoutIndex() {
   return (
     <div className="max-w-3xl mx-auto px-5 py-6 space-y-6">
       <header>
-        <p className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">
+        <p className="text-[12px] tracking-normal text-text-dim font-medium">
           Choose your discipline
         </p>
         <h1 className="text-[2.125rem] font-medium tracking-[-0.03em] leading-[1] mt-1.5 text-text">
@@ -75,7 +75,7 @@ export default function WorkoutIndex() {
                   </div>
                   <div className="text-xs text-text-dim mt-1 leading-relaxed">{CATEGORY_BLURBS[cat]}</div>
                 </div>
-                <div className="text-[10px] uppercase tracking-[0.18em] text-text-dim tabular-nums shrink-0 font-medium">
+                <div className="text-[11px] tracking-normal text-text-dim tabular-nums shrink-0 font-medium">
                   ~{CATEGORY_DURATION[cat]}m
                 </div>
               </div>

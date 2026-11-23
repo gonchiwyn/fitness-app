@@ -14,7 +14,6 @@ import { nextBlockSuggestions } from "@/lib/data/presets";
 import { categoryColor } from "@/lib/categoryTheme";
 import { recommendForToday, type Recommendation } from "@/lib/recommend";
 import {
-  BENCHMARK_META,
   CATEGORY_BLURBS,
   CATEGORY_LABELS,
   DAY_LABELS_SHORT,
@@ -23,7 +22,6 @@ import {
   effectiveFocusToday,
   getBlockPhase,
   normalizePlannedDay,
-  type Benchmark,
   type PlannedDay,
   type Profile,
   type Session,
@@ -112,6 +110,25 @@ export default function HomePage() {
     return !!o;
   }, [displayedWeekStart]);
 
+  // Next week's days — fetched separately so Next Up can resolve the actual
+  // slot for tomorrow when "tomorrow" crosses a week boundary. Previously
+  // Next Up always read from THIS week's day array and drew this-week's
+  // Monday pattern on next-week's Monday date — even when next week had an
+  // override (e.g. the deload override saved at Hyrox-prep start).
+  const nextWeekStartStr = useMemo(
+    () => format(addDays(startOfWeek(new Date(), { weekStartsOn: 1 }), 7), "yyyy-MM-dd"),
+    []
+  );
+  const nextWeekDays = useLiveQuery(async () => {
+    const override = await db.weekOverrides
+      .where("weekStartDate")
+      .equals(nextWeekStartStr)
+      .first();
+    if (override) return override.days.map(normalizePlannedDay);
+    const p = await db.weeklyPlan.get("me");
+    return p ? p.days.map(normalizePlannedDay) : null;
+  }, [nextWeekStartStr]);
+
   // Read the same source as the week strip — if the current week has a
   // week override (e.g. W1/W2 learn-week, W5 realization, deload), the base
   // plan's slot for today may say stretching/hyrox/etc. but the override
@@ -174,12 +191,12 @@ export default function HomePage() {
         <div className="flex items-baseline justify-between gap-4">
           <div className="flex items-baseline gap-3">
             <span className="text-[13px] font-medium tracking-[-0.02em] text-text">Outwork</span>
-            <span className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">
+            <span className="text-[12px] tracking-normal text-text-dim font-medium">
               {format(new Date(), "EEE, MMM d")}
             </span>
           </div>
           {streak > 0 && (
-            <span className="text-[11px] uppercase tracking-[0.18em] text-text-dim font-medium tabular-nums shrink-0">
+            <span className="text-[12px] tracking-normal text-text-dim font-medium tabular-nums shrink-0">
               <span className="text-accent">{streak}</span> day streak
             </span>
           )}
@@ -207,7 +224,7 @@ export default function HomePage() {
           className="flex items-center justify-between gap-3 border border-accent/50 bg-text/5 rounded-2xl px-4 py-3"
         >
           <div className="min-w-0">
-            <div className="text-[10px] uppercase tracking-[0.22em] text-accent font-medium">
+            <div className="text-[11px] tracking-normal text-accent font-medium">
               In progress
             </div>
             <div className="text-sm text-text font-medium truncate mt-0.5">
@@ -224,7 +241,7 @@ export default function HomePage() {
         <div className="flex items-stretch gap-2">
           <Link
             href="/onboarding"
-            className="flex-1 flex items-center justify-between gap-3 border border-accent/40 rounded-full px-4 py-2.5 text-[11px] uppercase tracking-[0.18em] font-medium text-accent"
+            className="flex-1 flex items-center justify-between gap-3 border border-accent/40 rounded-full px-4 py-2.5 text-[12px] tracking-normal font-medium text-accent"
           >
             <span>Finish setup — 2 min</span>
             <span>›</span>
@@ -293,17 +310,12 @@ export default function HomePage() {
           Plus a tiny "See full week" link to Plan for the tactical view. */}
       {!profile?.currentFocus?.pausedAt && (
         <NextUpCard
-          days={displayedWeekDays ?? plan?.days ?? [null, null, null, null, null, null, null]}
+          thisWeekDays={displayedWeekDays ?? plan?.days ?? [null, null, null, null, null, null, null]}
+          nextWeekDays={nextWeekDays ?? plan?.days ?? [null, null, null, null, null, null, null]}
           todayIdx={todayIdx}
           onPreview={(date) => setPreviewDate(date)}
         />
       )}
-
-      {/* Latest benchmark glance — shows the user's most recent tested metric
-          so Home surfaces the app's measurement identity, not just today's
-          verb. Doubles as the "what I'm tracking" signal for anyone looking
-          over the user's shoulder. */}
-      <BenchmarkGlance />
 
       {/* "I did something different" lives as a quiet text link now, not a
           row of chips. Home's job is one verb; the escape hatch is a one-
@@ -311,7 +323,7 @@ export default function HomePage() {
       {!profile?.currentFocus?.pausedAt && (
         <button
           onClick={() => setLogDate(today)}
-          className="w-full text-[11px] uppercase tracking-[0.18em] text-text-dim hover:text-text font-medium transition-colors text-left"
+          className="w-full text-[12px] tracking-normal text-text-dim hover:text-text font-medium transition-colors text-left"
         >
           Log something else ›
         </button>
@@ -328,13 +340,25 @@ export default function HomePage() {
       {previewDate && plan && profile && (
         <DayPreviewModal
           date={previewDate}
-          // Read from displayedWeekDays (override-aware) so sailing-week Sport
-          // days show the sport preview, not the base plan's Paddle Push.
-          day={
-            (displayedWeekDays ?? plan.days)[
-              dateToPlanIndex(new Date(previewDate + "T00:00:00"))
-            ]
-          }
+          // Read from the week that the previewed date actually falls in —
+          // Sunday-tapping-Monday lands in NEXT week, which may have its own
+          // override (deload / learn / sailing / etc.). Falls back to the
+          // base plan for weeks further out.
+          day={(() => {
+            const d = new Date(previewDate + "T00:00:00");
+            const dMondayStr = format(
+              startOfWeek(d, { weekStartsOn: 1 }),
+              "yyyy-MM-dd"
+            );
+            const thisMondayStr = format(currentWeekStart, "yyyy-MM-dd");
+            const source =
+              dMondayStr === thisMondayStr
+                ? displayedWeekDays ?? plan.days
+                : dMondayStr === nextWeekStartStr
+                  ? nextWeekDays ?? plan.days
+                  : plan.days;
+            return source[dateToPlanIndex(d)];
+          })()}
           profile={profile}
           onClose={() => setPreviewDate(null)}
         />
@@ -394,7 +418,7 @@ function BreathingCard({ weekInBlock }: { weekInBlock: number }) {
     >
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-[10px] uppercase tracking-widest text-text-dim">
+          <div className="text-[10px] tracking-normal text-text-dim">
             Breathing — Week {w}
           </div>
           <div className="font-semibold mt-0.5">{protocol.name}</div>
@@ -408,7 +432,7 @@ function BreathingCard({ weekInBlock }: { weekInBlock: number }) {
         <div className="mt-3 pt-3 border-t border-border space-y-2">
           <div className="text-xs text-text-muted italic">{protocol.why}</div>
           <div className="text-sm">{protocol.how}</div>
-          <div className="text-[10px] uppercase tracking-widest text-text-dim pt-1">
+          <div className="text-[10px] tracking-normal text-text-dim pt-1">
             Do it separately from your workout — anywhere in the day.
           </div>
         </div>
@@ -438,12 +462,12 @@ function ContextCard({
     return (
       <section className="border border-border-strong/40 rounded-2xl p-4 space-y-3">
         <div className="flex items-center justify-between">
-          <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+          <div className="text-[11px] tracking-normal text-text-dim font-medium">
             No block yet
           </div>
           <Link
             href="/plan"
-            className="text-[10px] uppercase tracking-[0.18em] text-accent font-medium hover:text-accent-dim"
+            className="text-[11px] tracking-normal text-accent font-medium hover:text-accent-dim"
           >
             Pick one →
           </Link>
@@ -466,7 +490,7 @@ function ContextCard({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-[10px] uppercase tracking-[0.22em] text-accent font-medium">
+          <div className="text-[11px] tracking-normal text-accent font-medium">
             {focus.name}
           </div>
           <div className="text-[11px] text-text-dim mt-1 tabular-nums tracking-wide">
@@ -507,14 +531,29 @@ function TrainingDaysMeter({ done, target }: { done: number; target: number }) {
           />
         ))}
       </div>
-      <div className="flex items-baseline justify-between text-[10px] uppercase tracking-[0.18em] font-medium">
-        <span className={clsx(complete ? "text-success" : "text-text")}>
-          {done} of {target} this week
-        </span>
-        {!complete && (
+      <div className="flex items-baseline justify-between text-[11px] tracking-normal font-medium">
+        {/* Three cases: short of target, exactly on target, past target. The
+            past-target state used to read "8 of 7 this week" — mathematically
+            true but visually "wrong" — now shows the goal met + bonus count. */}
+        {done < target && (
+          <span className="text-text">
+            {done} of {target} this week
+          </span>
+        )}
+        {done === target && (
+          <span className="text-success">
+            {done} of {target} this week
+          </span>
+        )}
+        {done > target && (
+          <span className="text-success">
+            {target} of {target} · +{done - target} bonus
+          </span>
+        )}
+        {done < target && (
           <span className="text-text-dim tabular-nums">{target - done} to go</span>
         )}
-        {complete && <span className="text-success">✓ done</span>}
+        {done >= target && <span className="text-success">✓ done</span>}
       </div>
     </div>
   );
@@ -525,51 +564,6 @@ function TrainingDaysMeter({ done, target }: { done: number; target: number }) {
 // so a friend scanning Home sees measurement, not just workout logging.
 // Silent when no benchmark exists yet (new user) so onboarding doesn't look
 // littered.
-function BenchmarkGlance() {
-  const latest = useLiveQuery(async () => {
-    const all = await db.benchmarks.orderBy("date").reverse().limit(1).toArray();
-    return all[0] as Benchmark | undefined;
-  }, []);
-  if (!latest) return null;
-  const meta = BENCHMARK_META[latest.type];
-  if (!meta) return null;
-  const valueText = meta.format === "duration"
-    ? formatSeconds(latest.value)
-    : `${latest.value}${meta.unit === "time" ? "" : ` ${meta.unit}`}`;
-  const daysAgo = Math.max(0, differenceInCalendarDays(new Date(), new Date(latest.date + "T00:00:00")));
-  const whenLabel =
-    daysAgo === 0 ? "today" : daysAgo === 1 ? "yesterday" : `${daysAgo} days ago`;
-  return (
-    <Link
-      href="/benchmarks"
-      className="flex items-center justify-between gap-3 border border-border-strong/40 rounded-2xl px-4 py-3 hover:border-text-dim transition-colors"
-    >
-      <div className="min-w-0 flex-1">
-        <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
-          Latest benchmark
-        </div>
-        <div className="flex items-baseline gap-2 mt-1">
-          <span className="text-sm text-text font-medium truncate">{meta.label}</span>
-          <span className="text-text-dim text-[11px] shrink-0">· tested {whenLabel}</span>
-        </div>
-      </div>
-      <div className="text-xl font-medium tabular-nums tracking-[-0.02em] text-text shrink-0">
-        {valueText}
-      </div>
-    </Link>
-  );
-}
-
-function formatSeconds(totalSeconds: number): string {
-  const s = Math.max(0, Math.round(totalSeconds));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = s % 60;
-  const pad = (n: number) => n.toString().padStart(2, "0");
-  if (h > 0) return `${h}:${pad(m)}:${pad(sec)}`;
-  return `${m}:${pad(sec)}`;
-}
-
 // Proactive heads-up during the block's final week — nudges the user to
 // think about what's next before they land on Monday with nothing scheduled.
 // Tappable → routes into the Change Block picker with the current block as
@@ -581,7 +575,7 @@ function LastWeekBanner({ focus }: { focus: NonNullable<Profile["currentFocus"]>
       className="flex items-center justify-between gap-3 border border-accent/40 rounded-full px-4 py-2.5"
     >
       <div className="min-w-0">
-        <div className="text-[10px] uppercase tracking-[0.22em] text-accent font-medium">
+        <div className="text-[11px] tracking-normal text-accent font-medium">
           Last week of {focus.name}
         </div>
         <div className="text-[11px] text-text-dim mt-0.5 truncate">
@@ -612,16 +606,16 @@ function BlockCompleteCard({
   const suggestions = nextBlockSuggestions(focus.name);
 
   return (
-    <section className="border border-accent/50 bg-text/5 rounded-2xl p-5 space-y-4">
+    <section className="bg-text/[0.06] rounded-2xl p-5 space-y-4">
       <div>
-        <div className="text-[10px] uppercase tracking-[0.22em] text-success font-medium">
+        <div className="text-[11px] tracking-normal text-success font-medium">
           ✓ Block complete
         </div>
         <div className="text-[1.75rem] font-medium tracking-[-0.03em] mt-1.5 text-text leading-[1]">
           {focus.name} done.
         </div>
       </div>
-      <div className="flex gap-4 text-[11px] uppercase tracking-[0.18em] text-text-dim font-medium tabular-nums">
+      <div className="flex gap-4 text-[12px] tracking-normal text-text-dim font-medium tabular-nums">
         <span><span className="text-text">{totalWeeks}</span> wk</span>
         <span className="text-border-strong">·</span>
         <span><span className="text-text">{done}</span> sessions</span>
@@ -634,7 +628,7 @@ function BlockCompleteCard({
       </div>
 
       <div className="space-y-2 pt-2">
-        <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+        <div className="text-[11px] tracking-normal text-text-dim font-medium">
           What&apos;s next
         </div>
         <div className="space-y-2">
@@ -655,7 +649,7 @@ function BlockCompleteCard({
                   {p.tagline}
                 </div>
               </div>
-              <span className="shrink-0 text-[10px] uppercase tracking-[0.18em] text-text-dim font-medium tabular-nums">
+              <span className="shrink-0 text-[11px] tracking-normal text-text-dim font-medium tabular-nums">
                 {p.durationWeeks}wk
               </span>
             </Link>
@@ -663,7 +657,7 @@ function BlockCompleteCard({
         </div>
         <Link
           href="/plans"
-          className="block text-[10px] uppercase tracking-[0.18em] text-text-dim hover:text-text font-medium pt-1"
+          className="block text-[11px] tracking-normal text-text-dim hover:text-text font-medium pt-1"
         >
           Or browse all 12 →
         </Link>
@@ -704,10 +698,10 @@ function PlannedTodayCard({ day }: { day: NonNullable<PlannedDay> }) {
     // remains tappable; the pill is the unmissable visual verb.
     <Link
       href={href}
-      className="block border border-accent/40 bg-text/[0.04] rounded-2xl p-5 relative"
+      className="block bg-text/[0.055] rounded-2xl p-5 relative"
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] font-medium text-accent">
+        <div className="flex items-center gap-2 text-[11px] tracking-normal font-medium text-accent">
           <span
             className="w-1.5 h-1.5 rounded-full"
             style={{ background: color.solid }}
@@ -761,7 +755,7 @@ function RecommendationHint({
 
   return (
     <div className="border-l-2 border-accent/50 pl-4 -mt-1">
-      <div className="text-[10px] uppercase tracking-widest text-accent font-semibold">
+      <div className="text-[10px] tracking-normal text-accent font-semibold">
         Heads up — based on your week
       </div>
       <p className="text-sm text-text-muted mt-1 leading-relaxed">
@@ -790,9 +784,9 @@ function RecommendationCard({ rec }: { rec: Recommendation }) {
   return (
     <Link
       href={href}
-      className="block border border-accent/40 bg-text/[0.04] rounded-2xl p-5"
+      className="block bg-text/[0.055] rounded-2xl p-5"
     >
-      <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-accent font-medium">
+      <div className="flex items-center gap-2 text-[11px] tracking-normal text-accent font-medium">
         <span className="w-1.5 h-1.5 rounded-full" style={{ background: color.solid }} aria-hidden />
         Suggested for today
       </div>
@@ -814,9 +808,9 @@ function PausedTodayCard() {
   return (
     <Link
       href="/plan"
-      className="block border border-border-strong/40 rounded-2xl p-5"
+      className="block bg-bg-elevated rounded-2xl p-5"
     >
-      <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+      <div className="text-[11px] tracking-normal text-text-dim font-medium">
         Block paused
       </div>
       <div className="text-[2rem] font-medium tracking-[-0.03em] mt-3 leading-[1] text-text">
@@ -835,8 +829,8 @@ function PausedTodayCard() {
 
 function RestDayCard() {
   return (
-    <div className="border border-border-strong/40 rounded-2xl p-5">
-      <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+    <div className="bg-bg-elevated rounded-2xl p-5">
+      <div className="text-[11px] tracking-normal text-text-dim font-medium">
         Rest day
       </div>
       <div className="text-[2rem] font-medium tracking-[-0.03em] mt-3 leading-[1] text-text">
@@ -853,9 +847,9 @@ function NoPlanCard() {
   return (
     <Link
       href="/plan"
-      className="block border border-accent/40 bg-text/[0.04] rounded-2xl p-5"
+      className="block bg-text/[0.055] rounded-2xl p-5"
     >
-      <div className="text-[10px] uppercase tracking-[0.22em] text-accent font-medium">
+      <div className="text-[11px] tracking-normal text-accent font-medium">
         Set up your week
       </div>
       <div className="text-[2rem] font-medium tracking-[-0.03em] mt-3 leading-[1] text-text">
@@ -878,7 +872,7 @@ function TodaysSessionsStack({ sessions }: { sessions: Session[] }) {
   }
   return (
     <div className="space-y-2">
-      <div className="text-xs uppercase tracking-widest text-accent font-semibold">
+      <div className="text-xs tracking-normal text-accent font-semibold">
         Today — {sessions.length} sessions
       </div>
       {sessions.map((s, i) => (
@@ -934,8 +928,8 @@ function TodaysSessionCard({ session, compact }: { session: Session; compact?: b
       className={clsx(
         "block rounded-2xl relative",
         isHero
-          ? "border border-accent/40 bg-text/[0.04] p-5"
-          : clsx("border border-border-strong/40", compact ? "p-4" : "p-5")
+          ? "bg-text/[0.055] p-5"
+          : clsx("bg-bg-elevated", compact ? "p-4" : "p-5")
       )}
     >
       <button
@@ -953,7 +947,7 @@ function TodaysSessionCard({ session, compact }: { session: Session; compact?: b
       </button>
       <div
         className={clsx(
-          "flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] font-medium pr-8",
+          "flex items-center gap-2 text-[11px] tracking-normal font-medium pr-8",
           done ? "text-success" : "text-accent"
         )}
       >
@@ -985,7 +979,7 @@ function TodaysSessionCard({ session, compact }: { session: Session; compact?: b
         </div>
       )}
       {!compact && done && (
-        <div className="mt-4 text-[11px] uppercase tracking-[0.18em] text-text-dim font-medium hover:text-text transition-colors">
+        <div className="mt-4 text-[12px] tracking-normal text-text-dim font-medium hover:text-text transition-colors">
           Review →
         </div>
       )}
@@ -1016,7 +1010,7 @@ function QuickLogRow({
   const [pending, setPending] = useState<string | null>(null);
   return (
     <section className="space-y-2">
-      <div className="text-[11px] uppercase tracking-widest text-text-dim font-semibold">
+      <div className="text-[11px] tracking-normal text-text-dim font-semibold">
         {hasSessionToday ? "Did something else too?" : "I did something different →"}
       </div>
       <div className="flex flex-wrap gap-2">
@@ -1118,10 +1112,10 @@ function WeekStrip({
           onClick={() => setExpanded(true)}
           className="w-full flex items-center justify-between pb-2.5 group"
         >
-          <span className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">
+          <span className="text-[12px] tracking-normal text-text-dim font-medium">
             This week
           </span>
-          <span className="text-[10px] uppercase tracking-[0.18em] text-text-dim group-hover:text-text transition-colors font-medium">
+          <span className="text-[11px] tracking-normal text-text-dim group-hover:text-text transition-colors font-medium">
             See all ›
           </span>
         </button>
@@ -1152,7 +1146,7 @@ function WeekStrip({
               >
                 <span
                   className={clsx(
-                    "text-[10px] uppercase tracking-[0.18em] font-medium",
+                    "text-[11px] tracking-normal font-medium",
                     isToday ? "text-accent" : "text-text-dim"
                   )}
                 >
@@ -1187,7 +1181,7 @@ function WeekStrip({
             }}
             className="flex items-center gap-2"
           >
-            <span className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium hover:text-text transition-colors">
+            <span className="text-[12px] tracking-normal text-text-dim font-medium hover:text-text transition-colors">
               {heading}
             </span>
             <span className="text-text-dim text-xs">▾</span>
@@ -1197,7 +1191,7 @@ function WeekStrip({
           </span>
           {isOverride && (
             <span
-              className="text-[9px] uppercase tracking-[0.18em] text-accent border border-accent/40 px-1.5 py-0.5 rounded font-medium"
+              className="text-[10px] tracking-normal text-accent border border-accent/40 px-1.5 py-0.5 rounded font-medium"
               title="This week deviates from your base plan — only affects this week."
             >
               Edited
@@ -1215,7 +1209,7 @@ function WeekStrip({
           {weekOffset !== 0 && (
             <button
               onClick={onReturnToToday}
-              className="px-2.5 h-7 rounded-full border border-border-strong/40 text-[10px] uppercase tracking-[0.18em] text-text-muted hover:border-text-dim font-medium"
+              className="px-2.5 h-7 rounded-full border border-border-strong/40 text-[11px] tracking-normal text-text-muted hover:border-text-dim font-medium"
             >
               Today
             </button>
@@ -1261,7 +1255,7 @@ function WeekStrip({
           const inner = (
             <>
               <div className={clsx(
-                "text-[10px] uppercase tracking-[0.2em] font-semibold",
+                "text-[11px] tracking-normal font-semibold",
                 isToday ? "text-accent" : "text-text-dim"
               )}>
                 {DAY_LABELS_SHORT[i]}
@@ -1346,31 +1340,39 @@ function WeekStrip({
 // forward-look on their home screens because it gives the user continuity
 // without asking them to parse a grid. Hidden when nothing's scheduled.
 function NextUpCard({
-  days,
+  thisWeekDays,
+  nextWeekDays,
   todayIdx,
   onPreview,
 }: {
-  days: PlannedDay[];
+  thisWeekDays: PlannedDay[];
+  nextWeekDays: PlannedDay[];
   todayIdx: number;
   onPreview: (date: string) => void;
 }) {
   // Walk forward from tomorrow, wrapping to next week, finding the next
-  // training day. Stop after 7 days to avoid a wrap-around loop.
+  // training day. When the wrap crosses into next week, read next week's
+  // slot (respects deload / learn-week overrides saved for that week).
   const start = startOfWeek(new Date(), { weekStartsOn: 1 });
   let nextIdx: number | null = null;
   let nextOffset = 0;
+  let foundInNextWeek = false;
   for (let offset = 1; offset <= 7; offset++) {
     const idx = (todayIdx + offset) % 7;
-    const day = days[idx];
+    const inNextWeek = offset > 6 - todayIdx;
+    const source = inNextWeek ? nextWeekDays : thisWeekDays;
+    const day = source[idx];
     if (day !== null && day !== undefined) {
       nextIdx = idx;
       nextOffset = offset;
+      foundInNextWeek = inNextWeek;
       break;
     }
   }
   if (nextIdx === null) return null;
-  const day = days[nextIdx]!;
-  const date = addDays(start, nextIdx + (nextOffset > (6 - todayIdx) ? 7 : 0));
+  const sourceDays = foundInNextWeek ? nextWeekDays : thisWeekDays;
+  const day = sourceDays[nextIdx]!;
+  const date = addDays(start, nextIdx + (foundInNextWeek ? 7 : 0));
   const dateStr = format(date, "yyyy-MM-dd");
   const template = day.templateId
     ? templatesFor(day.category).find((t) => t.id === day.templateId)
@@ -1393,10 +1395,10 @@ function NextUpCard({
     <div className="space-y-2">
       <button
         onClick={() => onPreview(dateStr)}
-        className="w-full flex items-center justify-between gap-3 border border-border-strong/40 rounded-2xl px-4 py-3 hover:border-text-dim transition-colors text-left"
+        className="w-full flex items-center justify-between gap-3 bg-bg-elevated rounded-2xl px-4 py-3 hover:bg-bg-card transition-colors text-left"
       >
         <div className="min-w-0 flex-1">
-          <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+          <div className="text-[11px] tracking-normal text-text-dim font-medium">
             Next up — {whenLabel}
           </div>
           <div className="flex items-center gap-2 mt-1">
@@ -1414,7 +1416,7 @@ function NextUpCard({
       </button>
       <Link
         href="/plan"
-        className="block text-right text-[10px] uppercase tracking-[0.18em] text-text-dim hover:text-text font-medium transition-colors"
+        className="block text-right text-[11px] tracking-normal text-text-dim hover:text-text font-medium transition-colors"
       >
         See full week →
       </Link>

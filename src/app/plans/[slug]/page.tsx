@@ -42,17 +42,17 @@ function PlanDetail({ preset }: { preset: BlockPreset }) {
   return (
     <div className="max-w-3xl mx-auto px-5 py-6 space-y-6">
       <header>
-        <div className="flex items-center gap-3 text-[11px] uppercase tracking-[0.18em] text-text-dim mb-3 font-medium">
+        <div className="flex items-center gap-3 text-[12px] tracking-normal text-text-dim mb-3 font-medium">
           <Link href="/plans" className="hover:text-text">← Plans</Link>
         </div>
-        <p className="text-[11px] uppercase tracking-[0.22em] text-accent font-medium">
+        <p className="text-[12px] tracking-normal text-accent font-medium">
           Training block
         </p>
         <h1 className="text-[2.125rem] font-medium tracking-[-0.03em] leading-[1.05] mt-1.5 text-text">
           {preset.name}
         </h1>
         <p className="text-text-muted text-sm mt-3 leading-relaxed">{preset.tagline}</p>
-        <div className="flex items-center gap-4 mt-5 text-[11px] uppercase tracking-[0.18em] text-text-dim font-medium tabular-nums">
+        <div className="flex items-center gap-4 mt-5 text-[12px] tracking-normal text-text-dim font-medium tabular-nums">
           <span>{preset.durationWeeks}-week block</span>
           <span className="text-border-strong">·</span>
           <span>{sessionsPerWeek} sessions/wk</span>
@@ -60,7 +60,7 @@ function PlanDetail({ preset }: { preset: BlockPreset }) {
       </header>
 
       <section className="space-y-3">
-        <h2 className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+        <h2 className="text-[11px] tracking-normal text-text-dim font-medium">
           Weekly shape
         </h2>
         <div className="space-y-2">
@@ -75,7 +75,7 @@ function PlanDetail({ preset }: { preset: BlockPreset }) {
                 className="flex items-center gap-4 rounded-2xl border border-border-strong/40 p-4 bg-bg-elevated"
               >
                 <div className="w-12 text-center shrink-0 text-text-dim">
-                  <div className="text-[10px] uppercase tracking-[0.22em] font-medium">
+                  <div className="text-[11px] tracking-normal font-medium">
                     {DAY_LABELS_LONG[i].slice(0, 3)}
                   </div>
                 </div>
@@ -123,7 +123,7 @@ function PlanDetail({ preset }: { preset: BlockPreset }) {
 
       {siblings.length > 0 && (
         <section className="space-y-3 pt-4">
-          <h2 className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+          <h2 className="text-[11px] tracking-normal text-text-dim font-medium">
             Other blocks
           </h2>
           <div className="grid gap-2">

@@ -73,7 +73,7 @@ export default function OnboardingPage() {
   return (
     <div className="max-w-2xl mx-auto px-5 py-6 min-h-screen flex flex-col">
       <div className="mb-8">
-        <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.22em] text-text-dim mb-3 font-medium">
+        <div className="flex items-center justify-between text-[11px] tracking-normal text-text-dim mb-3 font-medium">
           <span className="tabular-nums">Step {step + 1} / {STEPS.length}</span>
           <button
             onClick={skip}
@@ -133,7 +133,7 @@ export default function OnboardingPage() {
 function WelcomeStep() {
   return (
     <div className="space-y-5">
-      <div className="text-[10px] uppercase tracking-[0.22em] text-accent font-medium">
+      <div className="text-[11px] tracking-normal text-accent font-medium">
         Welcome to Outwork
       </div>
       <h1 className="text-[2.25rem] font-medium tracking-[-0.03em] leading-[1] text-text">
@@ -143,7 +143,7 @@ function WelcomeStep() {
         Tell us a few things about your body, goals, and gym — we&apos;ll build a weekly program around that. Every answer is optional and editable later.
       </p>
       <div className="border border-border-strong/40 rounded-2xl p-5 space-y-2.5">
-        <p className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">You&apos;ll get</p>
+        <p className="text-[11px] tracking-normal text-text-dim font-medium">You&apos;ll get</p>
         <ul className="text-sm text-text-muted space-y-2 leading-relaxed">
           <li>— A multi-week training <span className="text-text">block</span> with a clear goal</li>
           <li>— Warmups + loads tuned to your injuries and strength</li>
@@ -465,7 +465,7 @@ function StrengthStep({ profile, update }: { profile: Profile; update: (c: Parti
                 {cur?.weight && cur?.reps && (
                   <span className="ml-auto text-[11px] text-accent tabular-nums font-medium whitespace-nowrap">
                     1RM ≈ {Math.round(cur.weight * (1 + cur.reps / 30) * 10) / 10}
-                    <span className="text-[9px] uppercase tracking-[0.18em] text-text-dim ml-1">{profile.units}</span>
+                    <span className="text-[10px] tracking-normal text-text-dim ml-1">{profile.units}</span>
                   </span>
                 )}
               </div>
@@ -545,7 +545,7 @@ function RunningStep({ profile, update }: { profile: Profile; update: (c: Partia
 
       {paceFmt && (
         <div className="border border-accent/50 rounded-xl p-4 text-sm bg-text/5">
-          <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium mb-1">
+          <div className="text-[11px] tracking-normal text-text-dim font-medium mb-1">
             Tempo pace
           </div>
           <div className="text-xl font-medium tracking-[-0.02em] text-text tabular-nums">{paceFmt}</div>
@@ -561,7 +561,7 @@ function RunningStep({ profile, update }: { profile: Profile; update: (c: Partia
 function DoneStep() {
   return (
     <div className="space-y-5">
-      <div className="text-[10px] uppercase tracking-[0.22em] text-accent font-medium">
+      <div className="text-[11px] tracking-normal text-accent font-medium">
         You&apos;re set
       </div>
       <h2 className="text-[2.125rem] font-medium tracking-[-0.03em] leading-[1] text-text">Last thing: pick your first block.</h2>
@@ -571,14 +571,14 @@ function DoneStep() {
 
       <div className="border border-border-strong/40 rounded-2xl p-5 space-y-4">
         <div>
-          <div className="text-[10px] uppercase tracking-[0.22em] text-accent font-medium">Block</div>
+          <div className="text-[11px] tracking-normal text-accent font-medium">Block</div>
           <div className="text-sm mt-1.5 text-text leading-relaxed">
             Your <span className="font-medium">program</span> for 4-8 weeks. Weekly pattern + progression (easy → harder → peak → deload). <span className="text-text-dim">Pick one in Plan.</span>
           </div>
         </div>
         <div className="h-px bg-border-strong/30" />
         <div>
-          <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">Category</div>
+          <div className="text-[11px] tracking-normal text-text-dim font-medium">Category</div>
           <div className="text-sm mt-1.5 text-text-muted leading-relaxed">
             A single <span className="font-medium text-text">workout type</span> you can grab anytime (Strength, Cardio, Split…). Use it when you want to do something off-plan today.
           </div>
@@ -595,7 +595,7 @@ function DoneStep() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-2">
-      <label className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+      <label className="text-[11px] tracking-normal text-text-dim font-medium">
         {label}
       </label>
       {children}

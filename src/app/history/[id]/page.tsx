@@ -66,7 +66,7 @@ export default function SessionRecapPage({ params }: { params: Promise<{ id: str
 function RecapShell({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
     <div className="max-w-3xl mx-auto px-5 py-6">
-      <div className="flex items-center gap-3 text-[11px] uppercase tracking-[0.18em] text-text-dim mb-3 font-medium">
+      <div className="flex items-center gap-3 text-[12px] tracking-normal text-text-dim mb-3 font-medium">
         <Link href="/history" className="hover:text-text">← History</Link>
       </div>
       <h1 className="text-[1.75rem] font-medium tracking-[-0.03em] text-text leading-[1]">
@@ -103,12 +103,12 @@ function Recap({ session, prev, next }: { session: Session; prev: Session | null
 
   return (
     <div className="max-w-3xl mx-auto px-5 py-6 space-y-6">
-      <div className="flex items-center gap-3 text-[11px] uppercase tracking-[0.18em] text-text-dim font-medium">
+      <div className="flex items-center gap-3 text-[12px] tracking-normal text-text-dim font-medium">
         <Link href="/history" className="hover:text-text">← History</Link>
       </div>
 
       <header className="space-y-3">
-        <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] font-medium">
+        <div className="flex items-center gap-2 text-[11px] tracking-normal font-medium">
           <span
             className="w-1.5 h-1.5 rounded-full"
             style={{ background: color.solid }}
@@ -150,7 +150,7 @@ function Recap({ session, prev, next }: { session: Session; prev: Session | null
 
       {session.blocks.length === 0 ? (
         <section className="border border-border-strong/40 bg-bg-elevated rounded-2xl p-5">
-          <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+          <div className="text-[11px] tracking-normal text-text-dim font-medium">
             Logged retroactively
           </div>
           <p className="text-sm text-text-muted mt-2 leading-relaxed">
@@ -162,7 +162,7 @@ function Recap({ session, prev, next }: { session: Session; prev: Session | null
         <section className="space-y-5">
           {session.blocks.map((b, bi) => (
             <div key={bi} className="space-y-2.5">
-              <h2 className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+              <h2 className="text-[11px] tracking-normal text-text-dim font-medium">
                 {b.title}
               </h2>
               {b.scheme && (
@@ -188,7 +188,7 @@ function Recap({ session, prev, next }: { session: Session; prev: Session | null
             href={`/history/${prev.id}`}
             className="flex flex-col items-start gap-1 border border-border-strong/40 rounded-2xl px-4 py-3 hover:border-text-dim transition-colors"
           >
-            <span className="text-[10px] uppercase tracking-[0.18em] text-text-dim font-medium">
+            <span className="text-[11px] tracking-normal text-text-dim font-medium">
               ‹ Previous
             </span>
             <span className="text-sm text-text truncate">
@@ -203,7 +203,7 @@ function Recap({ session, prev, next }: { session: Session; prev: Session | null
             href={`/history/${next.id}`}
             className="flex flex-col items-end gap-1 border border-border-strong/40 rounded-2xl px-4 py-3 hover:border-text-dim transition-colors text-right"
           >
-            <span className="text-[10px] uppercase tracking-[0.18em] text-text-dim font-medium">
+            <span className="text-[11px] tracking-normal text-text-dim font-medium">
               Next ›
             </span>
             <span className="text-sm text-text truncate">
@@ -219,7 +219,7 @@ function Recap({ session, prev, next }: { session: Session; prev: Session | null
           it's deliberately small. Two-step confirm so no accidental loss. */}
       <div className="pt-6 text-center">
         {confirming ? (
-          <div className="flex items-center justify-center gap-3 text-[11px] uppercase tracking-[0.18em] font-medium">
+          <div className="flex items-center justify-center gap-3 text-[12px] tracking-normal font-medium">
             <span className="text-danger">Delete this session?</span>
             <button
               onClick={() => setConfirming(false)}
@@ -237,7 +237,7 @@ function Recap({ session, prev, next }: { session: Session; prev: Session | null
         ) : (
           <button
             onClick={() => setConfirming(true)}
-            className="text-[10px] uppercase tracking-[0.18em] text-text-dim hover:text-danger font-medium"
+            className="text-[11px] tracking-normal text-text-dim hover:text-danger font-medium"
           >
             Delete session
           </button>
@@ -263,7 +263,7 @@ function StatChip({ label, value, tone }: { label: string; value: string; tone?:
         toneClass
       )}
     >
-      <span className="text-[10px] uppercase tracking-[0.18em] text-text-dim font-medium">
+      <span className="text-[11px] tracking-normal text-text-dim font-medium">
         {label}
       </span>
       <span className="text-sm font-medium tabular-nums capitalize">{value}</span>
@@ -434,11 +434,11 @@ function BenchmarkHighlight({ session }: { session: Session }) {
       className="block border border-accent/40 bg-text/[0.04] rounded-2xl p-4 space-y-1"
     >
       <div className="flex items-center justify-between gap-3">
-        <div className="text-[10px] uppercase tracking-[0.22em] text-accent font-medium">
+        <div className="text-[11px] tracking-normal text-accent font-medium">
           ⚡ {match.meta.label}
         </div>
         {match.isPB && (
-          <div className="text-[10px] uppercase tracking-[0.22em] text-success font-medium">
+          <div className="text-[11px] tracking-normal text-success font-medium">
             NEW PB
           </div>
         )}
@@ -446,7 +446,7 @@ function BenchmarkHighlight({ session }: { session: Session }) {
       <div className="text-2xl font-medium tracking-[-0.02em] text-text tabular-nums">
         {valueLabel}
       </div>
-      <div className="text-[10px] uppercase tracking-[0.18em] text-text-dim font-medium">
+      <div className="text-[11px] tracking-normal text-text-dim font-medium">
         Logged to Benchmarks →
       </div>
     </Link>

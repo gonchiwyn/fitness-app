@@ -68,7 +68,7 @@ export default function SportLogModal({
       >
         <div className="flex items-start justify-between mb-5">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+            <div className="text-[11px] tracking-normal text-text-dim font-medium">
               Log a sport
             </div>
             <h3 className="text-xl font-medium tracking-[-0.02em] tracking-tight text-text mt-1">
@@ -87,7 +87,7 @@ export default function SportLogModal({
           Not part of your program — just marks that you moved. Counts on your calendar and streak.
         </p>
 
-        <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium mb-2.5">
+        <div className="text-[11px] tracking-normal text-text-dim font-medium mb-2.5">
           Common
         </div>
         <div className="flex flex-wrap gap-1.5 mb-5">
@@ -103,7 +103,7 @@ export default function SportLogModal({
           ))}
         </div>
 
-        <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim mb-2.5 font-medium">
+        <div className="text-[11px] tracking-normal text-text-dim mb-2.5 font-medium">
           Or type your own
         </div>
         <div className="flex gap-2">

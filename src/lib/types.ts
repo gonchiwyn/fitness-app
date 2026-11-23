@@ -656,19 +656,19 @@ export function getBlockPhase(
   const weeksLeft = durationWeeks - weekInBlock;
 
   const ACCUMULATION: Omit<CyclePhase, "weekInCycle"> = {
-    label: "Accumulation",
+    label: "Build",
     description: "Build volume tolerance. Reps moderate, add sets. Not the peak week.",
     intensityMultiplier: 1.0,
     setAdjustment: 0,
   };
   const INTENSIFICATION: Omit<CyclePhase, "weekInCycle"> = {
-    label: "Intensification",
+    label: "Heavy",
     description: "Load creeps up, reps drop slightly. Push harder, moderate volume.",
     intensityMultiplier: 1.05,
     setAdjustment: 0,
   };
   const REALIZATION: Omit<CyclePhase, "weekInCycle"> = {
-    label: "Realization",
+    label: "Peak",
     description: "Peak week — biggest loads, one extra set on main lifts. Chase PRs.",
     intensityMultiplier: 1.08,
     setAdjustment: 1,

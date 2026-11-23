@@ -177,7 +177,7 @@ export default function SettingsPage() {
   return (
     <div className="max-w-3xl mx-auto px-5 py-6 space-y-8">
       <header>
-        <p className="text-xs uppercase tracking-widest text-text-dim">You</p>
+        <p className="text-xs tracking-normal text-text-dim">You</p>
         <h1 className="text-[2.125rem] font-medium tracking-[-0.03em] leading-[1] mt-1.5 text-text">
           Profile
         </h1>
@@ -188,7 +188,7 @@ export default function SettingsPage() {
           href="/onboarding"
           className="block bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/30 rounded-2xl p-4"
         >
-          <div className="text-xs uppercase tracking-widest text-accent font-semibold">
+          <div className="text-xs tracking-normal text-accent font-semibold">
             Complete onboarding
           </div>
           <div className="text-sm text-text-muted mt-1">
@@ -201,7 +201,7 @@ export default function SettingsPage() {
         href="/benchmarks"
         className="block bg-bg-card border border-border rounded-2xl p-4 hover:border-accent/40 transition-colors"
       >
-        <div className="text-xs uppercase tracking-widest text-text-dim font-semibold">
+        <div className="text-xs tracking-normal text-text-dim font-semibold">
           Benchmarks →
         </div>
         <div className="text-sm text-text-muted mt-1">
@@ -281,7 +281,7 @@ export default function SettingsPage() {
         </p>
 
         <div>
-          <div className="text-[11px] uppercase tracking-widest text-text-dim font-medium mb-2">
+          <div className="text-[11px] tracking-normal text-text-dim font-medium mb-2">
             Current concerns
           </div>
           <p className="text-xs text-text-dim -mt-1 mb-2">
@@ -313,7 +313,7 @@ export default function SettingsPage() {
         </div>
 
         <div className="pt-4">
-          <div className="text-[11px] uppercase tracking-widest text-text-dim font-medium mb-2">
+          <div className="text-[11px] tracking-normal text-text-dim font-medium mb-2">
             Core block focus
           </div>
           <div className="space-y-2">
@@ -342,7 +342,7 @@ export default function SettingsPage() {
         </div>
 
         <div className="pt-2">
-          <div className="text-[11px] uppercase tracking-widest text-text-dim font-medium mb-2">
+          <div className="text-[11px] tracking-normal text-text-dim font-medium mb-2">
             Chronic lumbar care
           </div>
           <button
@@ -509,7 +509,7 @@ function DevToolsSection({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="space-y-3">
-      <h2 className="text-xs uppercase tracking-widest text-text-dim font-semibold">{title}</h2>
+      <h2 className="text-xs tracking-normal text-text-dim font-semibold">{title}</h2>
       {children}
     </section>
   );
@@ -534,7 +534,7 @@ function CollapsibleSection({
         className="w-full flex items-baseline justify-between text-left"
       >
         <div>
-          <h2 className="text-xs uppercase tracking-widest text-text-dim font-semibold">
+          <h2 className="text-xs tracking-normal text-text-dim font-semibold">
             {title}
           </h2>
           {hint && !open && (
@@ -551,7 +551,7 @@ function CollapsibleSection({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-[11px] uppercase tracking-widest text-text-dim font-medium">
+      <label className="text-[11px] tracking-normal text-text-dim font-medium">
         {label}
       </label>
       {children}

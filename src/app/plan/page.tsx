@@ -282,12 +282,19 @@ function PlanPageInner() {
         { category: "cardio", templateId: "attia_zone2_45" },
         { category: "recovery" },
       ];
+      // Deload week — CNS recovery is the point (Galpin/Attia: ~50% volume
+      // cut, ~15% intensity cut off a Realization peak). Keep pattern
+      // specificity with ONE light skill sim (Tue), hold the aerobic floor
+      // with two Z2 sessions (Wed + Fri), everything else is mobility or
+      // recovery. Previously Fri used hyrox_engine_easy which prescribes
+      // 6 × 400 m moderate intervals — misnamed, that's a tempo day after
+      // a Realization TT the week before. Swapped for a second Z2.
       const deloadWeek: PlannedDay[] = [
         { category: "stretching" },
         { category: "hyrox", templateId: "hyrox_sim_pairs_light" },
         { category: "cardio", templateId: "attia_zone2_45" },
         { category: "stretching" },
-        { category: "hyrox", templateId: "hyrox_engine_easy" },
+        { category: "cardio", templateId: "attia_zone2_45" },
         { category: "recovery" },
         { category: "recovery" },
       ];
@@ -391,12 +398,12 @@ function PlanPageInner() {
       <header>
         <div className="flex items-baseline justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">Your program</p>
+            <p className="text-[12px] tracking-normal text-text-dim font-medium">Your program</p>
             <h1 className="text-[2.125rem] font-medium tracking-[-0.03em] leading-[1] mt-1.5 text-text">Plan</h1>
           </div>
           <Link
             href="/plans"
-            className="text-[11px] uppercase tracking-[0.18em] text-accent font-medium hover:text-accent-dim shrink-0"
+            className="text-[12px] tracking-normal text-accent font-medium hover:text-accent-dim shrink-0"
           >
             Browse all →
           </Link>
@@ -416,7 +423,7 @@ function PlanPageInner() {
             <div className="min-w-0">
               <div
                 className={clsx(
-                  "text-[10px] uppercase tracking-[0.22em] font-medium flex items-center gap-2",
+                  "text-[11px] tracking-normal font-medium flex items-center gap-2",
                   isPaused ? "text-text-dim" : "text-accent"
                 )}
               >
@@ -460,12 +467,12 @@ function PlanPageInner() {
             </button>
             <button
               onClick={togglePause}
-              className="h-11 px-4 rounded-full border border-border-strong/40 text-text-muted text-xs uppercase tracking-[0.18em] font-medium hover:border-text-dim hover:text-text transition-colors"
+              className="h-11 px-4 rounded-full border border-border-strong/40 text-text-muted text-xs tracking-normal font-medium hover:border-text-dim hover:text-text transition-colors"
             >
               {isPaused ? "Resume" : "Pause"}
             </button>
           </div>
-          <div className="flex items-center justify-between text-[10px] text-text-dim tracking-[0.18em] uppercase font-medium pt-1">
+          <div className="flex items-center justify-between text-[10px] text-text-dim tracking-normal font-medium pt-1">
             <span>Started {format(new Date(focus.startedAt), "MMM d")}</span>
             <button
               onClick={endBlock}
@@ -479,7 +486,7 @@ function PlanPageInner() {
 
       {blockState === "completed" && focus && (
         <section className="border border-accent/40 bg-text/[0.04] rounded-2xl p-5 space-y-4">
-          <div className="text-[10px] uppercase tracking-[0.22em] text-accent font-medium">
+          <div className="text-[11px] tracking-normal text-accent font-medium">
             Block complete
           </div>
           <div className="text-[1.75rem] font-medium tracking-[-0.03em] text-text leading-[1]">
@@ -499,7 +506,7 @@ function PlanPageInner() {
 
       {blockState === "none" && (
         <section className="border border-accent/40 bg-text/[0.04] rounded-2xl p-5">
-          <div className="text-[10px] uppercase tracking-[0.22em] text-accent font-medium">
+          <div className="text-[11px] tracking-normal text-accent font-medium">
             No block yet
           </div>
           <div className="text-[1.75rem] font-medium tracking-[-0.03em] mt-2 text-text leading-[1]">
@@ -530,7 +537,7 @@ function PlanPageInner() {
             >
               ‹
             </button>
-            <h2 className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium min-w-[110px] text-center">
+            <h2 className="text-[12px] tracking-normal text-text-dim font-medium min-w-[110px] text-center">
               {viewedWeekOffset === 0
                 ? "This week"
                 : viewedWeekOffset === 1
@@ -549,11 +556,19 @@ function PlanPageInner() {
             </button>
           </div>
           {viewedWeekOffset === 0 && weekTarget > 0 && (
-            <span className="text-[10px] uppercase tracking-[0.18em] text-text-dim font-medium tabular-nums">
-              <span className={clsx(doneThisWeek >= weekTarget ? "text-success" : "text-text")}>
-                {doneThisWeek}
-              </span>{" "}
-              of {weekTarget} done
+            <span className="text-[11px] tracking-normal text-text-dim font-medium tabular-nums">
+              {doneThisWeek > weekTarget ? (
+                <span className="text-success">
+                  {weekTarget} of {weekTarget} · +{doneThisWeek - weekTarget}
+                </span>
+              ) : (
+                <>
+                  <span className={clsx(doneThisWeek >= weekTarget ? "text-success" : "text-text")}>
+                    {doneThisWeek}
+                  </span>{" "}
+                  of {weekTarget} done
+                </>
+              )}
             </span>
           )}
         </div>
@@ -610,21 +625,21 @@ function PlanPageInner() {
             const content = (
               <>
                 <div className={clsx("w-12 text-center shrink-0", isToday ? "text-accent" : "text-text-dim")}>
-                  <div className="text-[10px] uppercase tracking-[0.22em] font-medium">
+                  <div className="text-[11px] tracking-normal font-medium">
                     {DAY_LABELS_LONG[i].slice(0, 3)}
                   </div>
                   {isToday && (
-                    <div className="text-[9px] mt-1 font-medium uppercase tracking-[0.18em] text-accent">
+                    <div className="text-[9px] mt-1 font-medium tracking-normal text-accent">
                       Today
                     </div>
                   )}
                   {role === "recap" && !isToday && (
-                    <div className="text-[9px] mt-1 font-medium uppercase tracking-[0.18em] text-success">
+                    <div className="text-[9px] mt-1 font-medium tracking-normal text-success">
                       Done
                     </div>
                   )}
                   {role === "log-retro" && !isToday && (
-                    <div className="text-[9px] mt-1 font-medium uppercase tracking-[0.18em] text-text-dim">
+                    <div className="text-[9px] mt-1 font-medium tracking-normal text-text-dim">
                       Log?
                     </div>
                   )}
@@ -694,7 +709,7 @@ function PlanPageInner() {
       <div className="pt-4 text-center">
         <button
           onClick={reset}
-          className="text-[10px] uppercase tracking-[0.18em] text-text-dim hover:text-text-muted font-medium"
+          className="text-[11px] tracking-normal text-text-dim hover:text-text-muted font-medium"
         >
           Reset plan to default
         </button>
@@ -817,7 +832,7 @@ function BlockPickerModal({
               <div className="text-base font-medium tracking-tight text-text">{p.name}</div>
               <div className="text-xs text-text-dim mt-1 leading-relaxed">{p.tagline}</div>
             </div>
-            <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim shrink-0 tabular-nums font-medium">
+            <div className="text-[11px] tracking-normal text-text-dim shrink-0 tabular-nums font-medium">
               {p.durationWeeks}w
             </div>
           </div>
@@ -845,7 +860,7 @@ function BlockPickerModal({
       >
         <div className="flex items-start justify-between mb-5">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+            <div className="text-[11px] tracking-normal text-text-dim font-medium">
               Choose a focus
             </div>
             <h3 className="text-xl font-medium tracking-[-0.02em] text-text mt-1">
@@ -872,7 +887,7 @@ function BlockPickerModal({
             if (items.length === 0) return null;
             return (
               <div key={g.id} className="space-y-2">
-                <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+                <div className="text-[11px] tracking-normal text-text-dim font-medium">
                   {g.label}
                 </div>
                 {items.map(renderCard)}
@@ -881,7 +896,7 @@ function BlockPickerModal({
           })}
           {unlisted.length > 0 && (
             <div className="space-y-2">
-              <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+              <div className="text-[11px] tracking-normal text-text-dim font-medium">
                 More
               </div>
               {unlisted.map(renderCard)}
@@ -915,7 +930,7 @@ function PresetPreview({
   return (
     <div className="border-t border-border-strong/30 px-4 py-4 space-y-4">
       <div>
-        <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim mb-2.5 font-medium">
+        <div className="text-[11px] tracking-normal text-text-dim mb-2.5 font-medium">
           How many days per week?
         </div>
         <div className="grid grid-cols-4 gap-2">
@@ -940,7 +955,7 @@ function PresetPreview({
       </div>
 
       <div>
-        <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim mb-2.5 font-medium">
+        <div className="text-[11px] tracking-normal text-text-dim mb-2.5 font-medium">
           Your week
         </div>
         <div className="space-y-1.5">
@@ -956,7 +971,7 @@ function PresetPreview({
             const color = d ? categoryColor(d.category) : null;
             return (
               <div key={i} className="flex items-baseline gap-3 text-xs">
-                <span className="w-10 shrink-0 text-text-dim uppercase tracking-[0.2em] text-[10px] font-medium">
+                <span className="w-10 shrink-0 text-text-dim tracking-normal text-[10px] font-medium">
                   {DAY_LABELS_LONG[i].slice(0, 3)}
                 </span>
                 <div className="flex items-baseline gap-2 min-w-0">
@@ -981,7 +996,7 @@ function PresetPreview({
 
       <button
         onClick={onStart}
-        className="w-full h-11 rounded-full border border-accent/60 bg-text/5 text-text text-[11px] uppercase tracking-[0.18em] font-medium hover:bg-text/10"
+        className="w-full h-11 rounded-full border border-accent/60 bg-text/5 text-text text-[12px] tracking-normal font-medium hover:bg-text/10"
       >
         Start this block
       </button>
@@ -1005,16 +1020,16 @@ function PhaseOutline({
   const phases: { label: string; desc: string }[] = [];
   for (let w = 1; w <= durationWeeks; w++) {
     const weeksLeft = durationWeeks - w;
-    let label = "Accumulation";
+    let label = "Build";
     let desc = "Build volume tolerance — moderate loads, more sets.";
     if (durationWeeks <= 1 || weeksLeft === 0) {
       label = "Deload";
       desc = "Recovery — cut intensity ~15%, drop a set. CNS reset.";
     } else if (weeksLeft === 1 && durationWeeks >= 3) {
-      label = "Realization";
+      label = "Peak";
       desc = "Peak — heaviest loads, accessories back off. Chase PRs.";
     } else if (w > Math.ceil(durationWeeks / 3)) {
-      label = "Intensification";
+      label = "Heavy";
       desc = "Load creeps up ~5%, reps drop slightly. Push harder.";
     }
     phases.push({ label, desc });
@@ -1036,7 +1051,7 @@ function PhaseOutline({
               key={i}
               onClick={() => setSelectedIdx(i)}
               className={clsx(
-                "shrink-0 px-2.5 h-7 rounded-full border text-[10px] uppercase tracking-[0.18em] font-medium tabular-nums transition-colors",
+                "shrink-0 px-2.5 h-7 rounded-full border text-[11px] tracking-normal font-medium tabular-nums transition-colors",
                 isNow
                   ? "border-accent bg-accent text-bg"
                   : isSel
@@ -1097,7 +1112,7 @@ function DayPicker({
       >
         <div className="flex items-start justify-between mb-5">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+            <div className="text-[11px] tracking-normal text-text-dim font-medium">
               Edit day
             </div>
             <h3 className="text-xl font-medium tracking-[-0.02em] tracking-tight text-text mt-1">
@@ -1118,7 +1133,7 @@ function DayPicker({
           </button>
         </div>
 
-        <div className="mb-2 text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+        <div className="mb-2 text-[11px] tracking-normal text-text-dim font-medium">
           Apply change to
         </div>
         <div className="mb-5 grid grid-cols-2 gap-2">
@@ -1199,7 +1214,7 @@ function DayPicker({
           <>
             <button
               onClick={() => setStage("category")}
-              className="text-[11px] text-text-dim mb-3 uppercase tracking-[0.18em] font-medium hover:text-text-muted"
+              className="text-[11px] text-text-dim mb-3 tracking-normal font-medium hover:text-text-muted"
             >
               ← Change category
             </button>
@@ -1221,7 +1236,7 @@ function DayPicker({
               </button>
 
               {templates.length > 0 && (
-                <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium pt-3 pb-1 px-1">
+                <div className="text-[11px] tracking-normal text-text-dim font-medium pt-3 pb-1 px-1">
                   Lock a specific template
                 </div>
               )}

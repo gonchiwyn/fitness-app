@@ -460,7 +460,7 @@ export default function WorkoutForCategory({
         </div>
 
         <div>
-          <div className="text-[11px] uppercase tracking-[0.22em] text-accent font-medium flex items-center gap-2">
+          <div className="text-[12px] tracking-normal text-accent font-medium flex items-center gap-2">
             <span>{CATEGORY_LABELS[cat]}</span>
             {session.finishedAt && (
               <span className="text-success font-normal normal-case tracking-normal text-xs">
@@ -606,7 +606,7 @@ export default function WorkoutForCategory({
               ✓ Done — tap to undo
             </button>
             <div>
-              <div className="text-xs uppercase tracking-widest text-text-dim font-semibold text-center mb-2">
+              <div className="text-xs tracking-normal text-text-dim font-semibold text-center mb-2">
                 How did it feel?
               </div>
               <div className="grid grid-cols-3 gap-2">
@@ -636,7 +636,7 @@ export default function WorkoutForCategory({
             </button>
             <button
               onClick={() => router.push("/")}
-              className="w-full text-text-dim text-xs py-2 uppercase tracking-[0.18em] font-medium hover:text-text transition-colors"
+              className="w-full text-text-dim text-xs py-2 tracking-normal font-medium hover:text-text transition-colors"
             >
               Back to home
             </button>
@@ -662,13 +662,13 @@ export default function WorkoutForCategory({
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={regenerate}
-                className="text-text-muted text-xs py-2.5 border border-border-strong/40 rounded-full hover:border-text-dim hover:text-text transition-colors uppercase tracking-[0.18em] font-medium"
+                className="text-text-muted text-xs py-2.5 border border-border-strong/40 rounded-full hover:border-text-dim hover:text-text transition-colors tracking-normal font-medium"
               >
                 ↻ Regenerate
               </button>
               <button
                 onClick={discard}
-                className="text-text-dim text-xs py-2.5 border border-transparent hover:text-danger uppercase tracking-[0.18em] font-medium transition-colors"
+                className="text-text-dim text-xs py-2.5 border border-transparent hover:text-danger tracking-normal font-medium transition-colors"
               >
                 Discard
               </button>
@@ -706,7 +706,7 @@ function TodayShapeStrip({
     <section className="no-print space-y-3">
       {phase && (
         <div className="px-3.5 py-2.5 rounded-xl border border-border-strong/40 bg-bg-elevated">
-          <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+          <div className="text-[11px] tracking-normal text-text-dim font-medium">
             Week {phase.weekInCycle}/{totalWeeks}
           </div>
           <div className="text-[13px] font-medium text-accent leading-tight truncate mt-1">
@@ -728,7 +728,7 @@ function TodayShapeStrip({
           dropdown on every open. */}
       <button
         onClick={() => setExpanded((x) => !x)}
-        className="text-[11px] uppercase tracking-[0.18em] text-text-dim hover:text-text font-medium transition-colors"
+        className="text-[12px] tracking-normal text-text-dim hover:text-text font-medium transition-colors"
       >
         ⚙ Adjust session {expanded ? "▴" : "▾"}
       </button>
@@ -760,7 +760,7 @@ function KmInput({
   return (
     <div className="flex items-center justify-between gap-3 bg-bg-card border border-border rounded-xl px-4 py-3">
       <div>
-        <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold">
+        <div className="text-[10px] tracking-normal text-text-dim font-semibold">
           Distance covered
         </div>
         <div className="text-xs text-text-muted mt-0.5">Optional — feeds your stats.</div>
@@ -856,7 +856,7 @@ function BlockCard({
       >
         <div className="flex items-center gap-3">
           <div className="flex-1">
-            <div className="text-xs uppercase tracking-[0.18em] text-text-dim font-bold flex items-center gap-2">
+            <div className="text-xs tracking-normal text-text-dim font-bold flex items-center gap-2">
               <span>{block.title}</span>
               {isCore && (
                 <span
@@ -911,7 +911,7 @@ function BlockCard({
                 className="mx-4 mt-3 flex items-center justify-between gap-3 border border-accent/40 bg-text/[0.03] rounded-xl px-3.5 py-2.5 text-xs text-text leading-relaxed hover:border-accent transition-colors"
               >
                 <span>{block.note}</span>
-                <span className="text-[10px] uppercase tracking-[0.18em] text-accent font-medium shrink-0">
+                <span className="text-[11px] tracking-normal text-accent font-medium shrink-0">
                   Log →
                 </span>
               </Link>
@@ -940,10 +940,10 @@ function BlockCard({
               the stopwatch. */}
           {mode === "for_time" && !isWarmup && !isCooldown && (
             <div className="px-4 pt-3 flex items-center justify-between gap-3">
-              <span className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+              <span className="text-[11px] tracking-normal text-text-dim font-medium">
                 One round · for time
               </span>
-              <span className="text-[10px] uppercase tracking-[0.18em] text-accent font-medium">
+              <span className="text-[11px] tracking-normal text-accent font-medium">
                 Start a stopwatch
               </span>
             </div>
@@ -1010,7 +1010,7 @@ function BlockCard({
                   />
                   {showConnector && (
                     <div className={clsx(
-                      "mt-2 mb-1 text-[10px] uppercase tracking-widest font-semibold",
+                      "mt-2 mb-1 text-[10px] tracking-normal font-semibold",
                       restSec === 0 ? "text-text-dim" : "text-accent",
                       isGrouped && "pl-5"
                     )}>
@@ -1064,7 +1064,7 @@ function CardioModalityPicker({
   }
   return (
     <div className="no-print bg-bg-card border border-border rounded-xl p-3 space-y-2">
-      <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold">
+      <div className="text-[10px] tracking-normal text-text-dim font-semibold">
         Modality
       </div>
       <div className="grid grid-cols-4 gap-1.5">
@@ -1166,7 +1166,7 @@ function TopSetAutoreg({
   return (
     <div className="mt-2 mb-2 p-3 bg-bg rounded-lg border border-border/60 space-y-2 no-print">
       <div className="flex items-center justify-between gap-2">
-        <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold">
+        <div className="text-[10px] tracking-normal text-text-dim font-semibold">
           Top set — autoreg
         </div>
         {prev ? (
@@ -1251,7 +1251,7 @@ function BlockRoundsAdjuster({
   };
   return (
     <div className="px-4 pt-3 flex items-center justify-between gap-3 no-print">
-      <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold">
+      <div className="text-[10px] tracking-normal text-text-dim font-semibold">
         {label}
       </div>
       <div className="flex items-center gap-2">
@@ -1500,7 +1500,7 @@ function ExerciseCard({
             </button>
           ) : (
             <div className="p-3 bg-bg rounded-lg border border-border space-y-2">
-              <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold">
+              <div className="text-[10px] tracking-normal text-text-dim font-semibold">
                 Log to Benchmarks · {BENCHMARK_META[benchmarkType].label}
               </div>
               <div className="flex items-center gap-2">
@@ -1514,7 +1514,7 @@ function ExerciseCard({
                   placeholder="Value"
                   className="flex-1 h-10 px-3 bg-transparent border border-border-strong/40 rounded-full text-center tabular-nums text-sm focus:outline-none focus:border-accent/60 placeholder:text-text-dim"
                 />
-                <span className="text-[10px] uppercase tracking-[0.18em] text-text-dim font-medium">
+                <span className="text-[11px] tracking-normal text-text-dim font-medium">
                   {BENCHMARK_META[benchmarkType].unit}
                 </span>
                 <button
@@ -1542,7 +1542,7 @@ function ExerciseCard({
       {/* Swap UI */}
       {showSwaps && (
         <div className="mt-3 p-3 bg-bg rounded-lg border border-border space-y-1.5 no-print">
-          <div className="text-[10px] uppercase tracking-widest text-text-dim font-semibold">
+          <div className="text-[10px] tracking-normal text-text-dim font-semibold">
             Alternatives — same pattern, your equipment
           </div>
           {swapIds.map((id) => {
@@ -1580,7 +1580,7 @@ function Stat({ big, label, muted }: { big: string; label: string; muted?: boole
         {big}
       </div>
       {label && (
-        <div className="text-[9px] uppercase tracking-widest text-text-dim mt-0.5">{label}</div>
+        <div className="text-[9px] tracking-normal text-text-dim mt-0.5">{label}</div>
       )}
     </div>
   );
@@ -1608,7 +1608,7 @@ function CoreFocusPicker({
       >
         <div className="flex items-start justify-between mb-5">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+            <div className="text-[11px] tracking-normal text-text-dim font-medium">
               Today
             </div>
             <h3 className="text-xl font-medium tracking-[-0.02em] tracking-tight text-text mt-1">Core focus</h3>
