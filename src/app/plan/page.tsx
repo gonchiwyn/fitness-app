@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import clsx from "clsx";
 import { addDays, differenceInCalendarDays, differenceInCalendarWeeks, format, startOfWeek } from "date-fns";
 import DayPreviewModal from "@/components/DayPreviewModal";
+import QuickLogModal from "@/components/QuickLogModal";
 import {
   archiveCurrentFocus,
   db,
@@ -20,7 +21,7 @@ import {
   saveWeekOverride,
 } from "@/lib/db";
 import { templatesFor } from "@/lib/data/templates";
-import { BLOCK_PRESETS, PRESET_GROUPS, type BlockPreset } from "@/lib/data/presets";
+import { BLOCK_PRESETS, PRESET_GROUPS, visiblePresets, type BlockPreset } from "@/lib/data/presets";
 import { categoryColor } from "@/lib/categoryTheme";
 import { useBodyScrollLock } from "@/lib/useBodyScrollLock";
 import {
@@ -89,12 +90,23 @@ function PlanPageInner() {
   const searchParams = useSearchParams();
   const [editingDay, setEditingDay] = useState<number | null>(null);
   // ?pick=1 → auto-open the block picker modal (end-of-onboarding CTA).
-  const [showPresets, setShowPresets] = useState(searchParams.get("pick") === "1");
+  // ?target=<focusName> → also pre-expand that preset so the user lands on
+  // the one they tapped (from /plans/[slug] "Make this my block" or from a
+  // block-complete recommendation card).
+  const targetFocus = searchParams.get("target");
+  const [showPresets, setShowPresets] = useState(
+    searchParams.get("pick") === "1" || !!targetFocus
+  );
   // Preset tapped once → show preview (expand); tapped again → apply.
-  const [previewingPreset, setPreviewingPreset] = useState<string | null>(null);
+  const [previewingPreset, setPreviewingPreset] = useState<string | null>(targetFocus);
   // Frequency selected inside the preview panel. Null until the user taps a chip
   // (or the preview panel is opened — we default to the preset's recommendation).
-  const [selectedFrequency, setSelectedFrequency] = useState<number | null>(null);
+  // If we're deep-linking to a target preset, pre-fill with its default frequency
+  // so the user lands with everything ready to tap "Start".
+  const initialTargetFreq = targetFocus
+    ? BLOCK_PRESETS.find((p) => p.focusName === targetFocus)?.defaultFrequency ?? null
+    : null;
+  const [selectedFrequency, setSelectedFrequency] = useState<number | null>(initialTargetFreq);
   const todayIdx = dateToPlanIndex(new Date());
   // Monday of this week — used to compute a real date for each plan day
   // so DayPreviewModal can show the next upcoming occurrence of e.g. "Mon".
@@ -118,6 +130,7 @@ function PlanPageInner() {
   // allow a generous ±8 for free-form planning.
   const [viewedWeekOffset, setViewedWeekOffset] = useState(0);
   const [previewDate, setPreviewDate] = useState<string | null>(null);
+  const [logDate, setLogDate] = useState<string | null>(null);
   const viewedMonday = addDays(thisMonday, viewedWeekOffset * 7);
   const viewedWeekStart = format(viewedMonday, "yyyy-MM-dd");
   const viewedWeekEnd = format(addDays(viewedMonday, 7), "yyyy-MM-dd");
@@ -215,8 +228,11 @@ function PlanPageInner() {
   };
 
   // Presets are defined in src/lib/data/presets.ts so the Plans library at
-  // /plans and this picker share the same source of truth.
-  const presets: BlockPreset[] = BLOCK_PRESETS;
+  // /plans and this picker share the same source of truth. Owner-authored
+  // "personal" blocks are hidden by default; pass ?personal=1 on the URL to
+  // reveal them in the picker (same contract as /plans?personal=1).
+  const includePersonal = searchParams.get("personal") === "1";
+  const presets: BlockPreset[] = visiblePresets({ includePersonal });
 
   const applyPreset = async (preset: (typeof presets)[number], frequency: number) => {
     if (!confirm(`Start "${preset.name}" (${frequency} days/week)? Replaces your current weekly plan.`)) return;
@@ -234,23 +250,6 @@ function PlanPageInner() {
     };
     await saveProfile({ currentFocus: focus });
     setProfile((p) => (p ? { ...p, currentFocus: focus } : p));
-
-    // Surf prep has a fixed sailing week 3 — auto-populate that week as
-    // swim/sport log-only so the user can log against it. Keeps the base
-    // pattern (gym) untouched for weeks 1-2 and 4-6.
-    if (preset.focusName === "Surf prep") {
-      const startDate = new Date(today + "T00:00:00");
-      const week3Monday = new Date(startDate);
-      const daysUntilMonday = (1 - startDate.getDay() + 7) % 7;
-      week3Monday.setDate(
-        startDate.getDate() + daysUntilMonday + 14
-      );
-      const week3Start = format(week3Monday, "yyyy-MM-dd");
-      const sailingDays: PlannedDay[] = Array.from({ length: 7 }, (_, i) =>
-        i === 6 ? null : { category: "sport" as const }
-      );
-      await saveWeekOverride(week3Start, sailingDays);
-    }
 
     // Hyrox prep: template content shifts by phase (not just phase.setAdjustment).
     // W1-2 (Learn): intro sim + easy engine + RDL instead of deadlift
@@ -573,7 +572,7 @@ function PlanPageInner() {
           {viewedWeekOffset === 0
             ? patternIntro
             : viewedWeekOffset < 0
-              ? "Tap a day to see what you actually did."
+              ? "Tap a day — recap if you logged, log it if you didn't."
               : "Tap a day to preview the planned workout."}
         </p>
 
@@ -583,17 +582,27 @@ function PlanPageInner() {
             const rowDate = addDays(viewedMonday, i);
             const rowDateStr = format(rowDate, "yyyy-MM-dd");
             const session = sessionByDayIdx.get(i);
-            // Three distinct roles for a row tap:
-            //   past weeks → open the session recap if logged, else quietly
-            //                a plan preview (user may still want to peek)
-            //   this week  → open the DayPicker (edit)
-            //   future     → open the DayPreviewModal (peek)
-            const role: "past-recap" | "past-nothing" | "edit" | "preview" =
-              viewedWeekOffset < 0
-                ? (session && session.id !== undefined ? "past-recap" : "past-nothing")
-                : viewedWeekOffset === 0
-                  ? "edit"
-                  : "preview";
+            // Past = strictly before today's date, regardless of which week is
+            // being viewed. A past day in THIS week needs the same treatment
+            // as a past day in a prior week — don't route a logged Monday to
+            // the day-picker just because we're still looking at this week.
+            const isPastDate =
+              differenceInCalendarDays(rowDate, parseLocalDate(format(new Date(), "yyyy-MM-dd"))) < 0;
+            // Four distinct tap roles:
+            //   recap     — there's a logged session on this date
+            //   log-retro — past date, no session; opens QuickLogModal so the
+            //               user can retroactively log what they actually did
+            //   edit      — today / future day in the current week; opens
+            //               DayPicker to shape or change the plan
+            //   preview   — future week; opens DayPreviewModal to peek
+            const role: "recap" | "log-retro" | "edit" | "preview" =
+              session && session.id !== undefined
+                ? "recap"
+                : isPastDate
+                  ? "log-retro"
+                  : viewedWeekOffset > 0
+                    ? "preview"
+                    : "edit";
             const lockedTemplate = day?.templateId
               ? templatesFor(day.category).find((t) => t.id === day.templateId)
               : null;
@@ -609,9 +618,14 @@ function PlanPageInner() {
                       Today
                     </div>
                   )}
-                  {role === "past-recap" && !isToday && (
+                  {role === "recap" && !isToday && (
                     <div className="text-[9px] mt-1 font-medium uppercase tracking-[0.18em] text-success">
                       Done
+                    </div>
+                  )}
+                  {role === "log-retro" && !isToday && (
+                    <div className="text-[9px] mt-1 font-medium uppercase tracking-[0.18em] text-text-dim">
+                      Log?
                     </div>
                   )}
                 </div>
@@ -640,35 +654,25 @@ function PlanPageInner() {
                     <div className="text-sm text-text-dim">Rest day</div>
                   )}
                 </div>
-                {role !== "past-nothing" && (
-                  <span className="text-text-dim text-sm shrink-0">›</span>
-                )}
+                <span className="text-text-dim text-sm shrink-0">›</span>
               </>
             );
             const baseClasses = clsx(
               "w-full text-left flex items-center gap-4 rounded-2xl border p-4 transition-colors",
               isToday
                 ? "border-accent/50 bg-text/[0.03]"
-                : role === "past-recap"
+                : role === "recap"
                   ? "border-success/30 hover:border-success/50"
                   : "border-border-strong/40 hover:border-text-dim"
             );
-            if (role === "past-nothing") {
-              return (
-                <div
-                  key={i}
-                  className={clsx(baseClasses, "opacity-60 cursor-default hover:border-border-strong/40")}
-                >
-                  {content}
-                </div>
-              );
-            }
             return (
               <button
                 key={i}
                 onClick={() => {
-                  if (role === "past-recap" && session?.id !== undefined) {
+                  if (role === "recap" && session?.id !== undefined) {
                     router.push(`/history/${session.id}`);
+                  } else if (role === "log-retro") {
+                    setLogDate(rowDateStr);
                   } else if (role === "edit") {
                     setEditingDay(i);
                   } else if (role === "preview") {
@@ -715,6 +719,14 @@ function PlanPageInner() {
           }
           profile={profile}
           onClose={() => setPreviewDate(null)}
+        />
+      )}
+
+      {logDate && (
+        <QuickLogModal
+          date={logDate}
+          onClose={() => setLogDate(null)}
+          onLogged={() => setLogDate(null)}
         />
       )}
 

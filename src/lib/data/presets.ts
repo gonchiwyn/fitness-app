@@ -15,6 +15,10 @@ import type { PlannedDay } from "@/lib/types";
 //         when the user picks fewer training days than the full pattern has.
 // `defaultFrequency`: suggested days/week when applying. Also what the chip
 //         picker pre-selects.
+// `personal`: hidden from the public catalog + picker. Reveals only when a
+//         consumer passes an opt-in flag. Used today for owner-authored
+//         blocks that aren't ready to share; replaced by user-authored
+//         blocks once in-app block creation ships.
 export type BlockPreset = {
   name: string;
   tagline: string;
@@ -22,6 +26,7 @@ export type BlockPreset = {
   durationWeeks: number;
   defaultFrequency: number;
   days: PlannedDay[];
+  personal?: boolean;
 };
 
 export const BLOCK_PRESETS: BlockPreset[] = [
@@ -57,21 +62,6 @@ export const BLOCK_PRESETS: BlockPreset[] = [
     ],
   },
   {
-    name: "Build muscle — autoregulated",
-    tagline: "ABAB hypertrophy. Load adapts rep-by-rep (Menno/Galpin).",
-    focusName: "Menno Hypertrophy",
-    durationWeeks: 8,
-    defaultFrequency: 4,
-    days: [
-      { category: "hypertrophy", templateId: "menno_hyp_a" },
-      { category: "hypertrophy", templateId: "menno_hyp_b" },
-      { category: "hypertrophy", templateId: "menno_hyp_a" },
-      { category: "hypertrophy", templateId: "menno_hyp_b" },
-      { category: "cardio", templateId: "attia_zone2_45" },
-      { category: "cardio", templateId: "attia_zone2_45" },
-    ],
-  },
-  {
     name: "Get stronger",
     tagline: "Heavy bench, squat, deadlift. 8-week peak.",
     focusName: "Strength peak",
@@ -83,6 +73,41 @@ export const BLOCK_PRESETS: BlockPreset[] = [
       { category: "strength", templateId: "strength_deadlift_day" },
       { category: "split", templateId: "split_arms" },
       { category: "cardio", templateId: "attia_zone2_45" },
+      { category: "cardio", templateId: "attia_zone2_45" },
+    ],
+  },
+  {
+    // 3-day full-body for time-constrained users. Galpin/Nippard: minimum
+    // effective dose, hit every muscle 2-3× per week, 48h between hits. Plus
+    // one Z2 as the aerobic floor you don't skip.
+    name: "Minimalist",
+    tagline: "3 full-body sessions + 1 Z2. Minimum effective dose.",
+    focusName: "Minimalist",
+    durationWeeks: 4,
+    defaultFrequency: 3,
+    days: [
+      { category: "split", templateId: "split_full_body" },
+      { category: "split", templateId: "split_full_body" },
+      { category: "split", templateId: "split_full_body" },
+      { category: "cardio", templateId: "attia_zone2_45" },
+    ],
+  },
+  {
+    // Body-composition block — hold strength (preserve muscle in a deficit)
+    // with metabolic conditioning on top + aerobic base. Schoenfeld/Nippard:
+    // strength is the single most important variable when cutting. Pair with
+    // ~300-500 kcal daily deficit + 1.8-2.2 g/kg protein (not coded here).
+    name: "Fat loss",
+    tagline: "Strength + metabolic + Z2. Preserve muscle while leaning out.",
+    focusName: "Fat loss",
+    durationWeeks: 6,
+    defaultFrequency: 5,
+    days: [
+      { category: "split", templateId: "split_push" },
+      { category: "cardio", templateId: "attia_4x4_vo2" },
+      { category: "split", templateId: "split_pull" },
+      { category: "cardio", templateId: "attia_zone2_45" },
+      { category: "split", templateId: "split_legs" },
       { category: "cardio", templateId: "attia_zone2_45" },
     ],
   },
@@ -102,101 +127,21 @@ export const BLOCK_PRESETS: BlockPreset[] = [
     ],
   },
   {
-    name: "Athletic power",
-    tagline: "Jumps, sprints, Hyrox stations, heavy legs.",
-    focusName: "Athletic",
-    durationWeeks: 6,
-    defaultFrequency: 5,
-    days: [
-      { category: "athlete" },
-      { category: "hyrox" },
-      { category: "split", templateId: "split_legs" },
-      { category: "hyrox" },
-      { category: "cardio", templateId: "attia_zone2_45" },
-      { category: "cardio", templateId: "attia_zone2_45" },
-    ],
-  },
-  {
-    name: "Longevity",
-    tagline: "3 strength · 2 Z2 · 1 VO2 · 1 stretch. The Attia week.",
-    focusName: "Longevity",
+    // Attia's own prescription for raising VO2 max + mortality metrics.
+    // 2× VO2 (4×4 Norwegian) + 3× Z2 + 1× strength maintenance. Grounded in
+    // the "going from low to below-average VO2 drops mortality ~50%" data.
+    name: "VO2 + aerobic",
+    tagline: "Attia's cardio recipe. 2× VO2, 3× Z2, 1 strength.",
+    focusName: "VO2 + aerobic",
     durationWeeks: 8,
-    defaultFrequency: 6,
+    defaultFrequency: 5,
     days: [
-      { category: "strength" },
-      { category: "cardio", templateId: "attia_zone2_45" },
-      { category: "hypertrophy" },
       { category: "cardio", templateId: "attia_4x4_vo2" },
+      { category: "cardio", templateId: "attia_zone2_45" },
+      { category: "cardio", templateId: "attia_4x4_vo2" },
+      { category: "cardio", templateId: "attia_zone2_45" },
       { category: "strength" },
       { category: "cardio", templateId: "attia_zone2_45" },
-      { category: "stretching" },
-    ],
-  },
-  {
-    name: "Push / Pull / Legs",
-    tagline: "Classic PPL — Push & Pull twice, Legs once.",
-    focusName: "PPL",
-    durationWeeks: 6,
-    defaultFrequency: 6,
-    days: [
-      { category: "split", templateId: "split_push" },
-      { category: "split", templateId: "split_pull" },
-      { category: "split", templateId: "split_legs" },
-      { category: "split", templateId: "split_push" },
-      { category: "split", templateId: "split_pull" },
-      { category: "cardio", templateId: "attia_zone2_45" },
-      { category: "cardio", templateId: "attia_zone2_45" },
-    ],
-  },
-  {
-    name: "Recovery week",
-    tagline: "Mobility, easy Z2, no barbell. Reset the system.",
-    focusName: "Recovery",
-    durationWeeks: 1,
-    defaultFrequency: 5,
-    days: [
-      { category: "stretching" },
-      { category: "cardio", templateId: "attia_zone2_45" },
-      { category: "stretching" },
-      { category: "recovery" },
-      { category: "cardio", templateId: "attia_zone2_45" },
-      { category: "recovery" },
-    ],
-  },
-  {
-    // Fixed layout — frequency chip is cosmetic here, structure is designed
-    // around sailing week 3 and auto-override; see applyPreset.
-    name: "Surf trip prep",
-    tagline: "Paddle, pop-up, back-safe. Built for a 6-week countdown.",
-    focusName: "Surf prep",
-    durationWeeks: 6,
-    defaultFrequency: 6,
-    days: [
-      { category: "athlete", templateId: "surf_paddle_push" },
-      { category: "athlete", templateId: "surf_paddle_pull" },
-      { category: "cardio", templateId: "attia_zone2_45" },
-      { category: "athlete", templateId: "surf_legs" },
-      { category: "athlete", templateId: "surf_pop_up_core" },
-      { category: "cardio", templateId: "attia_zone2_45" },
-    ],
-  },
-  {
-    // Fixed layout — phase-based template progression W1-2 vs W3-5 vs W6.
-    // Sim day uses the "Station Blocks" variant by default — real Hyrox
-    // equipment but held one station at a time. Thursday (short mid-week
-    // sim) and Saturday (long run) added per Hunter McIntyre + Nick Bare.
-    name: "Hyrox prep",
-    tagline: "First-time Hyrox: learn → build → peak. Back-aware.",
-    focusName: "Hyrox prep",
-    durationWeeks: 6,
-    defaultFrequency: 5,
-    days: [
-      { category: "hyrox", templateId: "hyrox_strength_pull" },
-      { category: "hyrox", templateId: "hyrox_sim_pairs" },
-      { category: "hyrox", templateId: "hyrox_strength_push" },
-      { category: "hyrox", templateId: "hyrox_sim_short" },
-      { category: "cardio", templateId: "attia_zone2_45" },
-      { category: "cardio", templateId: "nick_bare_long_run" },
     ],
   },
   {
@@ -220,10 +165,82 @@ export const BLOCK_PRESETS: BlockPreset[] = [
     ],
   },
   {
+    name: "Longevity",
+    tagline: "3 strength · 2 Z2 · 1 VO2 · 1 stretch. The Attia week.",
+    focusName: "Longevity",
+    durationWeeks: 8,
+    defaultFrequency: 6,
+    days: [
+      { category: "strength" },
+      { category: "cardio", templateId: "attia_zone2_45" },
+      { category: "hypertrophy" },
+      { category: "cardio", templateId: "attia_4x4_vo2" },
+      { category: "strength" },
+      { category: "cardio", templateId: "attia_zone2_45" },
+      { category: "stretching" },
+    ],
+  },
+  {
+    // Fixed layout — phase-based template progression W1-2 vs W3-5 vs W6.
+    // Sim day uses the "Station Blocks" variant by default — real Hyrox
+    // equipment but held one station at a time. Thursday (short mid-week
+    // sim) and Saturday (long run) added per Hunter McIntyre + Nick Bare.
+    name: "Hyrox prep",
+    tagline: "First-time Hyrox: learn → build → peak. Back-aware.",
+    focusName: "Hyrox prep",
+    durationWeeks: 6,
+    defaultFrequency: 5,
+    days: [
+      { category: "hyrox", templateId: "hyrox_strength_pull" },
+      { category: "hyrox", templateId: "hyrox_sim_pairs" },
+      { category: "hyrox", templateId: "hyrox_strength_push" },
+      { category: "hyrox", templateId: "hyrox_sim_short" },
+      { category: "cardio", templateId: "attia_zone2_45" },
+      { category: "cardio", templateId: "nick_bare_long_run" },
+    ],
+  },
+  {
+    name: "Recovery week",
+    tagline: "Mobility, easy Z2, no barbell. Reset the system.",
+    focusName: "Recovery",
+    durationWeeks: 1,
+    defaultFrequency: 5,
+    days: [
+      { category: "stretching" },
+      { category: "cardio", templateId: "attia_zone2_45" },
+      { category: "stretching" },
+      { category: "recovery" },
+      { category: "cardio", templateId: "attia_zone2_45" },
+      { category: "recovery" },
+    ],
+  },
+  {
+    // General surf conditioning — paddle strength, pop-up power, back-safe
+    // legs. Used to be timed to a specific trip (auto-overrode a sailing
+    // week) — generalized now so it's reusable any time surf fitness matters.
+    name: "Surf training",
+    tagline: "Paddle, pop-up, back-safe. General surf conditioning.",
+    focusName: "Surf prep",
+    durationWeeks: 6,
+    defaultFrequency: 6,
+    days: [
+      { category: "athlete", templateId: "surf_paddle_push" },
+      { category: "athlete", templateId: "surf_paddle_pull" },
+      { category: "cardio", templateId: "attia_zone2_45" },
+      { category: "athlete", templateId: "surf_legs" },
+      { category: "athlete", templateId: "surf_pop_up_core" },
+      { category: "cardio", templateId: "attia_zone2_45" },
+    ],
+  },
+  // ─── Personal blocks (hidden from public catalog + picker) ───
+  // Visible only when a consumer passes the opt-in flag; owner-authored, not
+  // meant for friends sharing the app. Will be replaced by user-authored
+  // blocks when in-app creation ships.
+  {
+    personal: true,
     // 2-week bridge after a deload. Lower volume than the full Hybrid block
     // so the nervous system re-sensitizes; push day returns (if the previous
     // block relegated chest/shoulders), one sim re-tests the race pattern.
-    // Not meant to progress — meant to prime the next block.
     name: "Re-entry bridge",
     tagline: "2 weeks to re-introduce push day + test the pattern post-deload.",
     focusName: "Re-entry bridge",
@@ -237,12 +254,11 @@ export const BLOCK_PRESETS: BlockPreset[] = [
     ],
   },
   {
+    personal: true,
     // 8-week maintenance block for extended travel (Uruguay, long trips).
     // 3-day structure keeps gym dependence low; swim / surf / paddleboard
-    // backfill the aerobic volume outside the gym. Push / Pull / Legs
-    // because travel gyms vary wildly — these are the three sessions that
-    // work with any functional setup. Goal: lose <5% fitness, come back
-    // fresh. Not meant to progress — meant to preserve.
+    // backfill the aerobic volume outside the gym. Goal: lose <5% fitness,
+    // come back fresh.
     name: "Travel mode",
     tagline: "3 gym days + swim/surf/run. Preserve fitness through long trips.",
     focusName: "Travel mode",
@@ -257,16 +273,24 @@ export const BLOCK_PRESETS: BlockPreset[] = [
   },
 ];
 
+// Return the catalog, optionally including personal (owner-only) blocks.
+// Centralized so consumers don't each re-implement the filter.
+export function visiblePresets(options?: { includePersonal?: boolean }): BlockPreset[] {
+  const includePersonal = options?.includePersonal ?? false;
+  return includePersonal ? BLOCK_PRESETS : BLOCK_PRESETS.filter((p) => !p.personal);
+}
+
 // Grouping for the Plan tab's picker modal and the /plans library.
 // Peloton / Nike group programs by intent — users pick by WHY, not anatomy.
 // A preset's focusName must appear in exactly one group's `items`; anything
 // unlisted falls into "Specialty" via the consumer.
 export const PRESET_GROUPS: { id: string; label: string; items: string[] }[] = [
-  { id: "strength", label: "Strength", items: ["Hypertrophy", "Menno Hypertrophy", "Strength peak", "PPL"] },
-  { id: "endurance", label: "Endurance", items: ["Cardio base"] },
-  { id: "hybrid", label: "Hybrid / Athletic", items: ["Hybrid athlete", "Hyrox prep", "Athletic", "Longevity"] },
-  { id: "reset", label: "Reset", items: ["Re-entry bridge", "Travel mode", "Recovery", "Beginner"] },
+  { id: "strength", label: "Strength", items: ["Hypertrophy", "Strength peak", "Minimalist", "Fat loss"] },
+  { id: "endurance", label: "Endurance", items: ["Cardio base", "VO2 + aerobic"] },
+  { id: "hybrid", label: "Hybrid / Athletic", items: ["Hybrid athlete", "Hyrox prep", "Longevity"] },
+  { id: "reset", label: "Reset", items: ["Beginner", "Recovery"] },
   { id: "specialty", label: "Specialty", items: ["Surf prep"] },
+  { id: "personal", label: "Personal", items: ["Re-entry bridge", "Travel mode"] },
 ];
 
 export function presetByFocusName(name: string): BlockPreset | undefined {
@@ -281,4 +305,36 @@ export function presetSlug(preset: BlockPreset): string {
 
 export function presetBySlug(slug: string): BlockPreset | undefined {
   return BLOCK_PRESETS.find((p) => presetSlug(p) === slug);
+}
+
+// "What next" recommender — maps a focus name to 2-3 blocks that make sense
+// as the next phase. Logic follows classical periodization + guru consensus:
+// hypertrophy → strength → hypertrophy; cardio → more cardio + VO2; hybrid
+// stays hybrid with race/aesthetic swap-ins. "Again" (same block repeated) is
+// a valid option — some adaptations take 2-3 cycles. First suggestion is the
+// "safest next step"; later ones are variants.
+const NEXT_BLOCK_MAP: Record<string, string[]> = {
+  "Beginner": ["Hypertrophy", "Hybrid athlete", "Cardio base"],
+  "Hypertrophy": ["Hypertrophy", "Strength peak", "Fat loss"],
+  "Strength peak": ["Hypertrophy", "Hybrid athlete", "Recovery"],
+  "Minimalist": ["Hypertrophy", "Minimalist", "Hybrid athlete"],
+  "Fat loss": ["Hypertrophy", "Hybrid athlete", "Recovery"],
+  "Cardio base": ["VO2 + aerobic", "Hybrid athlete", "Longevity"],
+  "VO2 + aerobic": ["Cardio base", "Hybrid athlete", "Longevity"],
+  "Hybrid athlete": ["Hyrox prep", "Hybrid athlete", "Fat loss"],
+  "Hyrox prep": ["Hybrid athlete", "Hyrox prep", "Recovery"],
+  "Longevity": ["Longevity", "Hypertrophy", "VO2 + aerobic"],
+  "Recovery": ["Hypertrophy", "Hybrid athlete", "Cardio base"],
+  "Surf prep": ["Surf prep", "Hybrid athlete", "Recovery"],
+  // Personal blocks route back to public ones (so the end-of-block prompt
+  // never re-suggests a personal block unless the owner is actively viewing).
+  "Re-entry bridge": ["Hybrid athlete", "Hyrox prep", "Hypertrophy"],
+  "Travel mode": ["Hybrid athlete", "Hypertrophy", "Hyrox prep"],
+};
+
+export function nextBlockSuggestions(focusName: string): BlockPreset[] {
+  const focuses = NEXT_BLOCK_MAP[focusName] ?? ["Hybrid athlete", "Hypertrophy", "Recovery"];
+  return focuses
+    .map((f) => BLOCK_PRESETS.find((p) => p.focusName === f))
+    .filter((p): p is BlockPreset => !!p);
 }

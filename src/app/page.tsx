@@ -1,14 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { format, startOfWeek, addDays, differenceInCalendarDays } from "date-fns";
 import { useLiveQuery } from "dexie-react-hooks";
 import clsx from "clsx";
-import { archiveCurrentFocus, cleanupStaleDrafts, db, getProfile, getWeeklyPlan, saveProfile } from "@/lib/db";
+import { cleanupStaleDrafts, db, getProfile, getWeeklyPlan } from "@/lib/db";
 import QuickLogModal from "@/components/QuickLogModal";
 import DayPreviewModal from "@/components/DayPreviewModal";
 import { templatesFor } from "@/lib/data/templates";
+import { nextBlockSuggestions } from "@/lib/data/presets";
 import { categoryColor } from "@/lib/categoryTheme";
 import { recommendForToday, type Recommendation } from "@/lib/recommend";
 import {
@@ -28,6 +30,7 @@ import {
 } from "@/lib/types";
 
 export default function HomePage() {
+  const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [logDate, setLogDate] = useState<string | null>(null);
   const [previewDate, setPreviewDate] = useState<string | null>(null);
@@ -38,12 +41,21 @@ export default function HomePage() {
   const todayIdx = dateToPlanIndex(new Date());
 
   useEffect(() => {
-    getProfile().then(setProfile);
+    getProfile().then((p) => {
+      setProfile(p);
+      // Brand-new user: route them straight into onboarding instead of
+      // dumping them on an empty Home with a tiny "Finish setup" pill they
+      // can easily miss. Honors onboardingDismissed so a user who chose
+      // "Skip for now" doesn't get bounced back every open.
+      if (p && !p.onboarded && !p.onboardingDismissed) {
+        router.replace("/onboarding");
+      }
+    });
     // Seed personal weekly plan on first load (idempotent — only creates if missing)
     getWeeklyPlan();
     // Clean up old draft previews that the user never started
     cleanupStaleDrafts();
-  }, []);
+  }, [router]);
 
   const todaysSessions = useLiveQuery(
     // Return ALL of today's real sessions, not just the first — a day can
@@ -160,16 +172,19 @@ export default function HomePage() {
           user is here for the verb below, not to admire their streak. */}
       <header>
         <div className="flex items-baseline justify-between gap-4">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">
-            {format(new Date(), "EEE, MMM d")}
-          </p>
+          <div className="flex items-baseline gap-3">
+            <span className="text-[13px] font-medium tracking-[-0.02em] text-text">Outwork</span>
+            <span className="text-[11px] uppercase tracking-[0.22em] text-text-dim font-medium">
+              {format(new Date(), "EEE, MMM d")}
+            </span>
+          </div>
           {streak > 0 && (
             <span className="text-[11px] uppercase tracking-[0.18em] text-text-dim font-medium tabular-nums shrink-0">
               <span className="text-accent">{streak}</span> day streak
             </span>
           )}
         </div>
-        <h1 className="text-[2rem] leading-[1] font-medium mt-2 tracking-[-0.03em] text-text">
+        <h1 className="text-[2rem] leading-[1] font-medium mt-3 tracking-[-0.03em] text-text">
           {greet()}{profile?.name && profile.name !== "Athlete" ? `, ${profile.name}` : ""}.
         </h1>
       </header>
@@ -205,14 +220,28 @@ export default function HomePage() {
         </Link>
       )}
 
-      {profile && !profile.onboarded && (
-        <Link
-          href="/onboarding"
-          className="flex items-center justify-between gap-3 border border-accent/40 rounded-full px-4 py-2.5 text-[11px] uppercase tracking-[0.18em] font-medium text-accent"
-        >
-          <span>Finish setup — 2 min</span>
-          <span>›</span>
-        </Link>
+      {profile && !profile.onboarded && !profile.setupPillDismissed && (
+        <div className="flex items-stretch gap-2">
+          <Link
+            href="/onboarding"
+            className="flex-1 flex items-center justify-between gap-3 border border-accent/40 rounded-full px-4 py-2.5 text-[11px] uppercase tracking-[0.18em] font-medium text-accent"
+          >
+            <span>Finish setup — 2 min</span>
+            <span>›</span>
+          </Link>
+          <button
+            onClick={async () => {
+              const { saveProfile } = await import("@/lib/db");
+              await saveProfile({ setupPillDismissed: true });
+              setProfile((p) => (p ? { ...p, setupPillDismissed: true } : p));
+            }}
+            aria-label="Dismiss setup reminder"
+            title="Dismiss — still available in Profile → Settings"
+            className="w-9 h-9 rounded-full border border-border-strong/40 text-text-dim text-sm hover:text-text hover:border-text-dim transition-colors flex items-center justify-center shrink-0"
+          >
+            ×
+          </button>
+        </div>
       )}
 
       {profile?.currentFocus && (
@@ -224,10 +253,15 @@ export default function HomePage() {
           );
           const weekNum = Math.floor(daysIn / 7) + 1;
           const isDone = weekNum > focus.durationWeeks;
-          return isDone ? (
-            <BlockCompleteCard focus={focus} sessions={recent ?? []} />
-          ) : (
-            focus.name === "Surf prep" && <BreathingCard weekInBlock={weekNum} />
+          const isLastWeek = !isDone && weekNum === focus.durationWeeks;
+          return (
+            <>
+              {isDone && <BlockCompleteCard focus={focus} sessions={recent ?? []} />}
+              {isLastWeek && <LastWeekBanner focus={focus} />}
+              {!isDone && focus.name === "Surf prep" && (
+                <BreathingCard weekInBlock={weekNum} />
+              )}
+            </>
           );
         })()
       )}
@@ -536,6 +570,29 @@ function formatSeconds(totalSeconds: number): string {
   return `${m}:${pad(sec)}`;
 }
 
+// Proactive heads-up during the block's final week — nudges the user to
+// think about what's next before they land on Monday with nothing scheduled.
+// Tappable → routes into the Change Block picker with the current block as
+// the "where you're coming from" context (used by the recommender).
+function LastWeekBanner({ focus }: { focus: NonNullable<Profile["currentFocus"]> }) {
+  return (
+    <Link
+      href={`/plan?pick=1&after=${encodeURIComponent(focus.name)}`}
+      className="flex items-center justify-between gap-3 border border-accent/40 rounded-full px-4 py-2.5"
+    >
+      <div className="min-w-0">
+        <div className="text-[10px] uppercase tracking-[0.22em] text-accent font-medium">
+          Last week of {focus.name}
+        </div>
+        <div className="text-[11px] text-text-dim mt-0.5 truncate">
+          Pick what comes next
+        </div>
+      </div>
+      <span className="text-accent text-sm shrink-0" aria-hidden>›</span>
+    </Link>
+  );
+}
+
 function BlockCompleteCard({
   focus,
   sessions,
@@ -543,50 +600,73 @@ function BlockCompleteCard({
   focus: NonNullable<Profile["currentFocus"]>;
   sessions: Session[];
 }) {
-  // Count finished sessions during the block's window.
+  // Count finished sessions during the block's window + total minutes trained.
   const start = focus.startedAt;
   const totalWeeks = focus.durationWeeks;
-  const done = sessions.filter(
-    (s) => s.finishedAt && s.date >= start
-  ).length;
-  const targetSessionsPerWeek = 5;
-  const targetTotal = totalWeeks * targetSessionsPerWeek;
-
-  const clear = async () => {
-    if (!confirm(`Close out the ${focus.name} block? You'll pick a new focus.`)) return;
-    await archiveCurrentFocus();
-    await saveProfile({ currentFocus: undefined });
-    // Home rerenders on live query; nothing else needed.
-    location.reload();
-  };
+  const inBlock = sessions.filter((s) => s.finishedAt && s.date >= start);
+  const done = inBlock.length;
+  const totalMinutes = inBlock.reduce((acc, s) => {
+    if (!s.startedAt || !s.finishedAt) return acc;
+    return acc + Math.max(0, Math.round((s.finishedAt - s.startedAt) / 60000));
+  }, 0);
+  const suggestions = nextBlockSuggestions(focus.name);
 
   return (
-    <section className="border border-accent/50 bg-text/5 rounded-2xl p-5 space-y-3">
+    <section className="border border-accent/50 bg-text/5 rounded-2xl p-5 space-y-4">
       <div>
-        <div className="text-[10px] uppercase tracking-[0.22em] text-accent font-medium">
-          Block complete
+        <div className="text-[10px] uppercase tracking-[0.22em] text-success font-medium">
+          ✓ Block complete
         </div>
-        <div className="text-2xl font-medium tracking-[-0.02em] tracking-tight mt-1.5 text-text">
+        <div className="text-[1.75rem] font-medium tracking-[-0.03em] mt-1.5 text-text leading-[1]">
           {focus.name} done.
         </div>
       </div>
-      <p className="text-sm text-text-muted leading-relaxed">
-        {totalWeeks} weeks · {done} of ~{targetTotal} planned sessions logged.
-        Nice work. Pick your next focus to keep the coach thinking in blocks.
-      </p>
-      <div className="flex gap-2 pt-1">
+      <div className="flex gap-4 text-[11px] uppercase tracking-[0.18em] text-text-dim font-medium tabular-nums">
+        <span><span className="text-text">{totalWeeks}</span> wk</span>
+        <span className="text-border-strong">·</span>
+        <span><span className="text-text">{done}</span> sessions</span>
+        {totalMinutes > 0 && (
+          <>
+            <span className="text-border-strong">·</span>
+            <span><span className="text-text">{totalMinutes}</span> min</span>
+          </>
+        )}
+      </div>
+
+      <div className="space-y-2 pt-2">
+        <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+          What&apos;s next
+        </div>
+        <div className="space-y-2">
+          {suggestions.map((p, i) => (
+            <Link
+              key={p.focusName}
+              href={`/plan?pick=1&target=${encodeURIComponent(p.focusName)}`}
+              className={clsx(
+                "flex items-center justify-between gap-3 border rounded-xl px-3.5 py-2.5 transition-colors",
+                i === 0
+                  ? "border-accent/60 bg-accent/10 hover:bg-accent/15"
+                  : "border-border-strong/40 hover:border-text-dim"
+              )}
+            >
+              <div className="min-w-0">
+                <div className="text-sm text-text font-medium truncate">{p.name}</div>
+                <div className="text-[11px] text-text-dim mt-0.5 truncate leading-relaxed">
+                  {p.tagline}
+                </div>
+              </div>
+              <span className="shrink-0 text-[10px] uppercase tracking-[0.18em] text-text-dim font-medium tabular-nums">
+                {p.durationWeeks}wk
+              </span>
+            </Link>
+          ))}
+        </div>
         <Link
-          href="/plan"
-          className="flex-1 text-center bg-accent text-bg font-semibold rounded-full px-4 h-11 text-sm hover:bg-accent-dim transition-colors flex items-center justify-center"
+          href="/plans"
+          className="block text-[10px] uppercase tracking-[0.18em] text-text-dim hover:text-text font-medium pt-1"
         >
-          Pick next block →
+          Or browse all 12 →
         </Link>
-        <button
-          onClick={clear}
-          className="px-5 h-11 rounded-full border border-border-strong/40 text-text-muted text-sm font-medium hover:border-text-dim hover:text-text transition-colors"
-        >
-          Later
-        </button>
       </div>
     </section>
   );

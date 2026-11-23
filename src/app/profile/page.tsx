@@ -468,6 +468,21 @@ export default function ProfilePage() {
         <p className="text-[10px] text-text-dim">Screenshot the card above to share.</p>
       </section>
       </>}
+
+      {/* About footer — tells a curious first-time user what this thing is,
+          in one paragraph. Kept at the bottom so it's never in the way for
+          returning users; discoverable for anyone scrolling to the end. */}
+      <footer className="pt-6 mt-4 border-t border-border-strong/30 space-y-2">
+        <p className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+          About Outwork
+        </p>
+        <p className="text-[12px] text-text-muted leading-relaxed">
+          A training coach built on the research of Attia, Galpin, Schoenfeld,
+          Huberman, Rhonda Patrick and Chris Hemsworth&apos;s team. Pick a
+          block, follow it, retest every 6–8 weeks. The app adapts to your
+          ratings, injuries, equipment, and calendar — the goal stays yours.
+        </p>
+      </footer>
     </div>
   );
 }

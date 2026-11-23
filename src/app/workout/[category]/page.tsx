@@ -15,16 +15,13 @@ import {
   CATEGORY_LABELS,
   CORE_FOCUS_LABELS,
   EQUIPMENT_PRESET_INCLUDES,
-  EQUIPMENT_PRESET_LABELS,
   getBlockPhase,
   EXERCISE_TO_BENCHMARK,
-  INTENSITY_LABELS,
   TRACKED_LIFTS,
   type Category,
   type CoachInfluence,
   type CoreFocus,
   type EquipmentPreset,
-  type Intensity,
   type LoggedBlock,
   type LoggedPrescription,
   type LoggedSet,
@@ -398,10 +395,6 @@ export default function WorkoutForCategory({
     setLoading(false);
   };
 
-  const setIntensity = (intensity: Intensity) => {
-    regenerateWithModifiers({ ...(session.modifiers ?? {}), intensity });
-  };
-
   // "Not today" — drop this specific exercise from THIS session only. The
   // template stays intact for future days; we just don't do it now (tender
   // joint, tired, whatever the reason).
@@ -434,8 +427,6 @@ export default function WorkoutForCategory({
       return { ...s, blocks };
     });
   };
-
-  const currentIntensity: Intensity = session.modifiers?.intensity ?? "normal";
 
   return (
     <div className="max-w-3xl mx-auto px-5 py-5 space-y-5">
@@ -486,49 +477,20 @@ export default function WorkoutForCategory({
           </div>
         </div>
 
-        {/* READINESS CHECK-IN — front and center. 3 modes, gut choice. */}
-        <div>
-          <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium mb-3">
-            How do you feel today
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            {(["easy", "normal", "push"] as Intensity[]).map((i) => (
-              <ReadinessChip
-                key={i}
-                active={currentIntensity === i}
-                onClick={() => setIntensity(i)}
-                label={INTENSITY_LABELS[i].label}
-                sublabel={INTENSITY_LABELS[i].sub}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Mode banner — category-aware description of what actually changed */}
-        {currentIntensity !== "normal" && (
-          <div className={clsx(
-            "rounded-xl px-3 py-2 border text-xs",
-            currentIntensity === "push"
-              ? "bg-accent/10 border-accent/40 text-accent"
-              : "bg-bg-card border-border text-text-muted"
-          )}>
-            <span className="font-bold uppercase tracking-widest">
-              {INTENSITY_LABELS[currentIntensity].label} mode
-            </span>
-            {" — "}
-            {intensityBannerText(cat, currentIntensity)}
-          </div>
-        )}
-
       </header>
 
       {/* Today's shape — one compact strip collapsing cycle + adjust + philosophy.
           Previously three stacked blocks of meta before the first exercise. */}
       {(() => {
         const focus = profile.currentFocus;
+        // Phase/week are relative to the SESSION'S date, not today — opening
+        // tomorrow's planned workout shouldn't say "Week 5" if tomorrow is
+        // the first day of Week 6 (and a deload). Falls back to today for
+        // dateless sessions so the live block hero still works.
+        const asOf = session.date ? new Date(session.date + "T00:00:00") : new Date();
         const livePhase =
           focus?.startedAt && focus.durationWeeks
-            ? getBlockPhase(focus.startedAt, focus.durationWeeks, new Date())
+            ? getBlockPhase(focus.startedAt, focus.durationWeeks, asOf)
             : session.phase;
         const totalWeeks = focus?.durationWeeks ?? 4;
         return (
@@ -740,35 +702,18 @@ function TodayShapeStrip({
   onApply: (m: WorkoutModifiers) => Promise<void> | void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const intensity = modifiers.intensity ?? "normal";
-  const eq = modifiers.equipmentPreset ?? defaultEquipment ?? "full_gym";
   return (
     <section className="no-print space-y-3">
-      <div className="flex items-stretch gap-2">
-        {phase && (
-          <div className="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl border border-border-strong/40 bg-bg-elevated">
-            <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
-              Week {phase.weekInCycle}/{totalWeeks}
-            </div>
-            <div className="text-[13px] font-medium text-accent leading-tight truncate mt-1">
-              {phase.label}
-            </div>
-          </div>
-        )}
-        <button
-          onClick={() => setExpanded((x) => !x)}
-          className="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl border border-border-strong/40 bg-bg-elevated text-left hover:border-text-dim transition-colors"
-        >
-          <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
-            Adjust
-          </div>
-          <div className="text-[13px] font-medium leading-tight truncate mt-1 text-text">
-            {INTENSITY_LABELS[intensity].label} · {EQUIPMENT_PRESET_LABELS[eq as EquipmentPreset] ?? eq}
-          </div>
-        </button>
-      </div>
       {phase && (
-        <p className="text-[12px] text-text-muted leading-relaxed">{phase.description}</p>
+        <div className="px-3.5 py-2.5 rounded-xl border border-border-strong/40 bg-bg-elevated">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-text-dim font-medium">
+            Week {phase.weekInCycle}/{totalWeeks}
+          </div>
+          <div className="text-[13px] font-medium text-accent leading-tight truncate mt-1">
+            {phase.label}
+          </div>
+          <p className="text-[12px] text-text-muted leading-relaxed mt-2">{phase.description}</p>
+        </div>
       )}
       {philosophy && (
         <p className="text-[12px] text-text-dim leading-relaxed italic">
@@ -778,6 +723,15 @@ function TodayShapeStrip({
           {philosophy}
         </p>
       )}
+      {/* Single quiet affordance — Time / Equipment / Rehab live inside the
+          expander. Most sessions don't need it; the user shouldn't see a
+          dropdown on every open. */}
+      <button
+        onClick={() => setExpanded((x) => !x)}
+        className="text-[11px] uppercase tracking-[0.18em] text-text-dim hover:text-text font-medium transition-colors"
+      >
+        ⚙ Adjust session {expanded ? "▴" : "▾"}
+      </button>
       {expanded && (
         <ModifierPanel
           initial={modifiers}
@@ -830,66 +784,6 @@ function KmInput({
       </div>
     </div>
   );
-}
-
-function ReadinessChip({
-  active,
-  onClick,
-  label,
-  sublabel,
-}: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-  sublabel: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={clsx(
-        "px-2 py-3 rounded-xl border transition-colors text-center",
-        active
-          ? "bg-text/5 border-accent/60 text-text"
-          : "bg-transparent border-border-strong/40 text-text-muted hover:border-text-dim"
-      )}
-    >
-      <div className={clsx("text-sm font-medium tracking-tight", active && "text-text")}>
-        {label}
-      </div>
-      <div className={clsx(
-        "text-[9px] mt-1 leading-tight uppercase tracking-[0.2em]",
-        active ? "text-text-dim" : "text-text-dim/70"
-      )}>
-        {sublabel}
-      </div>
-    </button>
-  );
-}
-
-// Describe what actually changes in a category when intensity shifts.
-// Purely informational text — the real math is in the generator.
-function intensityBannerText(category: Category, intensity: Intensity): string {
-  const CARDIO_LIKE: Category[] = ["cardio", "recovery", "stretching"];
-  const push = intensity === "push";
-  if (CARDIO_LIKE.includes(category)) {
-    return push
-      ? "durations extended +20%, chase upper end of the zone"
-      : "durations shortened -25%, easier pace";
-  }
-  if (category === "hyrox" || category === "crossfit" || category === "burn" || category === "athlete") {
-    return push
-      ? "loads +8%, intervals extended, +1 set on main lifts"
-      : "loads -12%, intervals shortened, fewer sets";
-  }
-  if (category === "test") {
-    return push
-      ? "aim for a PR — full send with adequate rest"
-      : "back off — retest another day if not feeling it";
-  }
-  // Strength / Hypertrophy / Split / Beach / Core
-  return push
-    ? "loads +8%, +1 set on main lifts"
-    : "loads -12%, -1 set on accessories";
 }
 
 function resolveEquipmentForUI(

@@ -62,9 +62,11 @@ export default function OnboardingPage() {
     router.push("/plan?pick=1");
   };
 
-  // Skip for now: go straight home, don't open the block picker.
+  // Skip for now: mark dismissed (not onboarded) so Home stops auto-
+  // redirecting here every open. Setup stays available via the Finish Setup
+  // pill. "Onboarded" is reserved for users who actually complete the wizard.
   const skip = async () => {
-    await update({ onboarded: true });
+    await update({ onboardingDismissed: true });
     router.push("/");
   };
 
@@ -157,13 +159,28 @@ function WelcomeStep() {
 }
 
 function ExperienceStep({ profile, update }: { profile: Profile; update: (c: Partial<Profile>) => void }) {
+  // Treat the default placeholder "Athlete" as unset — the user hasn't
+  // actually typed anything, we're just not showing their name back to them
+  // as literal "Athlete".
+  const nameValue = profile.name && profile.name !== "Athlete" ? profile.name : "";
   return (
     <div className="space-y-5">
-      <h2 className="text-[1.625rem] font-medium tracking-[-0.025em] leading-[1.05] text-text">How much have you trained?</h2>
+      <h2 className="text-[1.625rem] font-medium tracking-[-0.025em] leading-[1.05] text-text">A bit about you.</h2>
       <p className="text-text-muted text-sm">
-        Beginners get simpler lifts and lighter starting loads. Advanced gets the full exercise library.
+        Name powers the greeting on Home. Experience shapes which lifts and starting loads you&apos;ll see.
       </p>
 
+      <Field label="What should we call you?">
+        <input
+          type="text"
+          value={nameValue}
+          onChange={(e) => update({ name: e.target.value || "Athlete" })}
+          placeholder="Your name"
+          className="w-full h-12 px-4 bg-transparent border border-border-strong/40 rounded-xl text-base focus:outline-none focus:border-accent/60 placeholder:text-text-dim"
+        />
+      </Field>
+
+      <Field label="Experience">
       <div className="space-y-2">
         {([
           { v: "beginner" as Experience, l: "Beginner", desc: "New to the gym or less than 1 year of consistent training." },
@@ -186,6 +203,7 @@ function ExperienceStep({ profile, update }: { profile: Profile; update: (c: Par
           );
         })}
       </div>
+      </Field>
 
       <Field label="Units">
         <div className="grid grid-cols-2 gap-2">

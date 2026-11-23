@@ -613,6 +613,13 @@ export type Profile = {
   // Does NOT swap back squat / OHP wholesale.
   chronicLumbarCare?: boolean;
   onboarded?: boolean;
+  // User explicitly chose "Skip for now" during onboarding. Prevents the
+  // Home-mount redirect from re-pushing them to /onboarding every open.
+  // They can still complete setup via the "Finish setup" pill.
+  onboardingDismissed?: boolean;
+  // User dismissed the "Finish setup" pill on Home. Still accessible from
+  // Profile → Settings, just not in the user's face every session.
+  setupPillDismissed?: boolean;
 };
 
 export type CyclePhase = {

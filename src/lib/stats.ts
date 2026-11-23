@@ -390,9 +390,13 @@ export function computeArchetype(sessions: Session[], period: Period = "all", to
   );
 
   if (inPeriod.length < 5) {
+    const remaining = 5 - inPeriod.length;
     return {
       name: "New Athlete",
-      tagline: "Log more sessions to unlock your archetype.",
+      tagline:
+        inPeriod.length === 0
+          ? "Log 5 sessions and we'll read your training pattern — strength-dominant, hybrid, endurance, etc."
+          : `${remaining} more session${remaining === 1 ? "" : "s"} and we'll read your training pattern.`,
       icon: "🌱",
       dominantModality: "none",
     };

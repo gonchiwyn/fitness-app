@@ -1,26 +1,46 @@
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
-import { BLOCK_PRESETS, PRESET_GROUPS, presetSlug, type BlockPreset } from "@/lib/data/presets";
+import { useSearchParams } from "next/navigation";
+import {
+  PRESET_GROUPS,
+  presetSlug,
+  visiblePresets,
+  type BlockPreset,
+} from "@/lib/data/presets";
 import { categoryColor } from "@/lib/categoryTheme";
 
 // Public library of every training block in the app. Tapping a card goes to
 // /plans/[slug] which shows the full weekly shape + a Make-this-my-block CTA.
 // Reached from Plan → "Browse all blocks" or linked directly — this is the
 // surface a friend scrolls through to understand what the app actually does.
+// Visit /plans?personal=1 to also show owner-authored "Personal" blocks.
 
 export default function PlansLibraryPage() {
+  return (
+    <Suspense>
+      <PlansLibraryInner />
+    </Suspense>
+  );
+}
+
+function PlansLibraryInner() {
+  const searchParams = useSearchParams();
+  const includePersonal = searchParams.get("personal") === "1";
+  const presets = visiblePresets({ includePersonal });
+  const presetByFocus = new Map(presets.map((p) => [p.focusName, p]));
   // Grouping mirrors the Plan tab's picker modal so what you see here matches
   // what you'd find when swapping blocks from inside the app.
   const groups = PRESET_GROUPS.map((g) => ({
     id: g.id,
     label: g.label,
     presets: g.items
-      .map((focus) => BLOCK_PRESETS.find((p) => p.focusName === focus))
+      .map((focus) => presetByFocus.get(focus))
       .filter((p): p is BlockPreset => !!p),
   }));
-  const specialtyIds = new Set(PRESET_GROUPS.flatMap((g) => g.items));
-  const ungrouped = BLOCK_PRESETS.filter((p) => !specialtyIds.has(p.focusName));
+  const groupedFocusNames = new Set(PRESET_GROUPS.flatMap((g) => g.items));
+  const ungrouped = presets.filter((p) => !groupedFocusNames.has(p.focusName));
   if (ungrouped.length > 0) {
     groups.push({ id: "other", label: "Other", presets: ungrouped });
   }
