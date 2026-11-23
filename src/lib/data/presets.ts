@@ -27,6 +27,13 @@ export type BlockPreset = {
   defaultFrequency: number;
   days: PlannedDay[];
   personal?: boolean;
+  // Per-week overrides of the base `days` pattern, keyed by 1-indexed week
+  // number. Weeks not listed use the base pattern. Lives on the preset (not
+  // inline in applyPreset) so ANY week can be regenerated later — otherwise
+  // the app writes these once at apply time and permanently forgets what a
+  // given week was supposed to be, leaving no way to repair a week that
+  // drifted onto the wrong dates.
+  weekPatterns?: Record<number, PlannedDay[]>;
 };
 
 export const BLOCK_PRESETS: BlockPreset[] = [
@@ -198,6 +205,52 @@ export const BLOCK_PRESETS: BlockPreset[] = [
       { category: "cardio", templateId: "attia_zone2_45" },
       { category: "cardio", templateId: "nick_bare_long_run" },
     ],
+    weekPatterns: {
+      // W1-2 Learn — intro sim, easy engine, RDL instead of deadlift.
+      1: [
+        { category: "hyrox", templateId: "hyrox_strength_pull" },
+        { category: "hyrox", templateId: "hyrox_sim_pairs_intro" },
+        { category: "cardio", templateId: "attia_zone2_45" },
+        { category: "hyrox", templateId: "hyrox_strength_push" },
+        { category: "hyrox", templateId: "hyrox_engine_easy" },
+        { category: "cardio", templateId: "attia_zone2_45" },
+        { category: "recovery" },
+      ],
+      2: [
+        { category: "hyrox", templateId: "hyrox_strength_pull" },
+        { category: "hyrox", templateId: "hyrox_sim_pairs_intro" },
+        { category: "cardio", templateId: "attia_zone2_45" },
+        { category: "hyrox", templateId: "hyrox_strength_push" },
+        { category: "hyrox", templateId: "hyrox_engine_easy" },
+        { category: "cardio", templateId: "attia_zone2_45" },
+        { category: "recovery" },
+      ],
+      // W3-4 fall through to the base pattern (full race sim).
+      // W5 Peak — Tuesday becomes the timed benchmark. One real test.
+      5: [
+        { category: "hyrox", templateId: "hyrox_strength_pull" },
+        { category: "hyrox", templateId: "hyrox_sim_test" },
+        { category: "hyrox", templateId: "hyrox_strength_push" },
+        { category: "hyrox", templateId: "hyrox_sim_short" },
+        { category: "cardio", templateId: "attia_zone2_45" },
+        { category: "cardio", templateId: "nick_bare_long_run" },
+        { category: "recovery" },
+      ],
+      // W6 Deload — CNS recovery is the point (Galpin/Attia: ~50% volume cut
+      // off a peak). ONE light skill sim keeps pattern specificity, two Z2s
+      // hold the aerobic floor, everything else is mobility or recovery.
+      // Friday deliberately is NOT hyrox_engine_easy — despite the name that
+      // template prescribes 6 × 400 m intervals, a tempo day after a peak TT.
+      6: [
+        { category: "stretching" },
+        { category: "hyrox", templateId: "hyrox_sim_pairs_light" },
+        { category: "cardio", templateId: "attia_zone2_45" },
+        { category: "stretching" },
+        { category: "cardio", templateId: "attia_zone2_45" },
+        { category: "recovery" },
+        { category: "recovery" },
+      ],
+    },
   },
   {
     name: "Recovery week",

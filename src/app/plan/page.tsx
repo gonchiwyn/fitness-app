@@ -19,10 +19,9 @@ import {
   saveProfile,
   saveWeeklyPlan,
   saveWeekOverride,
-  shiftPlanWeeks,
 } from "@/lib/db";
 import { templatesFor } from "@/lib/data/templates";
-import { BLOCK_PRESETS, PRESET_GROUPS, visiblePresets, type BlockPreset } from "@/lib/data/presets";
+import { BLOCK_PRESETS, PRESET_GROUPS, presetByFocusName, visiblePresets, type BlockPreset } from "@/lib/data/presets";
 import { categoryColor } from "@/lib/categoryTheme";
 import { useBodyScrollLock } from "@/lib/useBodyScrollLock";
 import {
@@ -254,71 +253,17 @@ function PlanPageInner() {
     await saveProfile({ currentFocus: focus });
     setProfile((p) => (p ? { ...p, currentFocus: focus } : p));
 
-    // Hyrox prep: template content shifts by phase (not just phase.setAdjustment).
-    // W1-2 (Learn): intro sim + easy engine + RDL instead of deadlift
-    // W3-5: base pattern as defined above (full race sim)
-    // W6 (Deload): light skill sim + easier engine
-    if (preset.focusName === "Hyrox prep") {
-      const startDate = new Date(today + "T00:00:00");
-      // Current week's Monday (may be in the past if today isn't Monday).
-      // The current partial week counts as Week 1 — otherwise applying mid-week
-      // would show the base W3-5 pattern on day 1, which defeats the point.
-      const thisMonday = (() => {
-        const d = new Date(startDate);
-        const dayOfWeek = d.getDay(); // 0=Sun ... 1=Mon
-        const daysBackToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-        d.setDate(d.getDate() - daysBackToMonday);
-        return d;
-      })();
-      const weekMonday = (weekIndex: number) => {
-        const d = new Date(thisMonday);
-        d.setDate(d.getDate() + weekIndex * 7);
-        return format(d, "yyyy-MM-dd");
-      };
-
-      const learnWeek: PlannedDay[] = [
-        { category: "hyrox", templateId: "hyrox_strength_pull" },
-        { category: "hyrox", templateId: "hyrox_sim_pairs_intro" },
-        { category: "cardio", templateId: "attia_zone2_45" },
-        { category: "hyrox", templateId: "hyrox_strength_push" },
-        { category: "hyrox", templateId: "hyrox_engine_easy" },
-        { category: "cardio", templateId: "attia_zone2_45" },
-        { category: "recovery" },
-      ];
-      // Deload week — CNS recovery is the point (Galpin/Attia: ~50% volume
-      // cut, ~15% intensity cut off a Realization peak). Keep pattern
-      // specificity with ONE light skill sim (Tue), hold the aerobic floor
-      // with two Z2 sessions (Wed + Fri), everything else is mobility or
-      // recovery. Previously Fri used hyrox_engine_easy which prescribes
-      // 6 × 400 m moderate intervals — misnamed, that's a tempo day after
-      // a Realization TT the week before. Swapped for a second Z2.
-      const deloadWeek: PlannedDay[] = [
-        { category: "stretching" },
-        { category: "hyrox", templateId: "hyrox_sim_pairs_light" },
-        { category: "cardio", templateId: "attia_zone2_45" },
-        { category: "stretching" },
-        { category: "cardio", templateId: "attia_zone2_45" },
-        { category: "recovery" },
-        { category: "recovery" },
-      ];
-      // Realization week — swap Tuesday for a timed mini-race benchmark.
-      // Everything else stays at Build-phase shape; this is the one real test.
-      const realizationWeek: PlannedDay[] = [
-        { category: "hyrox", templateId: "hyrox_strength_pull" },
-        { category: "hyrox", templateId: "hyrox_sim_test" },
-        { category: "hyrox", templateId: "hyrox_strength_push" },
-        { category: "hyrox", templateId: "hyrox_sim_short" },
-        { category: "cardio", templateId: "attia_zone2_45" },
-        { category: "cardio", templateId: "nick_bare_long_run" },
-        { category: "recovery" },
-      ];
-
-      // W1 is the current week (starting from today's Monday or past-Monday
-      // if today is mid-week); W6 is 5 weeks later.
-      await saveWeekOverride(weekMonday(0), learnWeek);
-      await saveWeekOverride(weekMonday(1), learnWeek);
-      await saveWeekOverride(weekMonday(4), realizationWeek);
-      await saveWeekOverride(weekMonday(5), deloadWeek);
+    // Per-week pattern overrides, if the preset defines any. Written from
+    // preset.weekPatterns so the SAME source can regenerate a week later —
+    // see rebuildThisWeek. Week 1 is the current (possibly partial) calendar
+    // week, so applying mid-week still starts you on week 1's pattern.
+    if (preset.weekPatterns) {
+      const applyMonday = startOfWeek(parseDateOnly(today), { weekStartsOn: 1 });
+      for (const [wk, days] of Object.entries(preset.weekPatterns)) {
+        const d = new Date(applyMonday);
+        d.setDate(d.getDate() + (Number(wk) - 1) * 7);
+        await saveWeekOverride(format(d, "yyyy-MM-dd"), days);
+      }
     }
 
     setShowPresets(false);
@@ -333,22 +278,34 @@ function PlanPageInner() {
     setProfile((p) => (p ? { ...p, currentFocus: undefined } : p));
   };
 
-  // Realign: slide the planned week CONTENT onto the dates the phase already
-  // thinks you're on. Leaves startedAt (and the phase) alone — for sliding
-  // the whole block, Pause + Resume is the right tool.
-  const shiftWeeks = async (weeks: number) => {
-    const dir = weeks > 0 ? "later" : "earlier";
+  // Rebuild the viewed week from the block's own definition. Deterministic:
+  // asks the preset what week N should look like and writes exactly that —
+  // no guessing how far the plan drifted. Replaces an earlier ←/→ shift
+  // control that could only move existing overrides around, and so did
+  // nothing at all when the week had no override to move.
+  const rebuildThisWeek = async () => {
+    const f = profile?.currentFocus;
+    if (!f) return;
+    const preset = presetByFocusName(f.name);
+    if (!preset) {
+      alert(`Can't rebuild — "${f.name}" isn't one of the built-in blocks.`);
+      return;
+    }
+    const wk = blockWeekNumber(f.startedAt, effectiveFocusToday(f));
+    const pattern =
+      preset.weekPatterns?.[wk] ??
+      patternForFrequency(preset.days, preset.defaultFrequency);
+    const label = preset.weekPatterns?.[wk]
+      ? `week ${wk}'s pattern`
+      : `the block's standard week`;
     if (
       !confirm(
-        `Move your planned weeks 1 week ${dir}? The block's week counter and phase stay as they are — this only moves which week's workouts land on which dates.`
+        `Rebuild this week from ${preset.name} — ${label}? Replaces what's currently planned Mon–Sun. Workouts you've already logged stay.`
       )
     )
       return;
-    const moved = await shiftPlanWeeks(weeks);
+    await saveWeekOverride(format(thisMonday, "yyyy-MM-dd"), pattern);
     await loadPlan();
-    if (moved === 0) {
-      alert("Nothing to move — no planned weeks would land on this week or later.");
-    }
   };
 
   const togglePause = async () => {
@@ -490,24 +447,16 @@ function PlanPageInner() {
               {isPaused ? "Resume" : "Pause"}
             </button>
           </div>
-          {/* Realign the week CONTENT against the phase. Distinct from
-              Pause/Resume, which slides the whole block (phase included). */}
+          {/* Rebuild this week from the block's own week-N definition.
+              Distinct from Pause/Resume, which slides the whole block. */}
           <div className="flex items-center justify-between gap-3 pt-1">
-            <span className="text-[11px] text-text-dim">Wrong week showing?</span>
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => shiftWeeks(-1)}
-                className="h-7 px-2.5 rounded-full border border-border-strong/40 text-[11px] text-text-muted hover:border-text-dim hover:text-text transition-colors"
-              >
-                ← Back
-              </button>
-              <button
-                onClick={() => shiftWeeks(1)}
-                className="h-7 px-2.5 rounded-full border border-border-strong/40 text-[11px] text-text-muted hover:border-text-dim hover:text-text transition-colors"
-              >
-                Forward →
-              </button>
-            </div>
+            <span className="text-[11px] text-text-dim">Week looks wrong?</span>
+            <button
+              onClick={rebuildThisWeek}
+              className="h-7 px-3 rounded-full border border-border-strong/40 text-[11px] text-text-muted hover:border-text-dim hover:text-text transition-colors"
+            >
+              Rebuild from block
+            </button>
           </div>
           <div className="flex items-center justify-between text-[10px] text-text-dim tracking-normal font-medium pt-1">
             <span>Started {format(parseDateOnly(focus.startedAt), "MMM d")}</span>

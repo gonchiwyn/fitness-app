@@ -169,6 +169,16 @@ export default function HomePage() {
     (s) => s.finishedAt && s.date >= weekStartStr && s.date < weekEndStr
   ).length;
   const weekTarget = (plan?.days ?? []).filter((d) => d !== null).length || 5;
+  // A user who skipped onboarding still gets a seeded default weekly plan
+  // (getWeeklyPlan auto-seeds). Surfacing it as "0 of 6 this week" and
+  // "Next up — Mon · Strength" presents a program they never chose as if
+  // they had. Suppress those until they've either finished onboarding,
+  // picked a block, or logged something of their own.
+  const showsGhostPlan =
+    !!profile &&
+    !profile.onboarded &&
+    !profile.currentFocus &&
+    (recent ?? []).length === 0;
   // Resume path — Hevy / Caliber / Peloton all pin a "Resume" banner when a
   // workout is mid-flight so the user doesn't have to re-navigate to it.
   const draftSession = (recent ?? []).find(
@@ -210,8 +220,11 @@ export default function HomePage() {
       {/* Context card: block + week progress together. Oura/Whoop pattern —
           a single glance surface that answers "where am I in training" + "how's
           this week going". Replaces the old two-strip (focus indicator + week
-          progress bar) which read as two disconnected afterthoughts. */}
-      {!profile?.currentFocus?.pausedAt && (
+          progress bar) which read as two disconnected afterthoughts.
+          Hidden for a user who skipped onboarding and has no block: the week
+          meter would be counting against a default plan they never chose
+          ("0 of 6 this week"), which reads as a goal they signed up for. */}
+      {!profile?.currentFocus?.pausedAt && !showsGhostPlan && (
         <ContextCard
           focus={profile?.currentFocus}
           done={doneThisWeek}
@@ -291,6 +304,10 @@ export default function HomePage() {
         <PausedTodayCard />
       ) : todaysSession ? (
         <TodaysSessionsStack sessions={todaysSessions ?? [todaysSession]} />
+      ) : showsGhostPlan ? (
+        // Skipped onboarding, no block, nothing logged — don't present the
+        // seeded default as "today's workout". Ask them to choose first.
+        <NoPlanCard />
       ) : plannedToday ? (
         <>
           <PlannedTodayCard day={plannedToday} />
@@ -309,7 +326,7 @@ export default function HomePage() {
       {/* "Next up" teaser — Peloton pattern. One slim card telling the user
           what's on the horizon so there's continuity after they finish today.
           Plus a tiny "See full week" link to Plan for the tactical view. */}
-      {!profile?.currentFocus?.pausedAt && (
+      {!profile?.currentFocus?.pausedAt && !showsGhostPlan && (
         <NextUpCard
           thisWeekDays={displayedWeekDays ?? plan?.days ?? [null, null, null, null, null, null, null]}
           nextWeekDays={nextWeekDays ?? plan?.days ?? [null, null, null, null, null, null, null]}
