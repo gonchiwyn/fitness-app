@@ -132,6 +132,7 @@ function PlanPageInner() {
   // allow a generous ±8 for free-form planning.
   const [viewedWeekOffset, setViewedWeekOffset] = useState(0);
   const [previewDate, setPreviewDate] = useState<string | null>(null);
+  const [showWeekJump, setShowWeekJump] = useState(false);
   const [logDate, setLogDate] = useState<string | null>(null);
   const viewedMonday = addDays(thisMonday, viewedWeekOffset * 7);
   const viewedWeekStart = format(viewedMonday, "yyyy-MM-dd");
@@ -278,12 +279,13 @@ function PlanPageInner() {
     setProfile((p) => (p ? { ...p, currentFocus: undefined } : p));
   };
 
-  // Rebuild the viewed week from the block's own definition. Deterministic:
-  // asks the preset what week N should look like and writes exactly that —
-  // no guessing how far the plan drifted. Replaces an earlier ←/→ shift
-  // control that could only move existing overrides around, and so did
-  // nothing at all when the week had no override to move.
-  const rebuildThisWeek = async () => {
+  // Jump this calendar week to a specific week of the block. YOU pick which
+  // week — the app doesn't infer it. An earlier version derived the week from
+  // startedAt, which is exactly the number that goes wrong after a pause: it
+  // loaded Peak for someone who'd already done their peak week and needed the
+  // deload. Picking explicitly also realigns startedAt, so the header, the
+  // phase, and the day list all end up telling the same story.
+  const jumpToBlockWeek = async (wk: number) => {
     const f = profile?.currentFocus;
     if (!f) return;
     const preset = presetByFocusName(f.name);
@@ -291,21 +293,30 @@ function PlanPageInner() {
       alert(`Can't rebuild — "${f.name}" isn't one of the built-in blocks.`);
       return;
     }
-    const wk = blockWeekNumber(f.startedAt, effectiveFocusToday(f));
     const pattern =
       preset.weekPatterns?.[wk] ??
       patternForFrequency(preset.days, preset.defaultFrequency);
-    const label = preset.weekPatterns?.[wk]
-      ? `week ${wk}'s pattern`
-      : `the block's standard week`;
+    const phase = phaseLabelForWeek(wk, preset.durationWeeks);
     if (
       !confirm(
-        `Rebuild this week from ${preset.name} — ${label}? Replaces what's currently planned Mon–Sun. Workouts you've already logged stay.`
+        `Make this week → Week ${wk} (${phase}) of ${preset.name}?\n\nLoads that week's workouts Mon–Sun and sets the block counter to week ${wk}. Anything you've already logged stays.`
       )
     )
       return;
     await saveWeekOverride(format(thisMonday, "yyyy-MM-dd"), pattern);
+    // Backdate startedAt so today computes as week `wk` — keeps the phase
+    // label and the loaded content in agreement. Clears any stale pause.
+    const newStart = addDays(new Date(), -(wk - 1) * 7);
+    await saveProfile({
+      currentFocus: {
+        ...f,
+        startedAt: format(newStart, "yyyy-MM-dd"),
+        pausedAt: undefined,
+      },
+    });
+    setProfile(await getProfile());
     await loadPlan();
+    setShowWeekJump(false);
   };
 
   const togglePause = async () => {
@@ -447,17 +458,46 @@ function PlanPageInner() {
               {isPaused ? "Resume" : "Pause"}
             </button>
           </div>
-          {/* Rebuild this week from the block's own week-N definition.
-              Distinct from Pause/Resume, which slides the whole block. */}
+          {/* Jump this calendar week to any week of the block. You choose —
+              the app doesn't infer it from startedAt, which is the number
+              that drifts after a pause. */}
           <div className="flex items-center justify-between gap-3 pt-1">
             <span className="text-[11px] text-text-dim">Week looks wrong?</span>
             <button
-              onClick={rebuildThisWeek}
+              onClick={() => setShowWeekJump((v) => !v)}
               className="h-7 px-3 rounded-full border border-border-strong/40 text-[11px] text-text-muted hover:border-text-dim hover:text-text transition-colors"
             >
-              Rebuild from block
+              Load a week {showWeekJump ? "▴" : "▾"}
             </button>
           </div>
+          {showWeekJump && (
+            <div className="space-y-2">
+              <p className="text-[11px] text-text-muted leading-relaxed">
+                Pick which week of {focus.name} this calendar week should be.
+                Loads its workouts Mon–Sun and moves the block counter to match.
+              </p>
+              <div className="flex gap-1.5 overflow-x-auto -mx-1 px-1 pb-1" style={{ scrollbarWidth: "none" }}>
+                {Array.from({ length: focus.durationWeeks }, (_, i) => i + 1).map((w) => {
+                  const phase = phaseLabelForWeek(w, focus.durationWeeks);
+                  const isNow = w === weekNum;
+                  return (
+                    <button
+                      key={w}
+                      onClick={() => jumpToBlockWeek(w)}
+                      className={clsx(
+                        "shrink-0 px-2.5 h-8 rounded-full border text-[11px] font-medium tabular-nums transition-colors",
+                        isNow
+                          ? "border-accent/60 bg-text/5 text-text"
+                          : "border-border-strong/40 text-text-muted hover:border-text-dim hover:text-text"
+                      )}
+                    >
+                      W{w} · {phase}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <div className="flex items-center justify-between text-[10px] text-text-dim tracking-normal font-medium pt-1">
             <span>Started {format(parseDateOnly(focus.startedAt), "MMM d")}</span>
             <button
@@ -1031,25 +1071,30 @@ function PhaseOutline({
   // Same phase rules as getBlockPhase. Readable here as a horizontal strip
   // of pill-labels with full names — not 3-letter codes. The user taps a
   // week to read its one-line description.
-  const phases: { label: string; desc: string }[] = [];
-  for (let w = 1; w <= durationWeeks; w++) {
-    const weeksLeft = durationWeeks - w;
-    let label = "Build";
-    let desc = "Build volume tolerance — moderate loads, more sets.";
-    if (durationWeeks <= 1 || weeksLeft === 0) {
-      label = "Deload";
-      desc = "Recovery — cut intensity ~15%, drop a set. CNS reset.";
-    } else if (weeksLeft === 1 && durationWeeks >= 3) {
-      label = "Peak";
-      desc = "Peak — heaviest loads, accessories back off. Chase PRs.";
-    } else if (w > Math.ceil(durationWeeks / 3)) {
-      label = "Heavy";
-      desc = "Load creeps up ~5%, reps drop slightly. Push harder.";
-    }
-    phases.push({ label, desc });
-  }
+  const PHASE_DESC: Record<string, string> = {
+    Build: "Build volume tolerance — moderate loads, more sets.",
+    Heavy: "Load creeps up ~5%, reps drop slightly. Push harder.",
+    Peak: "Peak — heaviest loads, accessories back off. Chase PRs.",
+    Deload: "Recovery — cut intensity ~15%, drop a set. CNS reset.",
+  };
+  // Labels come from the shared helper so this strip and the week picker
+  // can never disagree about what phase week N is.
+  const phases = Array.from({ length: durationWeeks }, (_, i) => {
+    const label = phaseLabelForWeek(i + 1, durationWeeks);
+    return { label, desc: PHASE_DESC[label] };
+  });
   const currentIdx = Math.min(currentWeek - 1, phases.length - 1);
   const [selectedIdx, setSelectedIdx] = useState(currentIdx);
+  // Follow the current week when it changes underneath us (loading a
+  // different block week, resuming a pause). useState's initial value only
+  // applies on mount, so without this the description line keeps describing
+  // the week you were on before. React's documented adjust-state-on-prop-
+  // change pattern — cheaper than an effect, no extra render pass.
+  const [syncedIdx, setSyncedIdx] = useState(currentIdx);
+  if (syncedIdx !== currentIdx) {
+    setSyncedIdx(currentIdx);
+    setSelectedIdx(currentIdx);
+  }
   const selectedPhase = phases[selectedIdx];
   const isCurrent = selectedIdx === currentIdx;
 
@@ -1279,4 +1324,14 @@ function DayPicker({
       </div>
     </div>
   );
+}
+
+// Phase label for a given week of a block. Mirrors getBlockPhase's rules so
+// the week picker and the phase outline can't disagree about what week N is.
+function phaseLabelForWeek(w: number, durationWeeks: number): string {
+  const weeksLeft = durationWeeks - w;
+  if (durationWeeks <= 1 || weeksLeft === 0) return "Deload";
+  if (weeksLeft === 1 && durationWeeks >= 3) return "Peak";
+  if (w > Math.ceil(durationWeeks / 3)) return "Heavy";
+  return "Build";
 }
