@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import clsx from "clsx";
 import { db, getProfile, loadPersonalSeed, resetToBlank, saveProfile } from "@/lib/db";
+import { applyTheme, getStoredTheme, type ThemeChoice } from "@/lib/theme";
 import {
   CORE_FOCUS_DESCRIPTIONS,
   CORE_FOCUS_LABELS,
@@ -24,10 +25,20 @@ import {
 export default function SettingsPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [saving, setSaving] = useState(false);
+  // Theme lives in localStorage, not the profile — it's a per-device display
+  // preference, and it has to be readable by the pre-paint boot script which
+  // runs long before IndexedDB is open.
+  const [theme, setTheme] = useState<ThemeChoice>("system");
 
   useEffect(() => {
     getProfile().then(setProfile);
+    setTheme(getStoredTheme());
   }, []);
+
+  const pickTheme = (choice: ThemeChoice) => {
+    setTheme(choice);
+    applyTheme(choice);
+  };
 
   const update = async (changes: Partial<Profile>) => {
     if (!profile) return;
@@ -87,7 +98,7 @@ export default function SettingsPage() {
   };
 
   const loadGonzalo = async () => {
-    if (!confirm("Load Gonzalo's dev profile? Overwrites your current profile + weekly plan.")) return;
+    if (!confirm("Load the dev seed profile? Overwrites your current profile + weekly plan.")) return;
     await loadPersonalSeed();
     location.reload();
   };
@@ -415,6 +426,32 @@ export default function SettingsPage() {
 
       </CollapsibleSection>
 
+      <Section title="Appearance">
+        <div className="grid grid-cols-3 gap-2">
+          {([
+            { v: "light" as ThemeChoice, label: "Light" },
+            { v: "dark" as ThemeChoice, label: "Dark" },
+            { v: "system" as ThemeChoice, label: "System" },
+          ]).map((o) => (
+            <button
+              key={o.v}
+              onClick={() => pickTheme(o.v)}
+              className={clsx(
+                "h-11 rounded-xl border text-sm font-medium transition-colors",
+                theme === o.v
+                  ? "border-accent/60 bg-text/5 text-text"
+                  : "border-border-strong/40 text-text-muted hover:border-text-dim hover:text-text"
+              )}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-text-dim">
+          System follows your phone&apos;s light/dark setting.
+        </p>
+      </Section>
+
       <Section title="Data">
         <p className="text-sm text-text-muted -mt-2">
           Everything lives on this device. No accounts, no cloud, no tracking.
@@ -492,7 +529,7 @@ function DevToolsSection({
             onClick={loadGonzalo}
             className="w-full h-12 rounded-xl border border-border text-text-muted font-medium"
           >
-            Load Gonzalo&apos;s dev profile
+            Load dev seed profile
           </button>
           <button
             onClick={wipeEverything}

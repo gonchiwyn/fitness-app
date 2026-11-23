@@ -6,7 +6,6 @@ import clsx from "clsx";
 import { getProfile, saveProfile } from "@/lib/db";
 import {
   EQUIPMENT_PRESET_LABELS,
-  EQUIPMENT_PRESETS,
   GOAL_BLURBS,
   GOAL_LABELS,
   GOALS,

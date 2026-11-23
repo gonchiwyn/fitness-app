@@ -10,14 +10,12 @@ import { cleanupStaleDrafts, db, getProfile, getWeeklyPlan } from "@/lib/db";
 import QuickLogModal from "@/components/QuickLogModal";
 import DayPreviewModal from "@/components/DayPreviewModal";
 import { templatesFor } from "@/lib/data/templates";
-import { nextBlockSuggestions } from "@/lib/data/presets";
+import { nextBlockSuggestions, presetByFocusName } from "@/lib/data/presets";
 import { categoryColor } from "@/lib/categoryTheme";
 import { recommendForToday, type Recommendation } from "@/lib/recommend";
 import {
   CATEGORY_BLURBS,
   CATEGORY_LABELS,
-  DAY_LABELS_SHORT,
-  chipShortLabel,
   dateToPlanIndex,
   blockWeekNumber,
   effectiveFocusToday,
@@ -35,7 +33,7 @@ export default function HomePage() {
   const [previewDate, setPreviewDate] = useState<string | null>(null);
   // Offset in weeks from the current week (0 = this week, +1 = next, -1 = last).
   // Lets the user scan the block outlook without leaving Home.
-  const [weekOffset, setWeekOffset] = useState(0);
+  const [weekOffset] = useState(0);
   const today = format(new Date(), "yyyy-MM-dd");
   const todayIdx = dateToPlanIndex(new Date());
 
@@ -103,13 +101,6 @@ export default function HomePage() {
     const p = await db.weeklyPlan.get("me");
     return p ? p.days.map(normalizePlannedDay) : null;
   }, [displayedWeekStart]);
-  const displayedIsOverride = useLiveQuery(async () => {
-    const o = await db.weekOverrides
-      .where("weekStartDate")
-      .equals(displayedWeekStart)
-      .first();
-    return !!o;
-  }, [displayedWeekStart]);
 
   // Next week's days — fetched separately so Next Up can resolve the actual
   // slot for tomorrow when "tomorrow" crosses a week boundary. Previously
@@ -159,7 +150,6 @@ export default function HomePage() {
     );
   const streak = computeStreak(recent ?? []);
   const currentWeekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
-  const weekStart = addDays(currentWeekStart, weekOffset * 7);
   // Weekly session glance — Strava / Apple Fitness pattern. The implicit
   // target is the number of non-rest days in the user's base plan; "done"
   // is sessions finished Mon–Sun of this calendar week.
@@ -184,8 +174,6 @@ export default function HomePage() {
   const draftSession = (recent ?? []).find(
     (s) => s.startedAt && !s.finishedAt && s.date === today
   );
-  // "Today" pill only lights up when the strip is viewing the current week.
-  const displayedTodayIdx = weekOffset === 0 ? todayIdx : -1;
   // Map date → most recent finished session for that date
   const sessionsByDate = new Map<string, Session>();
   for (const s of recent ?? []) {
@@ -289,9 +277,10 @@ export default function HomePage() {
             <>
               {isDone && <BlockCompleteCard focus={focus} sessions={recent ?? []} />}
               {isLastWeek && <LastWeekBanner focus={focus} />}
-              {!isDone && focus.name === "Surf prep" && (
-                <BreathingCard weekInBlock={weekNum} />
-              )}
+              {!isDone &&
+                presetByFocusName(focus.name)?.companion === "breathing" && (
+                  <BreathingCard weekInBlock={weekNum} />
+                )}
             </>
           );
         })()
@@ -404,7 +393,7 @@ function BreathingCard({ weekInBlock }: { weekInBlock: number }) {
       return {
         name: "CO2 tolerance table",
         summary: "Hold with shrinking rest — 2:00 → 1:45 → 1:30 … → 0:15",
-        why: "Sailing week — build wipeout tolerance while you're in the water anyway.",
+        why: "Build wipeout tolerance — holding calm while CO2 climbs.",
         how: "Pick a comfortable breath-hold (say 45s). Rest 2:00, then hold. Rest 1:45, hold same time. Rest 1:30, hold. Keep dropping rest by 15s down to 0:15 rest. Hold length stays constant — the CO2 buildup does the work.",
       };
     if (w === 4)
@@ -424,8 +413,8 @@ function BreathingCard({ weekInBlock }: { weekInBlock: number }) {
     return {
       name: "4-7-8 breathing",
       summary: "4s in · 7s hold · 8s out · × 10 rounds",
-      why: "Taper week — parasympathetic reset. Do it nightly before you fly.",
-      how: "Inhale through the nose for 4. Hold for 7. Exhale slowly through the mouth for 8, making a soft whoosh. That's one round. 10 rounds pre-sleep. Land in El Salvador rested.",
+      why: "Taper week — parasympathetic reset. Do it nightly.",
+      how: "Inhale through the nose for 4. Hold for 7. Exhale slowly through the mouth for 8, making a soft whoosh. That's one round. 10 rounds pre-sleep. Arrive rested.",
     };
   })();
 
@@ -1004,352 +993,7 @@ function TodaysSessionCard({ session, compact }: { session: Session; compact?: b
   );
 }
 
-// One-tap retroactive logging row. Keeps the top-5 most-useful categories
-// as pills; tapping saves a bare retroactive session (no template picker).
-// "More" opens the full modal for anything else. Shown on Home in every
-// Today state so the user never has to go hunt for a change path.
-function QuickLogRow({
-  hasSessionToday,
-  onPickCategory,
-  onOpenPicker,
-}: {
-  hasSessionToday: boolean;
-  onPickCategory: (cat: import("@/lib/types").Category, label: string) => Promise<void>;
-  onOpenPicker: () => void;
-}) {
-  const QUICK_CATS: { id: import("@/lib/types").Category; label: string }[] = [
-    { id: "strength", label: "Strength" },
-    { id: "cardio",   label: "Cardio" },
-    { id: "hyrox",    label: "Hyrox" },
-    { id: "sport",    label: "Sport" },
-    { id: "stretching", label: "Mobility" },
-  ];
-  const [pending, setPending] = useState<string | null>(null);
-  return (
-    <section className="space-y-2">
-      <div className="text-[11px] tracking-normal text-text-dim font-semibold">
-        {hasSessionToday ? "Did something else too?" : "I did something different →"}
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {QUICK_CATS.map((c) => {
-          const color = categoryColor(c.id);
-          const active = pending === c.id;
-          return (
-            <button
-              key={c.id}
-              disabled={pending !== null}
-              onClick={async () => {
-                setPending(c.id);
-                await onPickCategory(c.id, c.label);
-                setPending(null);
-              }}
-              className={clsx(
-                "h-9 px-3.5 rounded-full border text-[13px] font-medium transition-colors flex items-center gap-2",
-                active
-                  ? "bg-text text-bg border-text"
-                  : "bg-transparent border-border-strong/60 text-text-muted hover:text-text hover:border-text-muted"
-              )}
-            >
-              <span
-                className="w-1.5 h-1.5 rounded-full"
-                style={{ background: color.solid, opacity: active ? 0.3 : 1 }}
-                aria-hidden
-              />
-              {c.label}
-            </button>
-          );
-        })}
-        <button
-          onClick={onOpenPicker}
-          className="h-9 px-3.5 rounded-full border border-border-strong/60 bg-transparent text-[13px] font-medium text-text-dim hover:text-text-muted"
-        >
-          More
-        </button>
-      </div>
-    </section>
-  );
-}
 
-function WeekStrip({
-  days,
-  weekStart,
-  todayIdx,
-  weekOffset,
-  onPrevWeek,
-  onNextWeek,
-  onReturnToToday,
-  sessionsByDate,
-  onLogPast,
-  onPreviewFuture,
-  isOverride,
-}: {
-  days: PlannedDay[];
-  weekStart: Date;
-  todayIdx: number;
-  weekOffset: number;
-  onPrevWeek: () => void;
-  onNextWeek: () => void;
-  onReturnToToday: () => void;
-  sessionsByDate: Map<string, Session>;
-  onLogPast: (date: string) => void;
-  onPreviewFuture: (date: string) => void;
-  isOverride: boolean;
-}) {
-  // Home starts collapsed — just a row of 7 dots. Tap "See all" to expand
-  // into the full strip with labels, dates, and prev/next-week controls.
-  // Product rationale: Home should surface one verb (today's workout).
-  // The weekly outlook is context, not a decision — belongs behind a tap.
-  // Auto-expand when the user navigates off the current week (weekOffset!=0)
-  // so the Previous/Next-week controls are reachable.
-  const [expanded, setExpanded] = useState(false);
-  const isExpanded = expanded || weekOffset !== 0;
-
-  const weekEnd = addDays(weekStart, 6);
-  const dateRange =
-    format(weekStart, "MMM") === format(weekEnd, "MMM")
-      ? `${format(weekStart, "MMM d")}–${format(weekEnd, "d")}`
-      : `${format(weekStart, "MMM d")} – ${format(weekEnd, "MMM d")}`;
-  const heading =
-    weekOffset === 0
-      ? "This week"
-      : weekOffset === 1
-      ? "Next week"
-      : weekOffset === -1
-      ? "Last week"
-      : weekOffset > 0
-      ? `In ${weekOffset} weeks`
-      : `${Math.abs(weekOffset)} weeks ago`;
-  const todayStr = format(new Date(), "yyyy-MM-dd");
-
-  // Collapsed view — one tight row, dot-per-day, no labels, no dates.
-  if (!isExpanded) {
-    return (
-      <section>
-        <button
-          onClick={() => setExpanded(true)}
-          className="w-full flex items-center justify-between pb-2.5 group"
-        >
-          <span className="text-[12px] tracking-normal text-text-dim font-medium">
-            This week
-          </span>
-          <span className="text-[11px] tracking-normal text-text-dim group-hover:text-text transition-colors font-medium">
-            See all ›
-          </span>
-        </button>
-        <div className="grid grid-cols-7 gap-1">
-          {days.map((day, i) => {
-            const date = addDays(weekStart, i);
-            const dateStr = format(date, "yyyy-MM-dd");
-            const session = sessionsByDate.get(dateStr);
-            const displayCategory = session?.category ?? day?.category;
-            const color = displayCategory ? categoryColor(displayCategory) : null;
-            const isToday = i === todayIdx;
-            const isPast = dateStr < todayStr;
-            const handler = () => {
-              if (isPast || session) onLogPast(dateStr);
-              else if (day) onPreviewFuture(dateStr);
-            };
-
-            return (
-              <button
-                key={i}
-                onClick={handler}
-                className={clsx(
-                  "flex flex-col items-center py-2.5 rounded-xl border transition-colors",
-                  isToday
-                    ? "border-accent/60 bg-text/5"
-                    : "border-transparent hover:border-border-strong/40"
-                )}
-              >
-                <span
-                  className={clsx(
-                    "text-[11px] tracking-normal font-medium",
-                    isToday ? "text-accent" : "text-text-dim"
-                  )}
-                >
-                  {DAY_LABELS_SHORT[i][0]}
-                </span>
-                <span
-                  className={clsx(
-                    "w-1.5 h-1.5 rounded-full mt-2",
-                    !displayCategory && "bg-text-dim/25",
-                    session ? "" : "opacity-50"
-                  )}
-                  style={displayCategory ? { background: color?.solid } : undefined}
-                  aria-hidden
-                />
-              </button>
-            );
-          })}
-        </div>
-      </section>
-    );
-  }
-
-  // Expanded view (user tapped "See all" or is on a different week).
-  return (
-    <section>
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => {
-              setExpanded(false);
-              if (weekOffset !== 0) onReturnToToday();
-            }}
-            className="flex items-center gap-2"
-          >
-            <span className="text-[12px] tracking-normal text-text-dim font-medium hover:text-text transition-colors">
-              {heading}
-            </span>
-            <span className="text-text-dim text-xs">▾</span>
-          </button>
-          <span className="text-[10px] text-text-dim tabular-nums">
-            {dateRange}
-          </span>
-          {isOverride && (
-            <span
-              className="text-[10px] tracking-normal text-accent border border-accent/40 px-1.5 py-0.5 rounded font-medium"
-              title="This week deviates from your base plan — only affects this week."
-            >
-              Edited
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={onPrevWeek}
-            aria-label="Previous week"
-            className="w-7 h-7 rounded-full border border-border-strong/40 text-text-muted flex items-center justify-center hover:border-text-dim"
-          >
-            ‹
-          </button>
-          {weekOffset !== 0 && (
-            <button
-              onClick={onReturnToToday}
-              className="px-2.5 h-7 rounded-full border border-border-strong/40 text-[11px] tracking-normal text-text-muted hover:border-text-dim font-medium"
-            >
-              Today
-            </button>
-          )}
-          <button
-            onClick={onNextWeek}
-            aria-label="Next week"
-            className="w-7 h-7 rounded-full border border-border-strong/40 text-text-muted flex items-center justify-center hover:border-text-dim"
-          >
-            ›
-          </button>
-        </div>
-      </div>
-      <div className="grid grid-cols-7 gap-1.5">
-        {days.map((day, i) => {
-          const date = addDays(weekStart, i);
-          const dateStr = format(date, "yyyy-MM-dd");
-          const isToday = i === todayIdx;
-          const todayStr = format(new Date(), "yyyy-MM-dd");
-          const isPast = dateStr < todayStr;
-          const isFuture = dateStr > todayStr;
-          const session = sessionsByDate.get(dateStr);
-
-          // Prefer real session data over planned data when available.
-          // Use the short label — the strip is narrow; full names belong in
-          // the Today card and preview modal. Locked templates get their own
-          // short (Push/Pull/Legs/Z2/DL/…) so a PPL week is legible.
-          const displayCategory = session?.category ?? day?.category;
-          const displayTemplateId =
-            session?.modifiers?.templateId ?? day?.templateId;
-          const label = displayCategory
-            ? chipShortLabel(displayCategory, displayTemplateId)
-            : null;
-
-          const color = displayCategory ? categoryColor(displayCategory) : null;
-          const chipClasses = clsx(
-            "rounded-xl px-1.5 py-2 text-center border transition-colors block min-h-[82px] flex flex-col bg-transparent",
-            isToday
-              ? "border-accent/60"
-              : "border-border-strong/40 hover:border-text-dim"
-          );
-
-          const inner = (
-            <>
-              <div className={clsx(
-                "text-[11px] tracking-normal font-semibold",
-                isToday ? "text-accent" : "text-text-dim"
-              )}>
-                {DAY_LABELS_SHORT[i]}
-              </div>
-              <div className="text-[9px] tabular-nums text-text-dim/70 mt-0.5">
-                {format(date, "M/d")}
-              </div>
-              <div className="mt-2 flex-1 flex flex-col items-center justify-center w-full min-w-0">
-                {session ? (
-                  <>
-                    <span
-                      className="w-2 h-2 rounded-full"
-                      style={{ background: color?.solid ?? "var(--text-muted)" }}
-                      aria-hidden
-                    />
-                    {label && (
-                      <span className="text-[10px] font-medium text-text-muted leading-tight mt-1.5 w-full px-0.5 truncate">
-                        {label}
-                      </span>
-                    )}
-                  </>
-                ) : label ? (
-                  <>
-                    <span
-                      className="w-1.5 h-1.5 rounded-full opacity-50"
-                      style={{ background: color?.solid ?? "var(--text-dim)" }}
-                      aria-hidden
-                    />
-                    <span className="text-[10px] text-text-dim leading-tight w-full px-0.5 truncate mt-1.5">
-                      {label}
-                    </span>
-                  </>
-                ) : isPast ? (
-                  <span className="text-[10px] text-accent/70 leading-tight tracking-wide">+ Log</span>
-                ) : (
-                  <span className="text-text-dim/60 text-xs tracking-wide">Rest</span>
-                )}
-              </div>
-            </>
-          );
-
-          // Past day → always open the day modal (same surface whether there's
-          // a session or not). Modal lists existing sessions with × delete AND
-          // offers Add-another, so it doubles as a day editor.
-          if (isPast) {
-            return (
-              <button key={i} className={chipClasses} onClick={() => onLogPast(dateStr)}>
-                {inner}
-              </button>
-            );
-          }
-
-          // Future planned day → tap opens preview modal (shows generated exercises for that date)
-          if (isFuture && day) {
-            return (
-              <button key={i} className={chipClasses} onClick={() => onPreviewFuture(dateStr)}>
-                {inner}
-              </button>
-            );
-          }
-
-          // Today or future rest day → navigate to workout or plan
-          const href = day
-            ? day.templateId
-              ? `/workout/${day.category}?template=${day.templateId}`
-              : `/workout/${day.category}`
-            : "/plan";
-          return (
-            <Link key={i} className={chipClasses} href={href}>
-              {inner}
-            </Link>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
 
 // "Next up" teaser — shows the next planned session on the horizon (tomorrow
 // if it's a training day, otherwise the next non-rest day), plus a tiny

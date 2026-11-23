@@ -76,7 +76,7 @@ export default function BenchmarksPage() {
                 <button
                   key={t}
                   onClick={() => setLogType(t)}
-                  className="w-full text-left bg-bg-elevated border border-border-strong/40 rounded-2xl p-4 hover:border-text-dim transition-colors"
+                  className="w-full text-left bg-bg-elevated rounded-2xl p-4 hover:border-text-dim transition-colors"
                 >
                   <div className="flex items-baseline justify-between gap-4">
                     <div className="flex-1 min-w-0">

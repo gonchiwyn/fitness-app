@@ -257,7 +257,7 @@ export default function ProfilePage() {
           <h2 className="text-xs tracking-normal text-text-dim font-semibold">
             Km by intensity
           </h2>
-          <div className="bg-bg-card border border-border rounded-2xl p-4">
+          <div className="bg-bg-card rounded-2xl p-4">
             <div className="flex h-3 rounded-full overflow-hidden mb-3">
               {(["easy", "moderate", "hard"] as const).map((k) => {
                 const pct = stats.km > 0 ? (stats.kmByIntensity[k] / stats.km) * 100 : 0;
@@ -286,7 +286,7 @@ export default function ProfilePage() {
         <h2 className="text-xs tracking-normal text-text-dim font-semibold">
           Longevity pillars · Attia
         </h2>
-        <div className="grid grid-cols-4 gap-2 bg-bg-card border border-border rounded-2xl p-3">
+        <div className="grid grid-cols-4 gap-2 bg-bg-card rounded-2xl p-3">
           {pillars.map((p) => (
             <PillarRing key={p.id} pillar={p} />
           ))}
@@ -299,7 +299,7 @@ export default function ProfilePage() {
           <h2 className="text-xs tracking-normal text-text-dim font-semibold">
             Category mix
           </h2>
-          <div className="bg-bg-card border border-border rounded-2xl p-4 space-y-2">
+          <div className="bg-bg-card rounded-2xl p-4 space-y-2">
             {stats.byCategory.slice(0, 6).map((c) => {
               const pct = Math.round((c.count / stats.workouts) * 100);
               return (
@@ -363,7 +363,7 @@ export default function ProfilePage() {
               })}
           </div>
         ) : (
-          <p className="text-sm text-text-muted bg-bg-card border border-border rounded-2xl p-4">
+          <p className="text-sm text-text-muted bg-bg-card rounded-2xl p-4">
             Finish a focus block to earn your first badge.
           </p>
         )}
@@ -381,7 +381,7 @@ export default function ProfilePage() {
           <h2 className="text-xs tracking-normal text-text-dim font-semibold">
             Personal records
           </h2>
-          <div className="bg-bg-card border border-border rounded-2xl divide-y divide-border">
+          <div className="bg-bg-card rounded-2xl divide-y divide-border">
             {prRows.map((pr) => {
               const improved =
                 pr.deltaFromPrevious !== null &&

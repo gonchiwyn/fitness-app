@@ -1900,7 +1900,7 @@ TEMPLATES.push(
 );
 
 // ============================================================
-// SURF PREP — El Salvador block. Coach influences: Cris Mills
+// SURF PREP — surf-specific conditioning. Coach influences: Cris Mills
 // (Surf Strength Coach), Kalyn Kolbe (mobility), XPT (breath +
 // water), Andy Galpin (ordering + wave). Every session hits at
 // least one of the four surf fatigue points: shoulders, triceps,

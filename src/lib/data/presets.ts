@@ -34,6 +34,10 @@ export type BlockPreset = {
   // given week was supposed to be, leaving no way to repair a week that
   // drifted onto the wrong dates.
   weekPatterns?: Record<number, PlannedDay[]>;
+  // Optional companion practice shown alongside the block on Home. Declared
+  // here rather than matched by block name in the UI, so adding a block that
+  // wants breath work doesn't mean editing a string check in page.tsx.
+  companion?: "breathing";
 };
 
 export const BLOCK_PRESETS: BlockPreset[] = [
@@ -274,6 +278,7 @@ export const BLOCK_PRESETS: BlockPreset[] = [
     name: "Surf training",
     tagline: "Paddle, pop-up, back-safe. General surf conditioning.",
     focusName: "Surf prep",
+    companion: "breathing",
     durationWeeks: 6,
     defaultFrequency: 6,
     days: [

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { format } from "date-fns";
 import clsx from "clsx";
-import { db, getProfile, saveProfile } from "@/lib/db";
+import { db, getProfile } from "@/lib/db";
 import { useBodyScrollLock } from "@/lib/useBodyScrollLock";
 import { findSwapAlternatives, generateWorkout } from "@/lib/generator";
 import { EXERCISES, getExercise } from "@/lib/data/exercises";
@@ -759,7 +759,7 @@ function KmInput({
 }) {
   const [text, setText] = useState(value ? String(value) : "");
   return (
-    <div className="flex items-center justify-between gap-3 bg-bg-card border border-border rounded-xl px-4 py-3">
+    <div className="flex items-center justify-between gap-3 bg-bg-card rounded-xl px-4 py-3">
       <div>
         <div className="text-[10px] tracking-normal text-text-dim font-semibold">
           Distance covered
@@ -779,7 +779,7 @@ function KmInput({
             onChange(Number.isFinite(parsed) && parsed > 0 ? parsed : undefined);
           }}
           placeholder="—"
-          className="w-16 h-10 rounded-lg bg-bg-elevated border border-border px-2 text-right font-bold tabular-nums"
+          className="w-16 h-10 rounded-lg bg-bg-elevated px-2 text-right font-bold tabular-nums"
         />
         <span className="text-sm text-text-dim">km</span>
       </div>
@@ -850,7 +850,7 @@ function BlockCard({
     !isCooldown;
 
   return (
-    <section className="bg-bg-card border border-border rounded-2xl overflow-hidden print-block">
+    <section className="bg-bg-card rounded-2xl overflow-hidden print-block">
       <button
         onClick={() => setCollapsed((c) => !c)}
         className="w-full px-4 py-3 flex items-center justify-between text-left"
@@ -1064,7 +1064,7 @@ function CardioModalityPicker({
     }
   }
   return (
-    <div className="no-print bg-bg-card border border-border rounded-xl p-3 space-y-2">
+    <div className="no-print bg-bg-card rounded-xl p-3 space-y-2">
       <div className="text-[10px] tracking-normal text-text-dim font-semibold">
         Modality
       </div>
@@ -1478,7 +1478,7 @@ function ExerciseCard({
             {showHowTo ? "Hide" : "How to →"}
           </button>
           {showHowTo && (
-            <p className="text-xs text-text-muted leading-relaxed mt-2 bg-bg rounded-lg border border-border p-3">
+            <p className="text-xs text-text-muted leading-relaxed mt-2 bg-bg-card rounded-lg p-3">
               {exercise.howTo}
             </p>
           )}
@@ -1500,7 +1500,7 @@ function ExerciseCard({
               Log result →
             </button>
           ) : (
-            <div className="p-3 bg-bg rounded-lg border border-border space-y-2">
+            <div className="p-3 bg-bg-card rounded-lg space-y-2">
               <div className="text-[10px] tracking-normal text-text-dim font-semibold">
                 Log to Benchmarks · {BENCHMARK_META[benchmarkType].label}
               </div>
@@ -1542,7 +1542,7 @@ function ExerciseCard({
 
       {/* Swap UI */}
       {showSwaps && (
-        <div className="mt-3 p-3 bg-bg rounded-lg border border-border space-y-1.5 no-print">
+        <div className="mt-3 p-3 bg-bg-card rounded-lg space-y-1.5 no-print">
           <div className="text-[10px] tracking-normal text-text-dim font-semibold">
             Alternatives — same pattern, your equipment
           </div>

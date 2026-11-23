@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import BottomNav from "@/components/BottomNav";
+import { THEME_BOOT_SCRIPT } from "@/lib/theme";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,7 +31,12 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0a0a0b",
+  // Per-scheme so the status bar matches before JS runs. The boot script
+  // refines this when the user has an explicit choice that differs from OS.
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0b" },
+    { media: "(prefers-color-scheme: light)", color: "#faf9f6" },
+  ],
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -46,7 +52,13 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
+      <head>
+        {/* Runs before paint so a stored theme is on <html> immediately —
+            otherwise every cold load flashes the OS default first. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+      </head>
       <body className="min-h-full flex flex-col bg-bg text-text">
         <main className="flex-1 pb-24 safe-top">{children}</main>
         <BottomNav />

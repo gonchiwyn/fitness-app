@@ -125,14 +125,12 @@ function PlanPageInner() {
 
   const router = useRouter();
   const [viewMode, setViewMode] = useState<"this-week" | "base">("this-week");
-  const [hasOverride, setHasOverride] = useState(false);
   // Week offset relative to today's week: 0 = this week, +N = future, -N = past.
   // Bounds are computed from the current focus block (if any) — can't scan
   // past the block's start date or past its end date. Without a block, we
   // allow a generous ±8 for free-form planning.
   const [viewedWeekOffset, setViewedWeekOffset] = useState(0);
   const [previewDate, setPreviewDate] = useState<string | null>(null);
-  const [showWeekJump, setShowWeekJump] = useState(false);
   const [logDate, setLogDate] = useState<string | null>(null);
   const viewedMonday = addDays(thisMonday, viewedWeekOffset * 7);
   const viewedWeekStart = format(viewedMonday, "yyyy-MM-dd");
@@ -174,7 +172,6 @@ function PlanPageInner() {
       .where("weekStartDate")
       .equals(weekStart)
       .first();
-    setHasOverride(!!override);
     if (viewMode === "this-week" && override) {
       setPlan({ ...base, days: override.days });
     } else {
@@ -217,7 +214,6 @@ function PlanPageInner() {
       // Reflect the override immediately in the current view.
       setPlan({ ...plan, days: nextDays });
       setViewMode("this-week");
-      setHasOverride(true);
     }
     setEditingDay(null);
   };
@@ -316,7 +312,6 @@ function PlanPageInner() {
     });
     setProfile(await getProfile());
     await loadPlan();
-    setShowWeekJump(false);
   };
 
   const togglePause = async () => {
@@ -438,6 +433,7 @@ function PlanPageInner() {
             durationWeeks={focus.durationWeeks}
             startedAt={focus.startedAt}
             currentWeek={weekNum}
+            onLoadWeek={jumpToBlockWeek}
           />
           {isPaused && focus.pausedAt && (
             <p className="text-xs text-text-muted leading-relaxed">
@@ -458,46 +454,6 @@ function PlanPageInner() {
               {isPaused ? "Resume" : "Pause"}
             </button>
           </div>
-          {/* Jump this calendar week to any week of the block. You choose —
-              the app doesn't infer it from startedAt, which is the number
-              that drifts after a pause. */}
-          <div className="flex items-center justify-between gap-3 pt-1">
-            <span className="text-[11px] text-text-dim">Week looks wrong?</span>
-            <button
-              onClick={() => setShowWeekJump((v) => !v)}
-              className="h-7 px-3 rounded-full border border-border-strong/40 text-[11px] text-text-muted hover:border-text-dim hover:text-text transition-colors"
-            >
-              Load a week {showWeekJump ? "▴" : "▾"}
-            </button>
-          </div>
-          {showWeekJump && (
-            <div className="space-y-2">
-              <p className="text-[11px] text-text-muted leading-relaxed">
-                Pick which week of {focus.name} this calendar week should be.
-                Loads its workouts Mon–Sun and moves the block counter to match.
-              </p>
-              <div className="flex gap-1.5 overflow-x-auto -mx-1 px-1 pb-1" style={{ scrollbarWidth: "none" }}>
-                {Array.from({ length: focus.durationWeeks }, (_, i) => i + 1).map((w) => {
-                  const phase = phaseLabelForWeek(w, focus.durationWeeks);
-                  const isNow = w === weekNum;
-                  return (
-                    <button
-                      key={w}
-                      onClick={() => jumpToBlockWeek(w)}
-                      className={clsx(
-                        "shrink-0 px-2.5 h-8 rounded-full border text-[11px] font-medium tabular-nums transition-colors",
-                        isNow
-                          ? "border-accent/60 bg-text/5 text-text"
-                          : "border-border-strong/40 text-text-muted hover:border-text-dim hover:text-text"
-                      )}
-                    >
-                      W{w} · {phase}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
           <div className="flex items-center justify-between text-[10px] text-text-dim tracking-normal font-medium pt-1">
             <span>Started {format(parseDateOnly(focus.startedAt), "MMM d")}</span>
             <button
@@ -1062,10 +1018,12 @@ function PhaseOutline({
   durationWeeks,
   startedAt,
   currentWeek,
+  onLoadWeek,
 }: {
   durationWeeks: number;
   startedAt: string;
   currentWeek: number;
+  onLoadWeek?: (week: number) => void;
 }) {
   void startedAt;
   // Same phase rules as getBlockPhase. Readable here as a horizontal strip
@@ -1132,6 +1090,17 @@ function PhaseOutline({
         </span>{" "}
         {selectedPhase.desc}
       </p>
+      {/* Selecting a week you're not on offers to make it the current week.
+          Keeps one row of week pills doing both jobs — reading the phase and
+          loading it — instead of a second identical row of chips below. */}
+      {!isCurrent && onLoadWeek && (
+        <button
+          onClick={() => onLoadWeek(selectedIdx + 1)}
+          className="h-7 px-3 rounded-full border border-accent/50 text-[11px] text-accent font-medium hover:bg-accent/10 transition-colors"
+        >
+          Make this week → Wk {selectedIdx + 1}
+        </button>
+      )}
     </div>
   );
 }

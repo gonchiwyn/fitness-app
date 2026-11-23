@@ -33,6 +33,85 @@
   --c-recovery-soft: color-mix(in oklab, var(--c-recovery) 14%, transparent);
 }
 
+/* ----- LIGHT THEME -----
+   Same Nordic character, inverted: warm paper instead of warm black. No pure
+   #fff — it reads clinical and glares in a gym. Accents are darkened roughly
+   two steps because wheat-on-white fails contrast at the dark-mode value;
+   the hue stays, the luminance drops.
+
+   Applied two ways:
+   1. [data-theme="light"] — the user's explicit choice, set on <html>.
+   2. prefers-color-scheme, but ONLY when no explicit choice is present, so a
+      user who picks dark doesn't get flipped by their OS. */
+:root[data-theme="light"] {
+  --bg: #faf9f6;
+  --bg-elevated: #f2f0ea;
+  --bg-card: #eae7df;
+  --border: #1a181410;
+  --border-strong: #d5d0c4;
+  --text: #1b1916;
+  --text-muted: #6a655c;
+  --text-dim: #99938a;
+  --accent: #96763f;
+  --accent-dim: #7a5f31;
+  --success: #5c7050;
+  --danger: #ab4b39;
+
+  --c-strength: #965734;
+  --c-cardio:   #4b7489;
+  --c-hyrox:    #8f6a39;
+  --c-sport:    #6e5274;
+  --c-mobility: #5d7351;
+  --c-recovery: #5c5c56;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --bg: #faf9f6;
+    --bg-elevated: #f2f0ea;
+    --bg-card: #eae7df;
+    --border: #1a181410;
+    --border-strong: #d5d0c4;
+    --text: #1b1916;
+    --text-muted: #6a655c;
+    --text-dim: #99938a;
+    --accent: #96763f;
+    --accent-dim: #7a5f31;
+    --success: #5c7050;
+    --danger: #ab4b39;
+
+    --c-strength: #965734;
+    --c-cardio:   #4b7489;
+    --c-hyrox:    #8f6a39;
+    --c-sport:    #6e5274;
+    --c-mobility: #5d7351;
+    --c-recovery: #5c5c56;
+  }
+}
+
+/* An explicit dark choice must beat the OS preference above. */
+:root[data-theme="dark"] {
+  --bg: #0a0a0b;
+  --bg-elevated: #0f0f11;
+  --bg-card: #141416;
+  --border: #22222530;
+  --border-strong: #2a2a2d;
+  --text: #f2f0eb;
+  --text-muted: #9a9a93;
+  --text-dim: #5e5e58;
+  --accent: #d4b07a;
+  --accent-dim: #8e7550;
+  --success: #a8b89a;
+  --danger: #c76a5a;
+
+  --c-strength: #b5724a;
+  --c-cardio:   #7a9cb0;
+  --c-hyrox:    #c09663;
+  --c-sport:    #96789c;
+  --c-mobility: #8ea381;
+  --c-recovery: #7c7c76;
+}
+
 @theme inline {
   --color-bg: var(--bg);
   --color-bg-elevated: var(--bg-elevated);
