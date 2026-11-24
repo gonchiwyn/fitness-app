@@ -665,7 +665,7 @@ function BlockCompleteCard({
           href="/plans"
           className="block text-[11px] tracking-normal text-text-dim hover:text-text font-medium pt-1"
         >
-          Or browse all 12 →
+          Or browse all blocks →
         </Link>
       </div>
     </section>

@@ -369,10 +369,10 @@ function PlanPageInner() {
 
   const patternIntro =
     blockState === "active"
-      ? "Tap a day to swap the workout — just this week, or every week."
+      ? "Tap a day to see it. Change or log it from there."
       : blockState === "completed"
       ? "Last block's pattern. Pick your next focus to reshape the week."
-      : "Tap a day to shape it. Or pick a block to shape the whole week at once.";
+      : "Tap a day to see it. Or pick a block to shape the whole week at once.";
 
   return (
     <div className="max-w-3xl mx-auto px-5 py-6 space-y-6">
@@ -569,8 +569,8 @@ function PlanPageInner() {
           {viewedWeekOffset === 0
             ? patternIntro
             : viewedWeekOffset < 0
-              ? "Tap a day — recap if you logged, log it if you didn't."
-              : "Tap a day to preview the planned workout."}
+              ? "Tap a day — recap if you logged it, log it if you didn't."
+              : "Tap a day to see what's planned."}
         </p>
 
         <div className="space-y-2 pt-1">
@@ -585,25 +585,15 @@ function PlanPageInner() {
             // the day-picker just because we're still looking at this week.
             const isPastDate =
               differenceInCalendarDays(rowDate, parseLocalDate(format(new Date(), "yyyy-MM-dd"))) < 0;
-            // Five distinct tap roles, by what the user most likely wants:
-            //   recap     — there's a logged session on this date
-            //   log-retro — past date, no session; QuickLogModal to backfill
-            //   start     — TODAY with nothing logged; open the workout. You
-            //               tap today because you want to DO it, not re-plan
-            //               it. (Changing today's plan still works from the
-            //               workout page's own "Change" button.)
-            //   edit      — future day in the current week; DayPicker to shape
-            //   preview   — future week; DayPreviewModal to peek
-            const role: "recap" | "log-retro" | "start" | "edit" | "preview" =
-              session && session.id !== undefined
-                ? "recap"
-                : isPastDate
-                  ? "log-retro"
-                  : viewedWeekOffset > 0
-                    ? "preview"
-                    : isToday && day
-                      ? "start"
-                      : "edit";
+            // Tapping a day always SHOWS it first. Changing or logging is a
+            // deliberate second step inside the preview — an edit dialog as
+            // the default made every tap feel like it was about to break
+            // something, and gave you no way to just look at a day.
+            //   recap   — a logged session exists; go straight to the recap
+            //   preview — everything else; the modal adapts its own actions
+            //             to past vs upcoming
+            const role: "recap" | "preview" =
+              session && session.id !== undefined ? "recap" : "preview";
             const lockedTemplate = day?.templateId
               ? templatesFor(day.category).find((t) => t.id === day.templateId)
               : null;
@@ -624,7 +614,7 @@ function PlanPageInner() {
                       Done
                     </div>
                   )}
-                  {role === "log-retro" && !isToday && (
+                  {role === "preview" && isPastDate && day && !isToday && (
                     <div className="text-[9px] mt-1 font-medium tracking-normal text-text-dim">
                       Log?
                     </div>
@@ -671,43 +661,15 @@ function PlanPageInner() {
                 onClick={() => {
                   if (role === "recap" && session?.id !== undefined) {
                     router.push(`/history/${session.id}`);
-                  } else if (role === "log-retro") {
-                    setLogDate(rowDateStr);
-                  } else if (role === "start" && day) {
-                    router.push(
-                      day.templateId
-                        ? `/workout/${day.category}?template=${day.templateId}`
-                        : `/workout/${day.category}`
-                    );
-                  } else if (role === "edit") {
-                    setEditingDay(i);
-                  } else if (role === "preview") {
+                  } else {
                     setPreviewDate(rowDateStr);
                   }
                 }}
-                className={clsx(baseClasses, role === "start" && "rounded-r-none")}
+                className={baseClasses}
               >
                 {content}
               </button>
             );
-            // Today's row does two jobs: the row itself opens the workout
-            // (what you usually want), and a separate Edit button swaps what's
-            // planned. Without the second affordance there'd be no way to
-            // change today's plan from the Plan tab at all.
-            if (role === "start") {
-              return (
-                <div key={i} className="flex items-stretch">
-                  <div className="flex-1 min-w-0">{rowButton}</div>
-                  <button
-                    onClick={() => setEditingDay(i)}
-                    aria-label="Change today's workout"
-                    className="shrink-0 px-4 rounded-r-2xl border border-l-0 border-accent/50 bg-text/[0.03] text-[11px] text-text-dim hover:text-text transition-colors"
-                  >
-                    Edit
-                  </button>
-                </div>
-              );
-            }
             return <div key={i}>{rowButton}</div>;
           })}
         </div>
@@ -743,7 +705,23 @@ function PlanPageInner() {
             ]
           }
           profile={profile}
+          isPast={
+            differenceInCalendarDays(
+              parseLocalDate(previewDate),
+              parseLocalDate(format(new Date(), "yyyy-MM-dd"))
+            ) < 0
+          }
           onClose={() => setPreviewDate(null)}
+          onEdit={() => {
+            const idx = (parseLocalDate(previewDate).getDay() + 6) % 7;
+            setPreviewDate(null);
+            setEditingDay(idx);
+          }}
+          onLog={() => {
+            const d = previewDate;
+            setPreviewDate(null);
+            setLogDate(d);
+          }}
         />
       )}
 

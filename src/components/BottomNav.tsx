@@ -7,6 +7,10 @@ import clsx from "clsx";
 const ITEMS = [
   { href: "/", label: "Today", icon: HomeIcon },
   { href: "/plan", label: "Plan", icon: CalendarIcon },
+  // Blocks is top-level rather than buried under Plan → "Browse all". It's
+  // the catalogue you browse to decide what to train toward, which is a
+  // different job from managing the week you're already in.
+  { href: "/plans", label: "Blocks", icon: StackIcon },
   { href: "/history", label: "History", icon: ChartIcon },
   { href: "/profile", label: "Profile", icon: UserIcon },
 ];
@@ -20,12 +24,16 @@ export default function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-bg/95 backdrop-blur-xl border-t border-border-strong/40 safe-bottom z-40">
-      <div className="max-w-3xl mx-auto grid grid-cols-4">
+      <div className="max-w-3xl mx-auto grid grid-cols-5">
         {ITEMS.map((item) => {
           const active =
             item.href === "/"
               ? pathname === "/"
-              : pathname.startsWith(item.href);
+              : item.href === "/plan"
+                // Guard the prefix: "/plans" starts with "/plan", so a bare
+                // startsWith would light both tabs at once.
+                ? pathname === "/plan"
+                : pathname.startsWith(item.href);
           const Icon = item.icon;
           return (
             <Link
@@ -79,6 +87,14 @@ function CalendarIcon({ className, active }: { className?: string; active?: bool
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2 : 1.5} className={className}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M8 3v3m8-3v3M3 9h18M5 5h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z" />
+    </svg>
+  );
+}
+
+function StackIcon({ className, active }: { className?: string; active?: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2 : 1.5} className={className}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M4 12h16M4 17h10" />
     </svg>
   );
 }

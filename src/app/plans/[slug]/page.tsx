@@ -43,7 +43,7 @@ function PlanDetail({ preset }: { preset: BlockPreset }) {
     <div className="max-w-3xl mx-auto px-5 py-6 space-y-6">
       <header>
         <div className="flex items-center gap-3 text-[12px] tracking-normal text-text-dim mb-3 font-medium">
-          <Link href="/plans" className="hover:text-text">← Plans</Link>
+          <Link href="/plans" className="hover:text-text">← Blocks</Link>
         </div>
         <p className="text-[12px] tracking-normal text-accent font-medium">
           Training block
@@ -59,9 +59,37 @@ function PlanDetail({ preset }: { preset: BlockPreset }) {
         </div>
       </header>
 
+      {/* How the block progresses week to week. The single biggest thing a
+          browser wants to know before committing 6-8 weeks is "what actually
+          happens to me over that time" — the weekly shape below only shows
+          one representative week. */}
       <section className="space-y-3">
         <h2 className="text-[11px] tracking-normal text-text-dim font-medium">
-          Weekly shape
+          How it progresses
+        </h2>
+        <div className="bg-bg-elevated rounded-2xl divide-y divide-border-strong/30">
+          {Array.from({ length: preset.durationWeeks }, (_, i) => i + 1).map((w) => {
+            const phase = phaseLabelForWeek(w, preset.durationWeeks);
+            return (
+              <div key={w} className="flex items-baseline gap-3 px-4 py-2.5">
+                <span className="w-7 shrink-0 text-[11px] text-text-dim font-medium tabular-nums">
+                  W{w}
+                </span>
+                <span className="w-16 shrink-0 text-[11px] text-accent font-medium">
+                  {phase}
+                </span>
+                <span className="text-[11px] text-text-muted leading-relaxed">
+                  {PHASE_EXPECTATION[phase]}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-[11px] tracking-normal text-text-dim font-medium">
+          A typical week
         </h2>
         <div className="space-y-2">
           {week.map((day, i) => {
@@ -147,6 +175,25 @@ function PlanDetail({ preset }: { preset: BlockPreset }) {
       )}
     </div>
   );
+}
+
+// What each phase actually feels like, in one line. Written for someone
+// deciding whether to commit, not for someone mid-block.
+const PHASE_EXPECTATION: Record<string, string> = {
+  Build: "Volume climbs, loads moderate. Banking work capacity.",
+  Heavy: "Loads climb ~5%, reps drop. The hard middle.",
+  Peak: "Heaviest week. Accessories back off so you can chase a PR or a test.",
+  Deload: "Volume halves, intensity drops ~15%. CNS recovery — not optional.",
+};
+
+// Mirrors getBlockPhase's rules so the ladder here matches what the Plan tab
+// will actually show once the block is running.
+function phaseLabelForWeek(w: number, durationWeeks: number): string {
+  const weeksLeft = durationWeeks - w;
+  if (durationWeeks <= 1 || weeksLeft === 0) return "Deload";
+  if (weeksLeft === 1 && durationWeeks >= 3) return "Peak";
+  if (w > Math.ceil(durationWeeks / 3)) return "Heavy";
+  return "Build";
 }
 
 // Same Mon-Sun placement rules the Plan tab uses when applying a preset. Keeps

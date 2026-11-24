@@ -48,14 +48,11 @@ function PlansLibraryInner() {
   return (
     <div className="max-w-3xl mx-auto px-5 py-6 space-y-8">
       <header>
-        <div className="flex items-center gap-3 text-[12px] tracking-normal text-text-dim mb-3 font-medium">
-          <Link href="/plan" className="hover:text-text">← Plan</Link>
-        </div>
         <p className="text-[12px] tracking-normal text-text-dim font-medium">
           Every block
         </p>
         <h1 className="text-[2.125rem] font-medium tracking-[-0.03em] leading-[1] mt-1.5 text-text">
-          Plans
+          Blocks
         </h1>
         <p className="text-text-muted text-sm mt-3 leading-relaxed">
           A block is a 1–8 week focus with a clear intent. Pick one when you&apos;re

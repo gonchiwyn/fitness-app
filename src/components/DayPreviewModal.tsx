@@ -19,11 +19,20 @@ export default function DayPreviewModal({
   day,
   profile,
   onClose,
+  onEdit,
+  onLog,
+  isPast,
 }: {
   date: string; // yyyy-MM-dd
   day: PlannedDay;
   profile: Profile;
   onClose: () => void;
+  // Secondary actions. Provided by the Plan tab so one modal can serve every
+  // day state — tapping a day always SHOWS it first, and changing or logging
+  // it is a deliberate second step rather than the default.
+  onEdit?: () => void;
+  onLog?: () => void;
+  isPast?: boolean;
 }) {
   useBodyScrollLock(true);
   const [workout, setWorkout] = useState<Workout | null>(null);
@@ -144,27 +153,46 @@ export default function DayPreviewModal({
           <p className="text-sm text-text-muted">Couldn&apos;t build a preview.</p>
         )}
 
-        {day && day.category === "sport" ? (
-          <Link
-            href="/workout"
-            className="block text-center mt-6 w-full bg-accent text-bg rounded-full py-3 text-sm font-semibold hover:bg-accent-dim transition-colors"
-            onClick={onClose}
-          >
-            Log a sport
-          </Link>
-        ) : day && (
-          <Link
-            href={
-              day.templateId
-                ? `/workout/${day.category}?template=${day.templateId}&date=${date}`
-                : `/workout/${day.category}?date=${date}`
-            }
-            className="block text-center mt-6 w-full bg-accent text-bg rounded-full py-3 text-sm font-semibold hover:bg-accent-dim transition-colors"
-            onClick={onClose}
-          >
-            Open workout
-          </Link>
-        )}
+        <div className="mt-6 space-y-2">
+          {/* Primary action. A past day you never logged wants "record what
+              you actually did"; an upcoming day wants "open it". */}
+          {isPast && onLog ? (
+            <button
+              onClick={onLog}
+              className="block text-center w-full bg-accent text-bg rounded-full py-3 text-sm font-semibold hover:bg-accent-dim transition-colors"
+            >
+              Log what I did
+            </button>
+          ) : day && day.category === "sport" ? (
+            <Link
+              href="/workout"
+              className="block text-center w-full bg-accent text-bg rounded-full py-3 text-sm font-semibold hover:bg-accent-dim transition-colors"
+              onClick={onClose}
+            >
+              Log a sport
+            </Link>
+          ) : day ? (
+            <Link
+              href={
+                day.templateId
+                  ? `/workout/${day.category}?template=${day.templateId}&date=${date}`
+                  : `/workout/${day.category}?date=${date}`
+              }
+              className="block text-center w-full bg-accent text-bg rounded-full py-3 text-sm font-semibold hover:bg-accent-dim transition-colors"
+              onClick={onClose}
+            >
+              Open workout
+            </Link>
+          ) : null}
+          {onEdit && (
+            <button
+              onClick={onEdit}
+              className="block text-center w-full border border-border-strong/40 text-text-muted rounded-full py-3 text-sm font-medium hover:border-text-dim hover:text-text transition-colors"
+            >
+              {day ? "Change this day" : "Add a workout"}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
